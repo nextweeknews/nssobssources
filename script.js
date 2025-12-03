@@ -14,7 +14,7 @@ async function fetch() {
   }
 }
 
-window.addEventListener("load", fetchLeaderboard);
+window.addEventListener("load", fetch);
 
 // Auto-run
-window.addEventListener("load", fetchLeaderboard);
+window.addEventListener("load", fetch);
