@@ -1,4 +1,4 @@
- const API_URL = "https://teamupdiscord.com/leaderboard-api/client/DISCORD%7C1069003073311211601/leaderboard/Season_10/rating_type/player_global_all/format/global";
+ const API_URL = "https://kh3pbctcnk.execute-api.us-east-2.amazonaws.com/team-up-api";
 
 async function fetchLeaderboard() {
   try {
