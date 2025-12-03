@@ -2,7 +2,7 @@ const API_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/";
 
 // Your POST body (the data you're sending to the API)
 const postConfig = {
-    client_id: "DISCORD%7C1069003073311211601",
+    client_id: "DISCORD|1069003073311211601",
 };
 
 async function sendPost() {
