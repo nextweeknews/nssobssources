@@ -1,9 +1,10 @@
 const API_URL = "https://kh3pbctcnk.execute-api.us-east-2.amazonaws.com/team-up-api/get_player_rating";
 
 const postConfig = {
-    player_id: "702730732220579950",
-    client_id: "DISCORD|1069003073311211601",
-    leaderboard: "Season_10"
+    "player_id": "702730732220579950",
+    "client_id": "DISCORD|1069003073311211601",
+    "leaderboard": "Season_10",
+    "rating_type": "player_global_even"
 };
 
 async function fetchLeaderboard() {
