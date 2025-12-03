@@ -1,35 +1,47 @@
 const API_URL = "https://kh3pbctcnk.execute-api.us-east-2.amazonaws.com/team-up-api";
 
-// Fetch and display API data
-async function loadAPI() {
-    const container = document.getElementById("data");
+// Your POST body (the data you're sending to the API)
+const postConfig = {
+    leaderboard: "season_10",
+    rating_type: "global",
+    client_id: "DISCORD%7C1069003073311211601",
+    limit: 16
+};
 
-    container.className = "loading";
-    container.textContent = "Loading...";
-
+async function sendPost() {
     try {
-        const response = await fetch(API_URL);
-        if (!response.ok) throw new Error("API returned " + response.status);
+        const response = await fetch(API_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(postConfig)
+        });
 
-        const data = await response.json();
-        container.innerHTML = ""; // Clear loading text
-        container.className = "";
+        const result = await response.json();
+        console.log("POST Success:", result);
 
-        // If API returns an array
-        if (Array.isArray(data)) {
-            data.forEach(item => makeCard(item));
-        } else {
-            // If API returns a single object
-            makeCard(data);
-        }
+        // Display it on the page
+        displayData(result);
 
     } catch (err) {
-        container.className = "error";
-        container.textContent = "Error loading data: " + err;
+        console.error("POST Error:", err);
+        document.getElementById("data").innerText = "Error: " + err;
     }
 }
 
-// Create a formatted card for each entry
+// Display the API response (reuses your makeCard function)
+function displayData(data) {
+    const container = document.getElementById("data");
+    container.innerHTML = "";
+
+    if (Array.isArray(data)) {
+        data.forEach(item => makeCard(item));
+    } else {
+        makeCard(data);
+    }
+}
+
 function makeCard(obj) {
     const container = document.getElementById("data");
 
@@ -41,11 +53,12 @@ function makeCard(obj) {
     for (const key in obj) {
         html += `<li><strong>${key}:</strong> ${obj[key]}</li>`;
     }
-    html += "</ul>";
 
+    html += "</ul>";
     card.innerHTML = html;
+
     container.appendChild(card);
 }
 
-// Run automatically when page loads
-window.onload = loadAPI;
+// Auto-run POST on page load (optional)
+window.onload = sendPost;
