@@ -1,4 +1,4 @@
-const API_URL = "https://kh3pbctcnk.execute-api.us-east-2.amazonaws.com/team-up-api";
+const API_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev";
 
 // POST body
 const postConfig = {
