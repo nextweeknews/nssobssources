@@ -52,4 +52,23 @@ function displayData(data) {
     }
 }
 
-// Create
+// Create a card for each entry
+function makeCard(obj) {
+    const container = document.getElementById("data");
+    const card = document.createElement("div");
+    card.className = "card";
+
+    let html = "<h3>Entry</h3><ul>";
+    for (const key in obj) {
+        if (Object.hasOwnProperty.call(obj, key)) {
+            html += `<li><strong>${key}:</strong> ${obj[key]}</li>`;
+        }
+    }
+    html += "</ul>";
+
+    card.innerHTML = html;
+    container.appendChild(card);
+}
+
+// Run when page loads
+window.addEventListener("load", fetchLeaderboard);
