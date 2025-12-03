@@ -1,59 +1,92 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Team Up API Viewer</title>
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaderboard</title>
+    <link rel="stylesheet" href="styles.css">
     <style>
+        /* Dark mode body */
         body {
-            font-family: Arial, sans-serif;
             background-color: #121212;
-            color: #eaeaea;
+            color: #e0e0e0;
+            font-family: Arial, sans-serif;
             margin: 0;
             padding: 20px;
         }
 
         h1 {
             text-align: center;
-            margin-bottom: 30px;
-            color: #ffffff;
+            color: #fff;
         }
 
+        /* Container for leaderboard cards */
         #data {
-            max-width: 800px;
-            margin: auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
         }
 
+        /* Card style */
         .card {
             background-color: #1e1e1e;
-            padding: 20px;
-            margin-bottom: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(255, 255, 255, 0.08);
-            border: 1px solid #2c2c2c;
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+            transition: transform 0.2s;
+        }
+
+        .card:hover {
+            transform: scale(1.03);
         }
 
         .card h3 {
             margin-top: 0;
-            color: #6ab0ff;
+            color: #ffcc00;
         }
 
-        .loading,
-        .error {
+        .card ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .card li {
+            margin-bottom: 5px;
+        }
+
+        /* Loading / error messages */
+        .loading {
+            grid-column: 1 / -1;
             text-align: center;
-            font-size: 1.2rem;
-            color: #bbbbbb;
+            color: #888;
+            font-size: 1.2em;
+        }
+
+        .error {
+            grid-column: 1 / -1;
+            text-align: center;
+            color: #ff4d4d;
+            font-size: 1.2em;
+        }
+
+        /* Responsive title */
+        @media (max-width: 600px) {
+            #data {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
+    <h1>Leaderboard</h1>
 
-    <h1>TeamUp API Data</h1>
+    <!-- Leaderboard container -->
+    <div id="data">
+        <p class="loading">Loading leaderboard...</p>
+    </div>
 
-    <div id="data" class="loading">Loading...</div>
-
-<script src="script.js"></script>
-
+    <!-- JS script -->
+    <script src="script.js"></script>
 </body>
 </html>
