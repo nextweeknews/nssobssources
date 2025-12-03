@@ -3,8 +3,8 @@ const WORKER_URL = "https://kh3pbctcnk.execute-api.us-east-2.amazonaws.com/team-
 const postConfig = {
   "player_id": "aidankellaher",
   "client_id": "DISCORD|1069003073311211601",
-  "leaderboard": "season_10",
-  "rating_type": "player_global_all"
+  "leaderboard": "Season_10",
+  "rating_type": "player_global_even"
 };
 
 async function fetchLeaderboard() {
