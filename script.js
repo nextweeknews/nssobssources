@@ -42,31 +42,34 @@ function displayData(data) {
     const container = document.getElementById("data");
     container.innerHTML = "";
 
+    // If the API returns just a single player object
+    if (typeof data === "object" && data !== null) {
+        makeCard(data);
+        return;
+    }
+
+    // If the API returns an array of players (just in case)
     if (Array.isArray(data)) {
         data.forEach(item => makeCard(item));
-    } else if (typeof data === "object" && data !== null) {
-        makeCard(data);
-    } else {
-        container.innerHTML = `<p class='loading'>${data}</p>`;
+        return;
     }
+
+    container.innerHTML = `<p>No valid data returned.</p>`;
 }
+
 
 function makeCard(obj) {
     const container = document.getElementById("data");
+
     const card = document.createElement("div");
     card.className = "card";
 
-    // Extract fields safely
     const displayName = obj.display_name || "Unknown";
-    const rating = obj.rating || "N/A";
+    const rating = obj.rating ?? "N/A";
 
-    // Only show these two fields
     const html = `
-        <h3>Player Rating</h3>
-        <ul>
-            <li><strong>Display Name:</strong> ${displayName}</li>
-            <li><strong>Rating:</strong> ${rating}</li>
-        </ul>
+        <h3>${displayName}</h3>
+        <p><strong>Rating:</strong> ${rating}</p>
     `;
 
     card.innerHTML = html;
