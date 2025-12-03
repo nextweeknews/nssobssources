@@ -1,18 +1,55 @@
- const API_URL = "https://kh3pbctcnk.execute-api.us-east-2.amazonaws.com/team-up-api";
+const API_URL = "https://kh3pbctcnk.execute-api.us-east-2.amazonaws.com/team-up-api";
+
+// POST body
+const postConfig = {
+    player_id: "@aidankellaher",
+    client_id: "DISCORD|1069003073311211601",
+    leaderboard: "season_10",
+    rating_type: "player_global_all"
+};
 
 async function fetchLeaderboard() {
-  try {
-    const response = await fetch(API_URL);  // built-in fetch
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    const container = document.getElementById("data");
+    container.innerHTML = "<p class='loading'>Loading leaderboard...</p>";
+
+    try {
+        const response = await fetch(API_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(postConfig)
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        displayData(data);
+
+    } catch (err) {
+        console.error("Fetch error:", err);
+        container.innerHTML = `<p class='error'>Error: ${err.message}</p>`;
     }
-    const data = await response.json();  // parse JSON response
-    console.log("Leaderboard data:", data);
-    // … render data to DOM here ...
-  } catch (err) {
-    console.error("Fetch error:", err);
-  }
 }
 
-// Run on page load
-window.addEventListener("load", fetchLeaderboard);
+// Display leaderboard entries
+function displayData(data) {
+    const container = document.getElementById("data");
+    container.innerHTML = "";
+
+    if (Array.isArray(data)) {
+        if (data.length === 0) {
+            container.innerHTML = "<p class='loading'>No entries found.</p>";
+        } else {
+            data.forEach(item => makeCard(item));
+        }
+    } else if (typeof data === "object" && data !== null) {
+        makeCard(data);
+    } else {
+        container.innerHTML = `<p class='loading'>${data}</p>`;
+    }
+}
+
+// Create
