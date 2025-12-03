@@ -1,4 +1,4 @@
-const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev";
+const WORKER_URL = "https://kh3pbctcnk.execute-api.us-east-2.amazonaws.com/team-up-api/get_player_rating";
 
 const postConfig = {
   "player_id": "aidankellaher#0000",
