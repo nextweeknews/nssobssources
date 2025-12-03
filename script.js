@@ -1,7 +1,7 @@
 const WORKER_URL = "https://kh3pbctcnk.execute-api.us-east-2.amazonaws.com/team-up-api/get_player_rating";
 
 const postConfig = {
-  "player_id": "aidankellaher#0000",
+  "player_id": "aidankellaher",
   "client_id": "DISCORD|1069003073311211601",
   "leaderboard": "season_10",
   "rating_type": "player_global_all"
