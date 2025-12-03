@@ -1,4 +1,4 @@
-const API_URL = "https://teamupdiscord.com/leaderboard-api/client/DISCORD%7C1069003073311211601";
+const API_URL = "https://teamupdiscord.com/leaderboard-api/client/DISCORD|C1069003073311211601";
 
 async function fetchLeaderboard() {
     const container = document.getElementById("data");
