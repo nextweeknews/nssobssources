@@ -3,7 +3,7 @@ const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev";
 const postConfig = {
   "player_id": "aidankellaher",
   "client_id": "DISCORD|1069003073311211601",
-  "leaderboard": "Season_10",
+  "leaderboard": "default",
   "rating_type": "player_global_even"
 };
 
