@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NSS Elo Plug-ins</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f6f6f6;
+        }
+        #data {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .item {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Data from API</h1>
+    <div id="data">Loading...</div>
+
+    <script>
+        const API_URL = "https://kh3pbctcnk.execute-api.us-east-2.amazonaws.com/team-up-api";
+
+        async function fetchData() {
+            try {
+                const response = await fetch(API_URL);
+                const data = await response.json();
+
+                const container = document.getElementById("data");
+                container.innerHTML = ""; // clear loading text
+
+                data.slice(0, 5).forEach(item => {
+                    const div = document.createElement("div");
+                    div.className = "item";
+                    div.innerHTML = `
+                        <h3>${item.title}</h3>
+                        <p>${item.body}</p>
+                    `;
+                    container.appendChild(div);
+                });
+            } catch (error) {
+                document.getElementById("data").innerText =
+                    "Error loading data: " + error;
+            }
+        }
+
+        fetchData();
+    </script>
+
+</body>
+</html>
