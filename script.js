@@ -4,7 +4,7 @@ const postConfig = {
   "player_id": "@aidankellaher0000",
   "client_id": "DISCORD|1069003073311211601",
   "leaderboard": "season_10",
-  "rating_type": "player_global_all"
+  "rating_type": "player_global_even"
 };
 
 async function fetchLeaderboard() {
