@@ -2,10 +2,7 @@ const API_URL = "https://kh3pbctcnk.execute-api.us-east-2.amazonaws.com/team-up-
 
 // Your POST body (the data you're sending to the API)
 const postConfig = {
-    leaderboard: "season_10",
-    rating_type: "global",
     client_id: "DISCORD%7C1069003073311211601",
-    limit: 16
 };
 
 async function sendPost() {
