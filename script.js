@@ -1,10 +1,8 @@
 const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev";
 
 const postConfig = {
-  "player_id": "@aidankellaher",
+  "player_id": "702730732220579950",
   "client_id": "DISCORD|1069003073311211601",
-  "leaderboard": "default",
-  "rating_type": "player_global_even"
 };
 
 async function fetchLeaderboard() {
