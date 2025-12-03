@@ -1,4 +1,4 @@
-const API_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/";
+const API_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev";
 
 // Your POST body (the data you're sending to the API)
 const postConfig = {
@@ -23,7 +23,7 @@ async function sendPost() {
 
     } catch (err) {
         console.error("POST Error:", err);
-        document.getElementById("data").innerText = "Error: " + err;
+        document.getElementById("data").innerText = "Error: " + err.message;
     }
 }
 
