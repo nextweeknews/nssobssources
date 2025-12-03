@@ -1,9 +1,9 @@
 const API_URL = "https://kh3pbctcnk.execute-api.us-east-2.amazonaws.com/team-up-api/get_player_rating";
 
 const postConfig = {
-    "player_id": "702730732220579950",
-    "client_id": "DISCORD|1069003073311211601",
-    "leaderboard": "Season_10"
+    player_id: "702730732220579950",
+    client_id: "DISCORD|1069003073311211601",
+    leaderboard: "Season_10"
 };
 
 async function fetchLeaderboard() {
@@ -21,8 +21,16 @@ async function fetchLeaderboard() {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        const data = await response.json();
-        displayData(data); // Render cards or table
+        // Safer JSON parsing
+        const text = await response.text();
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch {
+            throw new Error("API did not return JSON: " + text);
+        }
+
+        displayData(data);
 
     } catch (err) {
         console.error("Fetch error:", err);
@@ -50,9 +58,7 @@ function makeCard(obj) {
 
     let html = "<h3>Leaderboard Entry</h3><ul>";
     for (const key in obj) {
-        if (Object.hasOwnProperty.call(obj, key)) {
-            html += `<li><strong>${key}:</strong> ${obj[key]}</li>`;
-        }
+        html += `<li><strong>${key}:</strong> ${obj[key]}</li>`;
     }
     html += "</ul>";
 
