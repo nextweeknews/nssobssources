@@ -1,4 +1,4 @@
-const API_URL = POST "https://kh3pbctcnk.execute-api.us-east-2.amazonaws.com/team-up-api/get_player_rating";
+const API_URL = "https://kh3pbctcnk.execute-api.us-east-2.amazonaws.com/team-up-api/get_player_rating";
 
 const postConfig = {
     "player_id": "702730732220579950",
@@ -22,7 +22,6 @@ async function fetchLeaderboard() {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        // Safer JSON parsing
         const text = await response.text();
         let data;
         try {
@@ -57,11 +56,18 @@ function makeCard(obj) {
     const card = document.createElement("div");
     card.className = "card";
 
-    let html = "<h3>Leaderboard Entry</h3><ul>";
-    for (const key in obj) {
-        html += `<li><strong>${key}:</strong> ${obj[key]}</li>`;
-    }
-    html += "</ul>";
+    // Extract fields safely
+    const displayName = obj.display_name || "Unknown";
+    const rating = obj.rating || "N/A";
+
+    // Only show these two fields
+    const html = `
+        <h3>Player Rating</h3>
+        <ul>
+            <li><strong>Display Name:</strong> ${displayName}</li>
+            <li><strong>Rating:</strong> ${rating}</li>
+        </ul>
+    `;
 
     card.innerHTML = html;
     container.appendChild(card);
