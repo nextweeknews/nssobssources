@@ -1,4 +1,4 @@
-const WORKER_URL = "https://your-worker-name.your-domain.workers.dev";
+const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev";
 
 const postConfig = {
   "player_id": "aidankellaher",
