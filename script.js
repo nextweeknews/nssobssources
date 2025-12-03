@@ -1,4 +1,4 @@
-const API_URL = "https://kh3pbctcnk.execute-api.us-east-2.amazonaws.com/team-up-api/get_player_rating";
+const API_URL = POST "https://kh3pbctcnk.execute-api.us-east-2.amazonaws.com/team-up-api/get_player_rating";
 
 const postConfig = {
     "player_id": "702730732220579950",
