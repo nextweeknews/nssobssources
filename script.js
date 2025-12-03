@@ -1,7 +1,7 @@
 const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev";
 
 const postConfig = {
-  "player_id": "702730732220579950",
+  "player_id": "aidankellaher#0000",
   "client_id": "DISCORD|1069003073311211601",
   "leaderboard": "season_10",
   "rating_type": "player_global_all"
