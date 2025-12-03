@@ -1,4 +1,4 @@
-const WORKER_URL = "https://kh3pbctcnk.execute-api.us-east-2.amazonaws.com/team-up-api/get_player_rating";
+const API_URL = "https://kh3pbctcnk.execute-api.us-east-2.amazonaws.com/team-up-api/get_player_rating";
 
 const postConfig = {
     "player_id": "702730732220579950",
@@ -11,7 +11,7 @@ async function fetchLeaderboard() {
     container.innerHTML = "<p class='loading'>Loading leaderboard...</p>";
 
     try {
-        const response = await fetch(WORKER_URL, {
+        const response = await fetch(API_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(postConfig)
