@@ -3,8 +3,6 @@ const WORKER_URL = "https://your-worker-name.your-domain.workers.dev";
 const postConfig = {
   "player_id": "aidankellaher",
   "client_id": "DISCORD|1069003073311211601",
-  "leaderboard": "season_10",
-  "rating_type": "player_global_all"
 };
 
 async function fetchLeaderboard() {
