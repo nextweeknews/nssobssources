@@ -3,26 +3,28 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>ELO Overlay</title>
+<title>Leaderboard Overlay (2x Resolution)</title>
+
 <style>
 html, body {
   height:100%;
   margin:0;
   background: transparent;
   font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
   overflow: hidden;
   display:flex;
   justify-content:center;
   align-items:center;
 }
 
+/* Card doubled: 300×120 → 600×240; radius 12 → 24 */
 .card {
-  width:300px;
-  height:120px;
+  width:600px;
+  height:240px;
   background: rgba(28,28,28,0.85);
-  border-radius:12px;
+  border-radius:24px;
   display:flex;
   flex-direction:column;
   justify-content:center;
@@ -31,50 +33,37 @@ html, body {
   color: #e9eef8;
 }
 
+/* Label doubled: 28 → 56 */
 .label {
-  font-size:28px;
+  font-size:56px;
   color:#bcd4ff;
   font-weight:600;
-  margin-bottom: 4px;
+  margin-bottom: 8px;
 }
 
 .rating-container {
   position: relative;
-  height: 60px;
+  height: 120px; /* doubled from 60 */
   display:flex;
   justify-content:center;
   align-items:center;
 }
 
-.rating-slot {
-  display:flex;
+/* Rating doubled: 60 → 120 */
+.rating {
+  font-size:120px;
+  font-weight:700;
+  color:#ffffff;
   position: relative;
   z-index:1;
 }
 
-.digit {
-  font-size: 58px; /* slightly smaller than container height */
-  font-weight:700;
-  color:#ffffff;
-  width: 36px;
-  height: 60px;
-  overflow: hidden;
-  text-align: center;
-  line-height: 60px; /* must match height */
-  position: relative;
-  box-sizing: border-box;
-}
-
-.digit-inner div {
-  height: 60px;   /* same as .digit height */
-  line-height: 60px; /* vertically centered */
-}
-
+/* Delta doubled: 28 → 56, offsets doubled */
 .delta {
   position: absolute;
   top: 50%;
-  transform: translateX(20px) translateY(-50%);
-  font-size:28px;
+  transform: translateX(40px);
+  font-size:56px;
   font-weight:600;
   opacity:0;
   transition: opacity 0.5s ease, transform 0.5s ease;
@@ -84,11 +73,12 @@ html, body {
 .delta.red   { color:#ff5c5c; }
 </style>
 </head>
+
 <body>
 <div class="card">
   <div class="label">ELO</div>
   <div class="rating-container">
-    <div id="rating" class="rating-slot"></div>
+    <div id="rating" class="rating">—</div>
     <div id="delta" class="delta"></div>
   </div>
 </div>
@@ -103,79 +93,28 @@ const deltaEl = document.getElementById("delta");
 let lastRating = null;
 let deltaTimeout = null;
 
-/* ===== Helper: position delta relative to rating width ===== */
+/* Adjust for doubled size: margin from 8 → 16 */
 function updateDeltaPosition() {
   const rect = ratingEl.getBoundingClientRect();
   const containerRect = ratingEl.parentElement.getBoundingClientRect();
-  deltaEl.style.left = (rect.right - containerRect.left + 8) + "px";
+  const leftPos = rect.right - containerRect.left + 16;
+  deltaEl.style.left = leftPos + "px";
 }
 
-/* ===== Create digits elements ===== */
-function createDigits(value) {
-  const digits = value.toString().split("");
-  ratingEl.innerHTML = "";
-  digits.forEach(d => {
-    const digitEl = document.createElement("div");
-    digitEl.className = "digit";
-    const inner = document.createElement("div");
-    inner.className = "digit-inner";
-    inner.textContent = d;
-    digitEl.appendChild(inner);
-    ratingEl.appendChild(digitEl);
-  });
-}
-
-/* ===== Animate only changing digits ===== */
-function animateDigits(oldValue, newValue) {
-  const oldDigits = oldValue.toString().padStart(newValue.toString().length, "0").split("");
-  const newDigits = newValue.toString().split("");
-
-  // Ensure digits exist
-  if (!ratingEl.children.length) createDigits(oldValue);
-
-  const digitEls = Array.from(ratingEl.children);
-  digitEls.forEach((digitEl, i) => {
-    const inner = digitEl.querySelector(".digit-inner");
-    const oldDigit = parseInt(oldDigits[i] || "0");
-    const newDigit = parseInt(newDigits[i] || "0");
-
-    if (oldDigit === newDigit) {
-      inner.textContent = oldDigit;
-      inner.style.transform = "translateY(0)";
-      return;
-    }
-
-    // Build scroll stack for changing digit
-    inner.innerHTML = "";
-    for (let n = oldDigit; n <= oldDigit + 10; n++) {
-      const d = document.createElement("div");
-      d.textContent = (n % 10);
-      inner.appendChild(d);
-    }
-
-    // Trigger scroll
-    const translateY = -((newDigit - oldDigit + 10) % 10) * 60;
-    requestAnimationFrame(() => {
-      inner.style.transform = `translateY(${translateY}px)`;
-    });
-  });
-}
-
-/* ===== Set rating with slot animation if changed ===== */
 function setRating(value) {
   if (lastRating === null) {
-    createDigits(value ?? "—");
+    ratingEl.textContent = value ?? "—";
     lastRating = value;
     return;
   }
+
   if (value === lastRating) return;
 
-  animateDigits(lastRating, value);
+  ratingEl.textContent = value;
   showDelta(lastRating, value);
   lastRating = value;
 }
 
-/* ===== Show Delta with slide-in fade ===== */
 function showDelta(oldValue, newValue) {
   const diff = newValue - oldValue;
   if (diff === 0 || oldValue === null) return;
@@ -187,63 +126,5 @@ function showDelta(oldValue, newValue) {
   updateDeltaPosition();
 
   deltaEl.style.transition = "none";
-  deltaEl.style.transform = "translateY(-50%) translateX(20px)";
-  deltaEl.style.opacity = "0";
-
-  deltaEl.offsetWidth; // force reflow
-
-  deltaEl.style.transition = "opacity 0.5s ease, transform 0.5s ease";
-  deltaEl.style.transform = "translateY(-50%) translateX(0)";
-  deltaEl.style.opacity = "1";
-
-  if (deltaTimeout) clearTimeout(deltaTimeout);
-  deltaTimeout = setTimeout(() => {
-    deltaEl.style.transform = "translateY(-50%) translateX(20px)";
-    deltaEl.style.opacity = "0";
-  }, 10000);
-}
-
-function setLoading() { if (lastRating === null) createDigits("—"); }
-function setError(msg) { createDigits("—"); console.error(msg); }
-function buildBody(playerId) { return JSON.stringify({ player_id: playerId }); }
-
-async function fetchRating(playerId) {
-  setLoading();
-  try {
-    const resp = await fetch(WORKER_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: buildBody(playerId)
-    });
-
-    if (!resp.ok) {
-      const text = await resp.text();
-      throw new Error(`HTTP ${resp.status}: ${text}`);
-    }
-
-    const data = await resp.json();
-    const player = data.player || data;
-    if (typeof player.rating === "number") setRating(player.rating);
-  } catch (err) {
-    setError(err.message);
-  }
-}
-
-function getPlayerId() {
-  const params = new URLSearchParams(location.search);
-  return params.get("player_id") || DEFAULT_PLAYER_ID;
-}
-
-let intervalHandle = null;
-function startAutoRefresh() {
-  const pid = getPlayerId();
-  fetchRating(pid);
-  if (intervalHandle) clearInterval(intervalHandle);
-  intervalHandle = setInterval(() => fetchRating(pid), REFRESH_MS);
-}
-
-window.addEventListener("resize", updateDeltaPosition);
-window.addEventListener("load", startAutoRefresh);
-</script>
-</body>
-</html>
+  deltaEl.style.transform = "translateY(-50%) translateX(40px)";
+  deltaE
