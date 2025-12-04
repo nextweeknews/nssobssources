@@ -52,6 +52,9 @@
     .entry span.delta { width: 50px; text-align: center; }
 
     .entry.highlight { background: rgba(255, 255, 255, 0.15); }
+    .delta-positive { color: #4ade80; } /* green for positive delta */
+    .delta-negative { color: #f87171; } /* red for negative delta */
+
     .loading, .error { font-size: 16px; color: #aab6d9; }
   </style>
 </head>
@@ -68,6 +71,7 @@
 
   const resultsEl = document.getElementById("resultsList");
 
+  // Get player_id from URL query
   const urlParams = new URLSearchParams(window.location.search);
   const PLAYER_ID = urlParams.get('player_id');
   if (!PLAYER_ID) {
@@ -81,7 +85,6 @@
   function setError(msg) { resultsEl.innerHTML = `<div class="error">Error: ${msg}</div>`; console.error(msg); }
 
   function hashMatch(match) {
-    // create a simple hash based on player ids, places, elo, and delta
     if (!match || !match.ratingResults) return "";
     const newRatings = match.ratingResults[0].newRatings;
     return newRatings.map(p => `${p.id}:${p.place}:${p.elo}:${p.delta}`).join("|");
@@ -94,6 +97,7 @@
     newRatings.forEach(player => {
       const name = resolvedPlayers[player.id]?.display_name || "Unknown";
       const deltaText = player.delta > 0 ? '+' + player.delta : player.delta;
+      const deltaClass = player.delta > 0 ? 'delta-positive' : (player.delta < 0 ? 'delta-negative' : '');
 
       const row = document.createElement("div");
       row.className = "entry";
@@ -103,7 +107,7 @@
         <span class="place">${player.place}</span>
         <span class="name">${name}</span>
         <span class="elo">${player.elo}</span>
-        <span class="delta">${deltaText}</span>
+        <span class="delta ${deltaClass}">${deltaText}</span>
       `;
 
       resultsEl.appendChild(row);
@@ -122,7 +126,7 @@
       const matches = data.matches || [];
       const resolvedPlayers = data.resolved?.players || {};
 
-      // find the most recent match containing the player
+      // Find the most recent match containing the player
       const recentMatch = matches
         .sort((a,b) => b.ts - a.ts)
         .find(match =>
@@ -140,8 +144,6 @@
       if (currentHash !== lastMatchHash) {
         lastMatchHash = currentHash;
         displayResults(recentMatch, resolvedPlayers); // update only on change
-      } else {
-        // console.log("No change detected, skipping update");
       }
 
     } catch (err) {
@@ -151,6 +153,6 @@
 
   fetchMatchResults();
   setInterval(fetchMatchResults, REFRESH_MS);
-  </script>
+</script>
 </body>
 </html>
