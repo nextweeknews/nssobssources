@@ -64,7 +64,10 @@
 <div id="result" class="card" style="display:none;">
   <h3 id="name">—</h3>
   <p><strong>ELO:</strong> <span id="rating">—</span></p>
-  <a id="overlayLink" class="overlay-link" href="#" target="_blank">Open OBS Overlay</a>
+  <!-- Original button -->
+  <a id="eloLink" class="overlay-link" href="#" target="_blank">Open ELO Overlay</a>
+  <!-- New button linking to obs-leaderboard -->
+  <a id="leaderboardLink" class="overlay-link" href="#" target="_blank">Open Leaderboard Overlay</a>
 </div>
 
 <script>
@@ -72,7 +75,8 @@ const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_player
 const nameEl = document.getElementById("name");
 const ratingEl = document.getElementById("rating");
 const resultBox = document.getElementById("result");
-const overlayLink = document.getElementById("overlayLink");
+const eloLink = document.getElementById("eloLink");
+const leaderboardLink = document.getElementById("leaderboardLink");
 
 async function lookupPlayer(playerId) {
   resultBox.style.display = "block";
@@ -97,7 +101,10 @@ async function lookupPlayer(playerId) {
     nameEl.textContent = player.display_name || "Unknown";
     ratingEl.textContent = player.rating ?? "N/A";
 
-    overlayLink.href = `obs-elo.html?player_id=${encodeURIComponent(playerId)}`;
+    // Original ELO overlay
+    eloLink.href = `obs-elo.html?player_id=${encodeURIComponent(playerId)}`;
+    // New leaderboard overlay
+    leaderboardLink.href = `obs-leaderboard.html?player_id=${encodeURIComponent(playerId)}`;
 
   } catch (err) {
     nameEl.textContent = "Error";
@@ -110,6 +117,7 @@ document.getElementById("lookupBtn").addEventListener("click", () => {
   if (pid) lookupPlayer(pid);
 });
 </script>
+
 <p>How to find your Player ID:</p>
 <p>1. Find and select your name here: 
 <a href="https://teamupdiscord.com/leaderboard-api/client/DISCORD%7C1069003073311211601/leaderboard/Season_10/rating_type/player_global_all/format/global"
