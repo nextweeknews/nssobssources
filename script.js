@@ -6,7 +6,7 @@ const postConfig = {
 
 async function fetchLeaderboard(playerId) {
   const container = document.getElementById("data");
-  container.innerHTML = "<p class='loading'>Loading leaderboard...</p>";
+  container.innerHTML = "<p class='loading'>Loading player...</p>";
 
   // Build URL safely using template literal
   const apiUrl = `${WORKER_BASE_URL}?player_id=${encodeURIComponent(playerId)}`;
