@@ -50,6 +50,7 @@
     border-radius: 6px;
     box-sizing: border-box;
     transition: background 0.3s;
+    will-change: transform;
   }
 
   .rank {
@@ -99,13 +100,11 @@ const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leader
 const REFRESH_MS = 15000;
 const leaderboardEl = document.getElementById("leaderboardList");
 
-/* Highlight logic */
 function getPlayerId() {
   const params = new URLSearchParams(window.location.search);
   return params.get("player_id") || null;
 }
 
-/* State indicators */
 function setLoading() {
   leaderboardEl.innerHTML = '<div class="loading">Loading leaderboard…</div>';
 }
@@ -115,86 +114,110 @@ function setError(msg) {
   console.error(msg);
 }
 
-/* ===========================
-   FLIP REORDER ANIMATION FIX  
-   =========================== */
-function animateReorder() {
-  const rows = Array.from(leaderboardEl.children).filter(r => r.dataset.playerId);
-
-  // 1. Capture initial (old) positions
-  const oldPos = new Map();
-  rows.forEach(row => {
-    oldPos.set(row.dataset.playerId, row.getBoundingClientRect().top);
-  });
-
-  // 2. Next frame: measure new positions and animate
-  requestAnimationFrame(() => {
-    rows.forEach(row => {
-      const id = row.dataset.playerId;
-      const oldTop = oldPos.get(id);
-      const newTop = row.getBoundingClientRect().top;
-      const delta = oldTop - newTop;
-
-      if (!delta) return;
-
-      // Apply inverted transform
-      row.style.transform = `translateY(${delta}px)`;
-
-      // Force layout flush
-      row.offsetHeight;
-
-      // Animate to natural position
-      row.style.transition = "transform 0.5s ease";
-      row.style.transform = "";
-
-      row.addEventListener("transitionend", () => {
-        row.style.transition = "";
-      }, { once: true });
+/* Helper: get rects map for existing rows */
+function captureRects() {
+  const map = {};
+  Array.from(leaderboardEl.children)
+    .filter(el => el.dataset && el.dataset.playerId)
+    .forEach(el => {
+      map[el.dataset.playerId] = el.getBoundingClientRect();
     });
+  return map;
+}
+
+/* FLIP animator: given before/after rect maps */
+function runFlip(beforeRects, afterRects) {
+  // For each element present after update, animate if there was a before rect
+  Object.keys(afterRects).forEach(id => {
+    const el = Array.from(leaderboardEl.children).find(r => r.dataset.playerId === id);
+    if (!el) return;
+
+    const before = beforeRects[id];
+    const after = afterRects[id];
+
+    // If no before rect (new element), do a small fade/slide-in (optional)
+    if (!before) {
+      el.style.transform = "translateY(8px)";
+      el.style.opacity = "0";
+      el.style.transition = "transform 300ms ease, opacity 300ms ease";
+      requestAnimationFrame(() => {
+        el.style.transform = "";
+        el.style.opacity = "";
+      });
+      el.addEventListener("transitionend", () => {
+        el.style.transition = "";
+      }, { once: true });
+      return;
+    }
+
+    const deltaY = before.top - after.top;
+    if (deltaY === 0) return;
+
+    // Invert
+    el.style.transform = `translateY(${deltaY}px)`;
+    // Force layout
+    el.offsetHeight;
+
+    // Play
+    el.style.transition = "transform 500ms ease";
+    el.style.transform = "";
+
+    el.addEventListener("transitionend", () => {
+      el.style.transition = "";
+    }, { once: true });
   });
 }
 
 /* ===========================
-   RENDERING & UPDATE LOGIC
+   RENDERING & UPDATE LOGIC (with correct FLIP)
    =========================== */
 function displayLeaderboard(entries, resolvedPlayers) {
   const highlightId = getPlayerId();
 
+  // Build newState
   const newState = entries.slice(0, 16).map((player, i) => {
     const id = player.team[0];
     const name = resolvedPlayers?.[id]?.display_name || "Unknown";
     return { rank: i + 1, id, name, elo: player.elo ?? "—" };
   });
 
-  const existingRows = Array.from(leaderboardEl.children).filter(row => row.dataset.playerId);
+  // 1) FIRST: capture rects BEFORE DOM changes
+  const beforeRects = captureRects();
+
+  // Build existing map for quick lookup
+  const existingRows = Array.from(leaderboardEl.children).filter(row => row.dataset && row.dataset.playerId);
   const existingMap = {};
   existingRows.forEach(row => existingMap[row.dataset.playerId] = row);
 
-  /* ===== Apply DOM changes (before FLIP animate) ===== */
+  // 2) LAST: apply DOM updates (create/update/move)
   newState.forEach((player, index) => {
     let row = existingMap[player.id];
 
     if (row) {
-      // Update text
-      row.querySelector(".name").textContent = player.name;
-      row.querySelector(".elo").textContent = player.elo;
+      // Update fields
+      const nameEl = row.querySelector(".name");
+      if (nameEl) nameEl.textContent = player.name;
+      const eloEl = row.querySelector(".elo");
+      if (eloEl) eloEl.textContent = player.elo;
 
       const rankEl = row.querySelector(".rank");
-      rankEl.textContent = player.rank;
-      rankEl.className = "rank";
-      if (player.rank === 1) rankEl.classList.add("gold");
-      else if (player.rank === 2) rankEl.classList.add("silver");
-      else if (player.rank === 3) rankEl.classList.add("bronze");
+      if (rankEl) {
+        rankEl.textContent = player.rank;
+        rankEl.className = "rank";
+        if (player.rank === 1) rankEl.classList.add("gold");
+        else if (player.rank === 2) rankEl.classList.add("silver");
+        else if (player.rank === 3) rankEl.classList.add("bronze");
+      }
 
       row.classList.toggle("highlight", highlightId === player.id);
 
-      // Move to correct position if needed
+      // Move to correct index if necessary
       if (leaderboardEl.children[index] !== row) {
         leaderboardEl.insertBefore(row, leaderboardEl.children[index] || null);
       }
 
     } else {
-      // Create a new row
+      // Create new row element
       row = document.createElement("div");
       row.className = "entry";
       row.dataset.playerId = player.id;
@@ -207,6 +230,7 @@ function displayLeaderboard(entries, resolvedPlayers) {
       `;
 
       const rankEl = row.querySelector(".rank");
+      rankEl.className = "rank";
       if (player.rank === 1) rankEl.classList.add("gold");
       else if (player.rank === 2) rankEl.classList.add("silver");
       else if (player.rank === 3) rankEl.classList.add("bronze");
@@ -215,15 +239,18 @@ function displayLeaderboard(entries, resolvedPlayers) {
     }
   });
 
-  /* Remove players not in new state */
-  existingRows.forEach(row => {
+  // Remove rows not in new state
+  Array.from(existingRows).forEach(row => {
     if (!newState.find(p => p.id === row.dataset.playerId)) {
       leaderboardEl.removeChild(row);
     }
   });
 
-  /* Run FLIP animation now that DOM order is final */
-  animateReorder();
+  // 3) LAST: capture rects AFTER DOM changes
+  const afterRects = captureRects();
+
+  // 4) PLAY: animate via FLIP
+  runFlip(beforeRects, afterRects);
 }
 
 /* ===========================
@@ -245,7 +272,12 @@ async function fetchLeaderboard() {
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
     const data = await resp.json();
-    displayLeaderboard(data.leaderboard || [], data.resolved?.players || {});
+
+    // Defensive: ensure we pass arrays/objects even if missing
+    const leaderboard = Array.isArray(data.leaderboard) ? data.leaderboard : [];
+    const resolvedPlayers = (data.resolved && data.resolved.players) ? data.resolved.players : (data.players || {});
+
+    displayLeaderboard(leaderboard, resolvedPlayers);
   } catch (err) {
     setError(err.message);
   }
