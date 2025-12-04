@@ -1,80 +1,63 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leaderboard</title>
-    <link rel="stylesheet" href="styles.css">
-    <style>
-        body {
-            background-color: #121212;
-            color: #e0e0e0;
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-        }
-
-        h1 {
-            text-align: center;
-            color: #fff;
-        }
-
-        #data {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 20px;
-            margin-top: 20px;
-        }
-
-        .card {
-            background-color: #1e1e1e;
-            border-radius: 12px;
-            padding: 15px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
-            transition: transform 0.2s;
-        }
-
-        .card:hover {
-            transform: scale(1.03);
-        }
-
-        .card h3 {
-            margin-top: 0;
-            color: #ffcc00;
-        }
-
-        .card ul {
-            list-style: none;
-            padding-left: 0;
-        }
-
-        .card li {
-            margin-bottom: 5px;
-        }
-
-        /* Loading / error messages */
-        .loading {
-            grid-column: 1 / -1;
-            text-align: center;
-            color: #888;
-            font-size: 1.2em;
-        }
-
-        .error {
-            grid-column: 1 / -1;
-            text-align: center;
-            color: #ff4d4d;
-            font-size: 1.2em;
-        }
-
-        @media (max-width: 600px) {
-            #data {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leaderboard Player Input</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    display:flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    margin:0;
+    background:#1c1c1c;
+    color:#e9eef8;
+  }
+  input {
+    padding: 8px 12px;
+    font-size: 16px;
+    border-radius: 6px;
+    border: 1px solid #555;
+    background:#2c2c2c;
+    color:#fff;
+    margin-right: 8px;
+  }
+  button {
+    padding: 8px 12px;
+    font-size: 16px;
+    border-radius: 6px;
+    border: none;
+    background:#4a90e2;
+    color:#fff;
+    cursor:pointer;
+  }
+  button:hover {
+    background:#357ABD;
+  }
+</style>
 </head>
 <body>
+  <h1>Enter Player ID</h1>
+  <div>
+    <input type="text" id="playerIdInput" placeholder="Enter Player ID">
+    <button onclick="goToOverlay()">Go</button>
+  </div>
+
+<script>
+function goToOverlay() {
+  const playerId = document.getElementById("playerIdInput").value.trim();
+  if (!playerId) {
+    alert("Please enter a player ID.");
+    return;
+  }
+
+  // Redirect to overlay page with player_id as query parameter
+  window.location.href = `obs-card.html?player_id=${encodeURIComponent(playerId)}`;
+}
+</script>
     <div id="data"></div>
     <script src="script.js"></script>
 </body>
