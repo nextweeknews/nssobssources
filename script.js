@@ -1,4 +1,4 @@
-const WORKER_BASE_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev";
+const WORKER_BASE_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_player_rating";
 
 const postConfig = {
   "player_id": "702730732220579950",
