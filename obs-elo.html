@@ -6,61 +6,66 @@
 <title>Leaderboard Overlay</title>
 
 <style>
-  html, body {
-    height:100%;
-    margin:0;
-    background: transparent;
-    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-    -webkit-font-smoothing:antialiased;
-    -moz-osx-font-smoothing:grayscale;
-    overflow: hidden;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-  }
+html, body {
+  height:100%;
+  margin:0;
+  background: transparent;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  overflow: hidden;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
 
-  .card {
-    width:400px;
-    height:120px;
-    background: rgba(28,28,28,0.85);
-    border-radius:12px;
-    display:flex;
-    flex-direction:column;
-    justify-content:center;
-    align-items:center;
-    text-align:center;
-    color: #e9eef8;
-  }
+.card {
+  width:400px;
+  height:120px;
+  background: rgba(28,28,28,0.85);
+  border-radius:12px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  text-align:center;
+  color: #e9eef8;
+}
 
-  .label {
-    font-size:28px;
-    color:#bcd4ff;
-    font-weight:600;
-  }
+.label {
+  font-size:28px;
+  color:#bcd4ff;
+  font-weight:600;
+}
 
-  .rating {
-    font-size:60px;
-    font-weight:700;
-    color:#ffffff;
-    transition: transform 0.4s ease, opacity 0.4s ease;
-  }
+.rating-container {
+  display:flex;
+  align-items:center;
+  font-size:60px;
+  font-weight:700;
+  color:#ffffff;
+}
 
-  .scroll-out {
-    transform: translateY(-40%);
-    opacity: 0;
-  }
+.delta {
+  margin-left:10px;
+  font-size:28px;
+  font-weight:600;
+  opacity:0;
+  transition: opacity 0.5s ease;
+}
 
-  .scroll-in {
-    transform: translateY(40%);
-    opacity: 0;
-  }
+.delta.green { color:#00ff88; }
+.delta.red   { color:#ff5c5c; }
 </style>
 </head>
 
 <body>
 <div class="card">
   <div class="label">ELO</div>
-  <div class="rating" id="rating">—</div>
+  <div class="rating-container">
+    <div id="rating">—</div>
+    <div id="delta" class="delta"></div>
+  </div>
 </div>
 
 <script>
@@ -69,44 +74,65 @@ const DEFAULT_PLAYER_ID = "702730732220579950";
 const REFRESH_MS = 15000;
 
 const ratingEl = document.getElementById("rating");
+const deltaEl = document.getElementById("delta");
 let lastRating = null;
+let deltaTimeout = null;
 
 /* ===== Smooth Number Scroll Animation ===== */
 function animateRatingChange(newValue) {
-  // Start scroll-out
-  ratingEl.classList.add("scroll-out");
+  ratingEl.style.transform = "translateY(-40%)";
+  ratingEl.style.opacity = 0;
 
   setTimeout(() => {
     ratingEl.textContent = newValue;
-
-    // Prepare scroll-in state
-    ratingEl.classList.remove("scroll-out");
-    ratingEl.classList.add("scroll-in");
+    ratingEl.style.transform = "translateY(40%)";
+    ratingEl.style.opacity = 0;
 
     requestAnimationFrame(() => {
-      // Then animate back to normal
-      requestAnimationFrame(() => {
-        ratingEl.classList.remove("scroll-in");
-      });
-    });
+      ratingEl.style.transition = "transform 0.4s ease, opacity 0.4s ease";
+      ratingEl.style.transform = "translateY(0)";
+      ratingEl.style.opacity = 1;
 
+      ratingEl.addEventListener('transitionend', () => {
+        ratingEl.style.transition = "";
+      }, { once: true });
+    });
   }, 250);
+}
+
+/* ===== Show Delta ===== */
+function showDelta(oldValue, newValue) {
+  if (oldValue === null) return;
+  const diff = newValue - oldValue;
+  if (diff === 0) return;
+
+  deltaEl.textContent = (diff > 0 ? "+" : "") + diff;
+  deltaEl.classList.remove("green","red");
+  deltaEl.classList.add(diff > 0 ? "green":"red");
+  deltaEl.style.opacity = 1;
+
+  if (deltaTimeout) clearTimeout(deltaTimeout);
+  deltaTimeout = setTimeout(() => {
+    deltaEl.style.opacity = 0;
+  }, 10000); // hide after 10s
 }
 
 /* ===== Rating Setter ===== */
 function setRating(value) {
-  // First-time display (NO animation)
   if (lastRating === null) {
     ratingEl.textContent = value ?? "—";
     lastRating = value;
     return;
   }
 
-  // No change
   if (value === lastRating) return;
 
-  // Animate only on change
+  // Animate rating change
   animateRatingChange(value);
+
+  // Show delta
+  showDelta(lastRating, value);
+
   lastRating = value;
 }
 
