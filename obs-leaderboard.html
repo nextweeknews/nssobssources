@@ -18,17 +18,18 @@
     align-items:center;
   }
 
-  #cardRoot {
-    width: 420px;
+  .card {
+    width:420px;
+    height:auto;
     background: rgba(28,28,28,0.85);
-    border-radius: 12px;
-    padding: 10px 0; /* only top and bottom */
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
+    border-radius:12px;
+    padding:10px 0; /* top/bottom */
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    text-align:center;
     color: #e9eef8;
-    transition: height 0.5s ease; /* animate container height */
   }
 
   .leaderboard-title {
@@ -39,77 +40,53 @@
   }
 
   #leaderboardList {
-    position: relative;
     width: 100%;
   }
 
+  /* Updated entry styles */
   .entry {
-    position: absolute;
-    width: calc(100% - 24px);
-    display: flex;
-    justify-content: space-between;
-    padding: 6px 12px;
-    font-size: 22px;
-    font-weight: 600;
-    color: #ffffff;
-    align-items: center;
-    border-radius: 6px;
+    width:100%;
+    display:flex;
+    justify-content:space-between;
+    padding:6px 12px;
+    font-size:22px;
+    font-weight:600;
+    color:#ffffff;
+    align-items:center;
+    border-radius:6px;
     box-sizing: border-box;
-    background: rgba(28,28,28,0.85);
-    transition: transform 0.5s ease, opacity 0.5s ease, background 0.3s;
-    opacity: 1;
+    transition: background 0.3s, transform 0.3s, color 0.3s;
   }
-
-  .entry.new {
-    opacity: 0;
-    animation: fadeIn 0.5s forwards;
-  }
-
-  .entry.removed {
-    opacity: 1;
-    animation: fadeOut 0.5s forwards;
-  }
-
-  @keyframes fadeIn { to { opacity: 1; } }
-  @keyframes fadeOut { to { opacity: 0; } }
 
   .entry.updated {
     animation: highlightChange 0.8s ease;
   }
 
   @keyframes highlightChange {
-    0%   { background-color: rgba(255,255,255,0.4); }
-    50%  { background-color: rgba(255,255,255,0.15); }
-    100% { background-color: rgba(28,28,28,0.85); }
+    0%   { background-color: rgba(255,255,255,0.4); transform: scale(1.02); }
+    50%  { background-color: rgba(255,255,255,0.15); transform: scale(1.01); }
+    100% { background-color: rgba(28,28,28,0); transform: scale(1); }
   }
 
-  .entry.highlight {
-    background: rgba(255,255,255,0.15);
-  }
-
-  .entry span.rank { width: 30px; text-align:right; color:#bcd4ff; }
+  .entry span.rank { width:30px; text-align:right; color:#bcd4ff; }
   .entry span.name { flex:1; text-align:left; padding-left:8px; }
   .entry span.elo { width:60px; text-align:center; padding-left:8px; }
+  .entry.highlight { background: rgba(255,255,255,0.15); }
 
-  .loading, .error {
-    font-size:16px;
-    color:#aab6d9;
-  }
+  .loading, .error { font-size:16px; color:#aab6d9; }
 </style>
 </head>
 <body>
-  <div id="cardRoot">
-    <div class="leaderboard-title">Season 10</div>
-    <div id="leaderboardList"></div>
-  </div>
+<div class="card" id="cardRoot">
+  <div class="leaderboard-title">Season 10</div>
+  <div id="leaderboardList"></div>
+</div>
 
 <script>
 const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
 const REFRESH_MS = 15000; // 15 seconds auto-refresh
-const ROW_HEIGHT = 33; // px
-
 const leaderboardEl = document.getElementById("leaderboardList");
-const cardRoot = document.getElementById("cardRoot");
+
 let lastLeaderboardState = [];
 
 function getPlayerId() {
@@ -128,44 +105,27 @@ function setError(msg) {
 
 function displayLeaderboard(entries, resolvedPlayers) {
   const highlightPlayerId = getPlayerId();
+
   const newState = entries.map((player, index) => {
     const playerId = player.team[0];
     const displayName = resolvedPlayers?.[playerId]?.display_name || "Unknown";
-    return { rank: index, id: playerId, name: displayName, elo: player.elo ?? "—" };
+    return { rank: index + 1, id: playerId, name: displayName, elo: player.elo ?? "—" };
   });
 
-  // Only update if something changed
-  const unchanged = JSON.stringify(newState) === JSON.stringify(lastLeaderboardState);
-  if (unchanged) return;
+  // If number of entries changed, clear all
+  if (newState.length !== lastLeaderboardState.length) {
+    leaderboardEl.innerHTML = "";
+    lastLeaderboardState = [];
+  }
 
-  // Animate card height
-  const newHeight = newState.length * ROW_HEIGHT + 40; // 40 for title + padding
-  cardRoot.style.height = `${newHeight}px`;
-
-  // Map existing divs
-  const existingMap = {};
-  Array.from(leaderboardEl.children).forEach(div => {
-    existingMap[div.dataset.playerId] = div;
-    div.dataset.marked = "false"; // mark for removal detection
-  });
-
-  // Add/update entries
   newState.forEach((player, index) => {
-    let div = existingMap[player.id];
-    if (!div) {
-      div = document.createElement("div");
-      div.className = "entry new";
-      div.dataset.playerId = player.id;
-      div.innerHTML = `
-        <span class="rank">${index + 1}</span>
-        <span class="name">${player.name}</span>
-        <span class="elo">${player.elo}</span>
-      `;
-      leaderboardEl.appendChild(div);
-      setTimeout(() => div.classList.remove("new"), 500);
-    } else {
-      // Check if name or elo changed
+    let div;
+
+    if (lastLeaderboardState[index] && lastLeaderboardState[index].id === player.id) {
+      // Existing row
+      div = leaderboardEl.children[index];
       let updated = false;
+
       if (div.querySelector(".name").textContent !== player.name) {
         div.querySelector(".name").textContent = player.name;
         updated = true;
@@ -174,28 +134,36 @@ function displayLeaderboard(entries, resolvedPlayers) {
         div.querySelector(".elo").textContent = player.elo;
         updated = true;
       }
+
+      // Update highlight
+      if (highlightPlayerId === player.id) div.classList.add("highlight");
+      else div.classList.remove("highlight");
+
       if (updated) {
         div.classList.add("updated");
         setTimeout(() => div.classList.remove("updated"), 800);
       }
-    }
 
-    // Highlight current player
-    if (highlightPlayerId === player.id) div.classList.add("highlight");
-    else div.classList.remove("highlight");
+    } else {
+      // New row
+      div = document.createElement("div");
+      div.className = "entry";
+      if (highlightPlayerId === player.id) div.classList.add("highlight");
 
-    // Slide to new position
-    div.style.transform = `translateY(${index * ROW_HEIGHT}px)`;
+      div.innerHTML = `
+        <span class="rank">${player.rank}</span>
+        <span class="name">${player.name}</span>
+        <span class="elo">${player.elo}</span>
+      `;
 
-    div.dataset.marked = "true"; // mark as still present
-    div.querySelector(".rank").textContent = index + 1;
-  });
+      if (leaderboardEl.children[index]) {
+        leaderboardEl.insertBefore(div, leaderboardEl.children[index]);
+      } else {
+        leaderboardEl.appendChild(div);
+      }
 
-  // Remove old players
-  Array.from(leaderboardEl.children).forEach(div => {
-    if (div.dataset.marked === "false") {
-      div.classList.add("removed");
-      setTimeout(() => leaderboardEl.removeChild(div), 500);
+      div.classList.add("updated");
+      setTimeout(() => div.classList.remove("updated"), 800);
     }
   });
 
@@ -231,7 +199,7 @@ async function fetchLeaderboard() {
   }
 }
 
-// Auto-refresh every REFRESH_MS
+// Auto-refresh
 let intervalHandle = null;
 function startAutoRefresh() {
   fetchLeaderboard();
