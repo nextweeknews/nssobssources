@@ -127,4 +127,62 @@ function showDelta(oldValue, newValue) {
 
   deltaEl.style.transition = "none";
   deltaEl.style.transform = "translateY(-50%) translateX(40px)";
-  deltaE
+  deltaEl.style.opacity = "0";
+
+  deltaEl.offsetWidth;
+
+  deltaEl.style.transition = "opacity 0.5s ease, transform 0.5s ease";
+  deltaEl.style.transform = "translateY(-50%) translateX(0)";
+  deltaEl.style.opacity = "1";
+
+  if (deltaTimeout) clearTimeout(deltaTimeout);
+  deltaTimeout = setTimeout(() => {
+    deltaEl.style.transform = "translateY(-50%) translateX(40px)";
+    deltaEl.style.opacity = "0";
+  }, 10000);
+}
+
+function setLoading() { if (lastRating === null) ratingEl.textContent = "—"; }
+function setError(msg) { ratingEl.textContent = "—"; console.error(msg); }
+function buildBody(playerId) { return JSON.stringify({ player_id: playerId }); }
+
+async function fetchRating(playerId) {
+  setLoading();
+  try {
+    const resp = await fetch(WORKER_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: buildBody(playerId)
+    });
+
+    if (!resp.ok) {
+      throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
+    }
+
+    const data = await resp.json();
+    const player = data.player || data;
+    if (typeof player.rating === "number") setRating(player.rating);
+  } catch (err) {
+    setError(err.message);
+  }
+}
+
+function getPlayerId() {
+  const params = new URLSearchParams(location.search);
+  return params.get("player_id") || DEFAULT_PLAYER_ID;
+}
+
+let intervalHandle = null;
+function startAutoRefresh() {
+  const pid = getPlayerId();
+  fetchRating(pid);
+  if (intervalHandle) clearInterval(intervalHandle);
+  intervalHandle = setInterval(() => fetchRating(pid), REFRESH_MS);
+}
+
+window.addEventListener("resize", updateDeltaPosition);
+window.addEventListener("load", startAutoRefresh);
+</script>
+
+</body>
+</html>
