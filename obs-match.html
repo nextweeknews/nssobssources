@@ -63,28 +63,25 @@
 
   <script>
     const API_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_rating_history";
-    const PLAYER_ID = "702730732220579950"; // Highlight this player
+    const PLAYER_ID = "702730732220579950"; // Player to highlight
     const CLIENT_ID = "DISCORD|1069003073311211601";
-    const REFRESH_MS = 15000;
+    const REFRESH_MS = 15000; // refresh every 15 seconds
 
     const resultsEl = document.getElementById("resultsList");
 
-    function setLoading() { resultsEl.innerHTML = '<div class="loading">Loading match results…</div>'; }
-    function setError(msg) { resultsEl.innerHTML = `<div class="error">Error: ${msg}</div>`; console.error(msg); }
+    function setLoading() {
+      resultsEl.innerHTML = '<div class="loading">Loading match results…</div>';
+    }
+
+    function setError(msg) {
+      resultsEl.innerHTML = `<div class="error">Error: ${msg}</div>`;
+      console.error(msg);
+    }
 
     function displayResults(match, resolvedPlayers) {
-      if (!match || !match.ratingResults || !match.ratingResults[0]?.newRatings) {
-        resultsEl.innerHTML = '<div class="loading">No match data available.</div>';
-        return;
-      }
+      const newRatings = match.ratingResults[0].newRatings;
 
-      let newRatings = match.ratingResults[0].newRatings;
-
-      // Sort by place ascending
-      newRatings.sort((a, b) => a.place - b.place);
-
-      // Clear previous entries
-      resultsEl.innerHTML = '';
+      resultsEl.innerHTML = ''; // clear previous
 
       newRatings.forEach(player => {
         const name = resolvedPlayers[player.id]?.display_name || "Unknown";
@@ -114,16 +111,19 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ player_id: PLAYER_ID, client_id: CLIENT_ID, limit: 10 })
         });
-
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = await resp.json();
         const matches = data.matches || [];
         const resolvedPlayers = data.resolved?.players || {};
 
-        // Sort matches by timestamp descending and pick the most recent match containing PLAYER_ID
+        // Find the most recent match where PLAYER_ID participated
         const recentMatch = matches
-          .sort((a, b) => b.ts - a.ts)
-          .find(m => m.allPlayers.some(p => String(p) === String(PLAYER_ID)));
+          .sort((a, b) => b.ts - a.ts) // newest first
+          .find(match =>
+            match.ratingResults.some(ratingGroup =>
+              ratingGroup.newRatings.some(player => String(player.id) === String(PLAYER_ID))
+            )
+          );
 
         if (recentMatch) {
           displayResults(recentMatch, resolvedPlayers);
