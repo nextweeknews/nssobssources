@@ -1,1 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Highlighted Player Overlay</title>
 
+<style>
+html, body {
+  height: 100%;
+  margin: 0;
+  background: transparent;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.card {
+  width: 420px;
+  background: rgba(28,28,28,0.85);
+  border-radius: 12px;
+  padding: 10px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  color: #e9eef8;
+}
+
+.leaderboard-title {
+  font-size: 28px;
+  color: #bcd4ff;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.entry {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 12px;
+  font-size: 22px;
+  font-weight: 600;
+  color: #ffffff;
+  align-items: center;
+  border-radius: 6px;
+  box-sizing: border-box;
+  transition: transform 0.5s ease, background 0.3s;
+}
+
+/* Rank colors */
+.rank {
+  width: 30px;
+  text-align: right;
+  padding-right: 10px;
+  color: #bcd4ff;
+}
+.rank.gold { color: #ffd700; }
+.rank.silver { color: #c0c0c0; }
+.rank.bronze { color: #cd7f32; }
+
+.name {
+  width: 280px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.elo {
+  width: 60px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.highlight {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.loading, .error {
+  font-size: 16px;
+  color: #aab6d9;
+}
+</style>
+</head>
+
+<body>
+<div class="card">
+  <div class="leaderboard-title">Season 10</div>
+  <div id="leaderboardList"></div>
+</div>
+
+<script>
+const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
+const REFRESH_MS = 15000;
+const leaderboardEl = document.getElementById("leaderboardList");
+
+function getPlayerId() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("player_id") || null;
+}
+
+function setLoading() {
+  leaderboardEl.innerHTML = '<div class="loading">Loading leaderboard…</div>';
+}
+
+function setError(msg) {
+  leaderboardEl.innerHTML = `<div class="error">Error: ${msg}</div>`;
+  console.error(msg);
+}
+
+/* Smooth reorder animation */
+function animateReorder(rows, newState) {
+  const positions = new Map();
+  rows.forEach(row => positions.set(row.dataset.playerId, row.getBoundingClientRect().top));
+
+  newState.forEach(player => {
+    const row = rows.find(r => r.dataset.playerId === player.id);
+    if (!row) return;
+
+    const oldTop = positions.get(player.id);
+    const newTop = row.getBoundingClientRect().top;
+    const delta = oldTop - newTop;
+
+    if (delta) {
+      row.style.transform = `translateY(${delta}px)`;
+      requestAnimationFrame(() => {
+        row.style.transition = "transform 0.5s ease";
+        row.style.transform = "";
+      });
+
+      row.addEventListener("transitionend", () => {
+        row.style.transition = "";
+      }, { once: true });
+    }
+  });
+}
+
+function displayLeaderboard(entries, resolvedPlayers) {
+  const highlightId = getPlayerId();
+  const totalDisplay = 15; // number of entries to show
+  const highlightIndex = entries.findIndex(e => e.team[0] === highlightId);
+  
+  // determine start index for slicing
+  let startIndex = 0;
+  if (highlightIndex >= 0) {
+    startIndex = Math.max(0, highlightIndex - Math.floor(totalDisplay/2));
+    if (startIndex + totalDisplay > entries.length) {
+      startIndex = Math.max(0, entries.length - totalDisplay);
+    }
+  }
+
+  const visibleEntries = entries.slice(startIndex, startIndex + totalDisplay);
+  const newState = visibleEntries.map((player, i) => {
+    const id = player.team[0];
+    const name = resolvedPlayers?.[id]?.display_name || "Unknown";
+    return { rank: startIndex + i + 1, id, name, elo: player.elo ?? "—" };
+  });
+
+  const existingRows = Array.from(leaderboardEl.children).filter(row => row.dataset.playerId);
+  const existingMap = {};
+  existingRows.forEach(row => existingMap[row.dataset.playerId] = row);
+
+  newState.forEach((player, index) => {
+    let row = existingMap[player.id];
+
+    if (row) {
+      row.querySelector(".name").textContent = player.name;
+      row.querySelector(".elo").textContent = player.elo;
+
+      const rankEl = row.querySelector(".rank");
+      rankEl.textContent = player.rank;
+      rankEl.className = "rank";
+      if (player.rank === 1) rankEl.classList.add("gold");
+      else if (player.rank === 2) rankEl.classList.add("silver");
+      else if (player.rank === 3) rankEl.classList.add("bronze");
+
+      row.classList.toggle("highlight", highlightId === player.id);
+
+      if (leaderboardEl.children[index] !== row) {
+        leaderboardEl.insertBefore(row, leaderboardEl.children[index]);
+      }
+
+    } else {
+      row = document.createElement("div");
+      row.className = "entry";
+      row.dataset.playerId = player.id;
+      row.classList.toggle("highlight", highlightId === player.id);
+
+      row.innerHTML = `
+        <span class="rank">${player.rank}</span>
+        <span class="name">${player.name}</span>
+        <span class="elo">${player.elo}</span>
+      `;
+
+      const rankEl = row.querySelector(".rank");
+      rankEl.className = "rank";
+      if (player.rank === 1) rankEl.classList.add("gold");
+      else if (player.rank === 2) rankEl.classList.add("silver");
+      else if (player.rank === 3) rankEl.classList.add("bronze");
+
+      leaderboardEl.insertBefore(row, leaderboardEl.children[index] || null);
+    }
+  });
+
+  existingRows.forEach(row => {
+    if (!newState.find(p => p.id === row.dataset.playerId)) {
+      leaderboardEl.removeChild(row);
+    }
+  });
+
+  const finalRows = Array.from(leaderboardEl.children).filter(r => r.dataset.playerId);
+  animateReorder(finalRows, newState);
+}
+
+async function fetchLeaderboard() {
+  try {
+    const resp = await fetch(WORKER_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        leaderboard: "season_10",
+        rating_type: "player_global_all",
+        client_id: "DISCORD|1069003073311211601"
+      })
+    });
+
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+    const data = await resp.json();
+    displayLeaderboard(data.leaderboard || [], data.resolved?.players || {});
+
+  } catch (err) {
+    setError(err.message);
+  }
+}
+
+window.addEventListener("load", () => {
+  fetchLeaderboard();
+  setInterval(fetchLeaderboard, REFRESH_MS);
+});
+</script>
+</body>
+</html>
