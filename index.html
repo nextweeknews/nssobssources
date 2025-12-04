@@ -6,7 +6,6 @@
     <title>Leaderboard</title>
     <link rel="stylesheet" href="styles.css">
     <style>
-        /* Dark mode body */
         body {
             background-color: #121212;
             color: #e0e0e0;
@@ -20,7 +19,6 @@
             color: #fff;
         }
 
-        /* Container for leaderboard cards */
         #data {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
@@ -28,7 +26,6 @@
             margin-top: 20px;
         }
 
-        /* Card style */
         .card {
             background-color: #1e1e1e;
             border-radius: 12px;
@@ -70,7 +67,6 @@
             font-size: 1.2em;
         }
 
-        /* Responsive title */
         @media (max-width: 600px) {
             #data {
                 grid-template-columns: 1fr;
@@ -79,12 +75,7 @@
     </style>
 </head>
 <body>
-    <h1>Leaderboard</h1>
-
-    <!-- Leaderboard container -->
     <div id="data"></div>
-
-    <!-- JS script -->
     <script src="script.js"></script>
 </body>
 </html>
