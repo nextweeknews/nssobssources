@@ -118,8 +118,148 @@ function setError(msg) {
    -------------------------------------------------- */
 function flipAnimation(beforeRects, afterRects) {
   Object.keys(afterRects).forEach(id => {
-    const el = document.querySelector(`[data-player-id="${]()
+    const el = document.querySelector(`[data-player-id="${id}"]`);
+    if (!el) return;
 
+    const first = beforeRects[id];
+    const last = afterRects[id];
+    if (!first || !last) return;
+
+    const deltaY = first.top - last.top;
+
+    if (deltaY !== 0) {
+      el.style.transform = `translateY(${deltaY}px)`;
+      el.style.transition = "transform 0s";
+
+      requestAnimationFrame(() => {
+        el.style.transform = "";
+        el.style.transition = "transform 500ms ease";
+      });
+
+      el.addEventListener(
+        "transitionend",
+        () => (el.style.transition = ""),
+        { once: true }
+      );
+    }
+  });
+}
+
+function getRects() {
+  const rects = {};
+  document.querySelectorAll("[data-player-id]").forEach(el => {
+    rects[el.dataset.playerId] = el.getBoundingClientRect();
+  });
+  return rects;
+}
+
+/* --------------------------------------------------
+   RENDER LEADERBOARD
+   -------------------------------------------------- */
+function displayLeaderboard(entries, resolvedPlayers) {
+  const highlightId = getPlayerId();
+  const totalDisplay = 15;
+  const highlightIndex = entries.findIndex(e => e.team[0] === highlightId);
+
+  let startIndex = 0;
+  if (highlightIndex >= 0) {
+    startIndex = Math.max(0, highlightIndex - Math.floor(totalDisplay/2));
+    if (startIndex + totalDisplay > entries.length) {
+      startIndex = Math.max(0, entries.length - totalDisplay);
+    }
+  }
+
+  const visible = entries.slice(startIndex, startIndex + totalDisplay);
+
+  const newState = visible.map((player, i) => {
+    const id = player.team[0];
+    const name = resolvedPlayers?.[id]?.display_name || "Unknown";
+    return { rank: startIndex + i + 1, id, name, elo: player.elo ?? "—" };
+  });
+
+  // FIRST: capture starting rects
+  const beforeRects = getRects();
+
+  // Build a map of existing rows
+  const existingRows = Array.from(leaderboardEl.children).filter(row => row.dataset.playerId);
+  const existingMap = {};
+  existingRows.forEach(row => existingMap[row.dataset.playerId] = row);
+
+  // Insert/update rows
+  newState.forEach((player, index) => {
+    let row = existingMap[player.id];
+
+    if (!row) {
+      row = document.createElement("div");
+      row.className = "entry";
+      row.dataset.playerId = player.id;
+
+      row.innerHTML = `
+        <span class="rank"></span>
+        <span class="name"></span>
+        <span class="elo"></span>
+      `;
+    }
+
+    row.querySelector(".name").textContent = player.name;
+    row.querySelector(".elo").textContent = player.elo;
+
+    const rankEl = row.querySelector(".rank");
+    rankEl.textContent = player.rank;
+    rankEl.className = "rank";
+    if (player.rank === 1) rankEl.classList.add("gold");
+    else if (player.rank === 2) rankEl.classList.add("silver");
+    else if (player.rank === 3) rankEl.classList.add("bronze");
+
+    row.classList.toggle("highlight", highlightId === player.id);
+
+    leaderboardEl.insertBefore(row, leaderboardEl.children[index] || null);
+  });
+
+  // Remove rows not in newState
+  existingRows.forEach(row => {
+    if (!newState.find(p => p.id === row.dataset.playerId)) {
+      leaderboardEl.removeChild(row);
+    }
+  });
+
+  // LAST: capture final rects
+  const afterRects = getRects();
+
+  // PLAY: FLIP animation
+  flipAnimation(beforeRects, afterRects);
+}
+
+/* --------------------------------------------------
+   FETCH LEADERBOARD
+   -------------------------------------------------- */
+async function fetchLeaderboard() {
+  try {
+    const resp = await fetch(WORKER_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        leaderboard: "season_10",
+        rating_type: "player_global_all",
+        client_id: "DISCORD|1069003073311211601"
+      })
+    });
+
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+    const data = await resp.json();
+    displayLeaderboard(data.leaderboard || [], data.resolved?.players || {});
+
+  } catch (err) {
+    setError(err.message);
+  }
+}
+
+window.addEventListener("load", () => {
+  fetchLeaderboard();
+  setInterval(fetchLeaderboard, REFRESH_MS);
+});
 </script>
 </body>
 </html>
+
