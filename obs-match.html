@@ -1,1 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Match Results Overlay</title>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: transparent;
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
 
+    .card {
+      width: 420px;
+      background: rgba(28,28,28,0.85);
+      border-radius: 12px;
+      padding: 10px;
+      color: #e9eef8;
+      text-align: center;
+    }
+
+    .title {
+      font-size: 28px;
+      color: #bcd4ff;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    .entry {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 12px;
+      font-size: 22px;
+      font-weight: 600;
+      color: #ffffff;
+      border-radius: 6px;
+      margin-bottom: 4px;
+      transition: background 0.3s;
+    }
+
+    .entry span.place { width: 30px; text-align: right; color: #bcd4ff; }
+    .entry span.name { flex: 1; text-align: left; margin-left: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .entry span.elo { width: 60px; text-align: center; }
+    .entry span.delta { width: 50px; text-align: center; }
+
+    .entry.highlight { background: rgba(255, 255, 255, 0.15); }
+    .loading, .error { font-size: 16px; color: #aab6d9; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">Match Results</div>
+    <div id="resultsList"></div>
+  </div>
+
+  <script>
+    const API_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_rating_history";
+    const PLAYER_ID = "702730732220579950";
+    const CLIENT_ID = "DISCORD|1069003073311211601";
+    const REFRESH_MS = 15000; // refresh every 15 seconds
+
+    const resultsEl = document.getElementById("resultsList");
+    let lastState = [];
+
+    function setLoading() { resultsEl.innerHTML = '<div class="loading">Loading match results…</div>'; }
+    function setError(msg) { resultsEl.innerHTML = `<div class="error">Error: ${msg}</div>`; console.error(msg); }
+
+    function displayResults(matches, resolvedPlayers) {
+      if (!matches || matches.length === 0) {
+        resultsEl.innerHTML = '<div class="loading">No matches found.</div>';
+        return;
+      }
+
+      const match = matches[0]; // latest match
+      const newRatings = match.ratingResults[0].newRatings;
+
+      // Map current DOM rows by playerId
+      const existingRows = {};
+      Array.from(resultsEl.children).forEach(row => {
+        const id = row.dataset.playerId;
+        if (id) existingRows[id] = row;
+      });
+
+      newRatings.forEach(player => {
+        const name = resolvedPlayers[player.id]?.display_name || "Unknown";
+        let row = existingRows[player.id];
+
+        if (row) {
+          if (row.querySelector(".place").textContent != player.place)
+            row.querySelector(".place").textContent = player.place;
+          if (row.querySelector(".name").textContent != name)
+            row.querySelector(".name").textContent = name;
+          if (row.querySelector(".elo").textContent != player.elo)
+            row.querySelector(".elo").textContent = player.elo;
+          if (row.querySelector(".delta").textContent != (player.delta > 0 ? '+' + player.delta : player.delta))
+            row.querySelector(".delta").textContent = (player.delta > 0 ? '+' + player.delta : player.delta);
+
+          row.classList.toggle("highlight", player.id === PLAYER_ID);
+        } else {
+          row = document.createElement("div");
+          row.className = "entry";
+          if (player.id === PLAYER_ID) row.classList.add("highlight");
+          row.dataset.playerId = player.id;
+
+          row.innerHTML = `
+            <span class="place">${player.place}</span>
+            <span class="name">${name}</span>
+            <span class="elo">${player.elo}</span>
+            <span class="delta">${player.delta > 0 ? '+' + player.delta : player.delta}</span>
+          `;
+
+          resultsEl.appendChild(row);
+        }
+      });
+
+      Array.from(resultsEl.children).forEach(row => {
+        if (!newRatings.find(p => p.id === row.dataset.playerId)) {
+          resultsEl.removeChild(row);
+        }
+      });
+
+      lastState = newRatings;
+    }
+
+    async function fetchMatchResults() {
+      setLoading();
+      try {
+        const resp = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ player_id: PLAYER_ID, client_id: CLIENT_ID, limit: 1 })
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        const matches = data.matches || [];
+        const resolvedPlayers = data.resolved?.players || {};
+        displayResults(matches, resolvedPlayers);
+      } catch (err) { setError(err.message); }
+    }
+
+    fetchMatchResults();
+    setInterval(fetchMatchResults, REFRESH_MS);
+  </script>
+</body>
+</html>
