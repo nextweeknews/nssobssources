@@ -20,7 +20,7 @@ html, body {
 }
 
 .card {
-  width: 440px;
+  width: 450px;
   background: rgba(28,28,28,0.85);
   border-radius: 12px;
   padding: 10px 0;
@@ -113,33 +113,7 @@ function setError(msg) {
   console.error(msg);
 }
 
-/* FLIP animation for vertical movement */
-function animateReorder(oldPos) {
-  const rows = Array.from(leaderboardEl.children)
-    .filter(r => r.dataset.playerId);
-
-  rows.forEach(row => {
-    const id = row.dataset.playerId;
-    const oldTop = oldPos.get(id);
-    if (oldTop == null) return;
-
-    const newTop = row.getBoundingClientRect().top;
-    const delta = oldTop - newTop;
-    if (delta === 0) return;
-
-    row.style.transform = `translateY(${delta}px)`;
-    row.offsetHeight; // force reflow
-
-    row.style.transition = `transform ${ANIMATION_DURATION}ms ease`;
-    row.style.transform = "";
-
-    row.addEventListener("transitionend", () => {
-      row.style.transition = "";
-    }, { once: true });
-  });
-}
-
-/* Render leaderboard safely */
+/* FLIP + fade animations */
 function displayLeaderboard(entries, resolvedPlayers) {
   const highlightId = getPlayerId();
   const totalDisplay = 15;
@@ -154,17 +128,18 @@ function displayLeaderboard(entries, resolvedPlayers) {
   }
 
   const visible = entries.slice(startIndex, startIndex + totalDisplay);
-  const newState = visible.map((player, i) => {
-    const id = player.team[0];
-    const name = resolvedPlayers?.[id]?.display_name || "Unknown";
-    return { rank: startIndex + i + 1, id, name, elo: player.elo ?? "—" };
-  });
+  const newState = visible.map((player, i) => ({
+    rank: startIndex + i + 1,
+    id: player.team[0],
+    name: resolvedPlayers?.[player.team[0]]?.display_name || "Unknown",
+    elo: player.elo ?? "—"
+  }));
 
   // Capture old positions
   const oldPos = new Map();
-  Array.from(leaderboardEl.children).forEach(row => {
-    if (row.dataset.playerId) oldPos.set(row.dataset.playerId, row.getBoundingClientRect().top);
-  });
+  Array.from(leaderboardEl.children)
+    .filter(r => r.dataset.playerId)
+    .forEach(r => oldPos.set(r.dataset.playerId, r.getBoundingClientRect().top));
 
   const existingRows = Array.from(leaderboardEl.children).filter(r => r.dataset.playerId);
   const existingMap = {};
@@ -179,6 +154,7 @@ function displayLeaderboard(entries, resolvedPlayers) {
       row = document.createElement("div");
       row.className = "entry";
       row.dataset.playerId = player.id;
+      row.style.opacity = "0"; // start hidden
 
       row.innerHTML = `
         <span class="rank"></span>
@@ -187,15 +163,6 @@ function displayLeaderboard(entries, resolvedPlayers) {
       `;
 
       leaderboardEl.insertBefore(row, leaderboardEl.children[index] || null);
-
-      // Fade-in only on updates, not initial load
-      if (!initialLoad) {
-        row.style.opacity = "0";
-        requestAnimationFrame(() => {
-          row.style.transition = `opacity ${ANIMATION_DURATION}ms ease`;
-          row.style.opacity = "1";
-        });
-      }
     }
 
     row.querySelector(".name").textContent = player.name;
@@ -209,31 +176,51 @@ function displayLeaderboard(entries, resolvedPlayers) {
     else if (player.rank === 3) rankEl.classList.add("bronze");
 
     row.classList.toggle("highlight", highlightId === player.id);
-
-    if (leaderboardEl.children[index] !== row) {
-      leaderboardEl.insertBefore(row, leaderboardEl.children[index] || null);
-    }
   });
 
-  // Fade-out removed rows (skip fade on initial load)
+  // Identify removed rows
   existingRows.forEach(row => {
-    if (!newState.find(p => p.id === row.dataset.playerId)) {
-      if (!initialLoad) {
-        row.style.transition = `opacity ${ANIMATION_DURATION}ms ease`;
-        row.style.opacity = "0";
-        removedRows.push(row);
-      } else {
-        row.remove();
-      }
-    }
+    if (!newState.find(p => p.id === row.dataset.playerId)) removedRows.push(row);
   });
 
-  if (!initialLoad) {
-    setTimeout(() => removedRows.forEach(r => r.remove()), ANIMATION_DURATION);
-  }
+  // Animate movement + fade
+  requestAnimationFrame(() => {
+    const newPos = {};
+    Array.from(leaderboardEl.children)
+      .filter(r => r.dataset.playerId)
+      .forEach(r => newPos[r.dataset.playerId] = r.getBoundingClientRect().top);
 
-  // Animate movement
-  requestAnimationFrame(() => animateReorder(oldPos));
+    Object.keys(newPos).forEach(id => {
+      const row = leaderboardEl.querySelector(`[data-player-id="${id}"]`);
+      const first = oldPos.get(id);
+      const last = newPos[id]?.top;
+      if (first == null || last == null) return;
+
+      const deltaY = first - last;
+      if (deltaY !== 0) {
+        row.style.transform = `translateY(${deltaY}px)`;
+        row.offsetHeight; // force reflow
+        row.style.transition = `transform ${ANIMATION_DURATION}ms ease`;
+        row.style.transform = "";
+        row.addEventListener("transitionend", () => row.style.transition = "", { once: true });
+      }
+
+      // Fade in new rows
+      if (row.style.opacity === "0") {
+        row.style.transition = `opacity ${ANIMATION_DURATION}ms ease`;
+        row.style.opacity = "1";
+      }
+    });
+
+    // Fade out removed rows
+    removedRows.forEach(r => {
+      r.style.transition = `opacity ${ANIMATION_DURATION}ms ease`;
+      r.style.opacity = "0";
+    });
+
+    // Remove removed rows after fade-out
+    setTimeout(() => removedRows.forEach(r => r.remove()), ANIMATION_DURATION);
+  });
 
   initialLoad = false;
 }
