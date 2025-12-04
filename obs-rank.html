@@ -49,8 +49,9 @@ html, body {
   align-items: center;
   border-radius: 6px;
   box-sizing: border-box;
-  transition: background 0.3s;
-  will-change: transform;
+  transition: background 0.3s, opacity 0.5s ease;
+  will-change: transform, opacity;
+  opacity: 1;
 }
 
 .rank {
@@ -98,6 +99,7 @@ html, body {
 <script>
 const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
 const REFRESH_MS = 15000;
+const ANIMATION_DURATION = 500;
 const leaderboardEl = document.getElementById("leaderboardList");
 
 function getPlayerId() {
@@ -114,9 +116,17 @@ function setError(msg) {
   console.error(msg);
 }
 
-/* --------------------------------------------------
-   FLIP ANIMATION
-   -------------------------------------------------- */
+/* -----------------------------
+   FLIP + Fade Animations
+   ----------------------------- */
+function getRects() {
+  const rects = {};
+  document.querySelectorAll("[data-player-id]").forEach(el => {
+    rects[el.dataset.playerId] = el.getBoundingClientRect();
+  });
+  return rects;
+}
+
 function flipAnimation(beforeRects, afterRects) {
   Object.keys(afterRects).forEach(id => {
     const el = document.querySelector(`[data-player-id="${id}"]`);
@@ -127,14 +137,13 @@ function flipAnimation(beforeRects, afterRects) {
     if (!first || !last) return;
 
     const deltaY = first.top - last.top;
-
     if (deltaY !== 0) {
       el.style.transform = `translateY(${deltaY}px)`;
       el.style.transition = "transform 0s";
 
       requestAnimationFrame(() => {
+        el.style.transition = `transform ${ANIMATION_DURATION}ms ease`;
         el.style.transform = "";
-        el.style.transition = "transform 500ms ease";
       });
 
       el.addEventListener(
@@ -146,17 +155,9 @@ function flipAnimation(beforeRects, afterRects) {
   });
 }
 
-function getRects() {
-  const rects = {};
-  document.querySelectorAll("[data-player-id]").forEach(el => {
-    rects[el.dataset.playerId] = el.getBoundingClientRect();
-  });
-  return rects;
-}
-
-/* --------------------------------------------------
-   RENDER LEADERBOARD
-   -------------------------------------------------- */
+/* -----------------------------
+   Render leaderboard safely
+   ----------------------------- */
 function displayLeaderboard(entries, resolvedPlayers) {
   const highlightId = getPlayerId();
   const totalDisplay = 15;
@@ -164,42 +165,51 @@ function displayLeaderboard(entries, resolvedPlayers) {
 
   let startIndex = 0;
   if (highlightIndex >= 0) {
-    startIndex = Math.max(0, highlightIndex - Math.floor(totalDisplay/2));
+    startIndex = Math.max(0, highlightIndex - Math.floor(totalDisplay / 2));
     if (startIndex + totalDisplay > entries.length) {
       startIndex = Math.max(0, entries.length - totalDisplay);
     }
   }
 
   const visible = entries.slice(startIndex, startIndex + totalDisplay);
-
   const newState = visible.map((player, i) => {
     const id = player.team[0];
     const name = resolvedPlayers?.[id]?.display_name || "Unknown";
     return { rank: startIndex + i + 1, id, name, elo: player.elo ?? "—" };
   });
 
-  // FIRST: capture starting rects
+  // Capture old positions
   const beforeRects = getRects();
 
-  // Build a map of existing rows
-  const existingRows = Array.from(leaderboardEl.children).filter(row => row.dataset.playerId);
+  const existingRows = Array.from(leaderboardEl.children).filter(r => r.dataset.playerId);
   const existingMap = {};
-  existingRows.forEach(row => existingMap[row.dataset.playerId] = row);
+  existingRows.forEach(r => existingMap[r.dataset.playerId] = r);
+
+  // Track removed rows
+  const removedRows = [];
 
   // Insert/update rows
   newState.forEach((player, index) => {
     let row = existingMap[player.id];
-
     if (!row) {
       row = document.createElement("div");
       row.className = "entry";
       row.dataset.playerId = player.id;
+      row.style.opacity = "0"; // start invisible
 
       row.innerHTML = `
         <span class="rank"></span>
         <span class="name"></span>
         <span class="elo"></span>
       `;
+
+      leaderboardEl.insertBefore(row, leaderboardEl.children[index] || null);
+
+      // Fade in
+      requestAnimationFrame(() => {
+        row.style.transition = `opacity ${ANIMATION_DURATION}ms ease`;
+        row.style.opacity = "1";
+      });
     }
 
     row.querySelector(".name").textContent = player.name;
@@ -214,26 +224,35 @@ function displayLeaderboard(entries, resolvedPlayers) {
 
     row.classList.toggle("highlight", highlightId === player.id);
 
-    leaderboardEl.insertBefore(row, leaderboardEl.children[index] || null);
-  });
-
-  // Remove rows not in newState
-  existingRows.forEach(row => {
-    if (!newState.find(p => p.id === row.dataset.playerId)) {
-      leaderboardEl.removeChild(row);
+    if (leaderboardEl.children[index] !== row) {
+      leaderboardEl.insertBefore(row, leaderboardEl.children[index] || null);
     }
   });
 
-  // LAST: capture final rects
+  // Remove rows not in newState (fade out)
+  existingRows.forEach(row => {
+    if (!newState.find(p => p.id === row.dataset.playerId)) {
+      row.style.transition = `opacity ${ANIMATION_DURATION}ms ease`;
+      row.style.opacity = "0";
+      removedRows.push(row);
+    }
+  });
+
+  // After fade out, remove from DOM
+  setTimeout(() => {
+    removedRows.forEach(r => r.remove());
+  }, ANIMATION_DURATION);
+
+  // Capture new positions after DOM changes
   const afterRects = getRects();
 
-  // PLAY: FLIP animation
+  // Play FLIP animation for moved rows
   flipAnimation(beforeRects, afterRects);
 }
 
-/* --------------------------------------------------
-   FETCH LEADERBOARD
-   -------------------------------------------------- */
+/* -----------------------------
+   Fetch leaderboard
+   ----------------------------- */
 async function fetchLeaderboard() {
   try {
     const resp = await fetch(WORKER_URL, {
@@ -247,15 +266,16 @@ async function fetchLeaderboard() {
     });
 
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-
     const data = await resp.json();
     displayLeaderboard(data.leaderboard || [], data.resolved?.players || {});
-
   } catch (err) {
     setError(err.message);
   }
 }
 
+/* -----------------------------
+   Start refresh loop
+   ----------------------------- */
 window.addEventListener("load", () => {
   fetchLeaderboard();
   setInterval(fetchLeaderboard, REFRESH_MS);
@@ -263,4 +283,3 @@ window.addEventListener("load", () => {
 </script>
 </body>
 </html>
-
