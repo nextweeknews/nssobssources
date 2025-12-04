@@ -58,6 +58,18 @@
     padding-right: 10px;
     color: #bcd4ff;
   }
+  
+  .rank.gold {
+    color: #ffd700;
+  }
+
+  .rank.silver {
+    color: #c0c0c0;
+  }
+
+  .rank.bronze {
+    color: #cd7f32;
+  }
 
   .entry span.name {
     width: 280px;
@@ -152,37 +164,28 @@ function displayLeaderboard(entries, resolvedPlayers) {
   newState.forEach((player, index) => {
     let row = existingMap[player.id];
 
-    if (row) {
-      // Update only changed content
-      if (row.querySelector(".name").textContent !== player.name)
-        row.querySelector(".name").textContent = player.name;
-      if (row.querySelector(".elo").textContent !== player.elo)
-        row.querySelector(".elo").textContent = player.elo;
+if (row) {
+  // Update only changed content
+  if (row.querySelector(".name").textContent !== player.name)
+    row.querySelector(".name").textContent = player.name;
 
-      // Update highlight
-      row.classList.toggle("highlight", highlightPlayerId === player.id);
+  if (row.querySelector(".elo").textContent !== player.elo)
+    row.querySelector(".elo").textContent = player.elo;
 
-      // Reorder in DOM if necessary
-      if (leaderboardEl.children[index] !== row)
-        leaderboardEl.insertBefore(row, leaderboardEl.children[index]);
-    } else {
-      // Create new row
-      row = document.createElement("div");
-      row.className = "entry";
-      row.dataset.playerId = player.id;
-      row.classList.toggle("highlight", highlightPlayerId === player.id);
+  // Update rank color
+  const rankEl = row.querySelector(".rank");
+  rankEl.textContent = player.rank;
+  rankEl.className = "rank";
+  if (player.rank === 1) rankEl.classList.add("gold");
+  else if (player.rank === 2) rankEl.classList.add("silver");
+  else if (player.rank === 3) rankEl.classList.add("bronze");
 
-      row.innerHTML = `
-        <span class="rank">${player.rank}</span>
-        <span class="name">${player.name}</span>
-        <span class="elo">${player.elo}</span>
-      `;
+  // Update highlight
+  row.classList.toggle("highlight", highlightPlayerId === player.id);
 
-      if (leaderboardEl.children[index])
-        leaderboardEl.insertBefore(row, leaderboardEl.children[index]);
-      else
-        leaderboardEl.appendChild(row);
-    }
+  // Reorder in DOM if necessary
+  if (leaderboardEl.children[index] !== row)
+    leaderboardEl.insertBefore(row, leaderboardEl.children[index]);
   });
 
   // Remove old rows
