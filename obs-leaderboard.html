@@ -143,7 +143,7 @@ function animateReorder(rows, newState) {
 function displayLeaderboard(entries, resolvedPlayers) {
   const highlightId = getPlayerId();
 
-  const newState = entries.map((player, i) => {
+    const newState = entries.slice(0, 16).map((player, i) => {
     const id = player.team[0];
     const name = resolvedPlayers?.[id]?.display_name || "Unknown";
     return { rank: i + 1, id, name, elo: player.elo ?? "—" };
