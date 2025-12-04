@@ -126,14 +126,53 @@ function displayLeaderboard(entries, resolvedPlayers) {
       div = leaderboardEl.children[index];
       let updated = false;
 
-      if (div.querySelector(".name").textContent !== player.name) {
-        div.querySelector(".name").textContent = player.name;
+      const nameEl = div.querySelector(".name");
+      const eloEl = div.querySelector(".elo");
+
+      if (nameEl && nameEl.textContent !== player.name) {
+        nameEl.textContent = player.name;
         updated = true;
       }
-      if (div.querySelector(".elo").textContent !== player.elo) {
-        div.querySelector(".elo").textContent = player.elo;
+
+      if (eloEl && eloEl.textContent !== player.elo) {
+        eloEl.textContent = player.elo;
         updated = true;
       }
+
+      // Update highlight
+      if (highlightPlayerId === player.id) div.classList.add("highlight");
+      else div.classList.remove("highlight");
+
+      if (updated) {
+        div.classList.add("updated");
+        setTimeout(() => div.classList.remove("updated"), 800);
+      }
+
+    } else {
+      // New row
+      div = document.createElement("div");
+      div.className = "entry";
+      if (highlightPlayerId === player.id) div.classList.add("highlight");
+
+      div.innerHTML = `
+        <span class="rank">${player.rank}</span>
+        <span class="name">${player.name}</span>
+        <span class="elo">${player.elo}</span>
+      `;
+
+      if (leaderboardEl.children[index]) {
+        leaderboardEl.insertBefore(div, leaderboardEl.children[index]);
+      } else {
+        leaderboardEl.appendChild(div);
+      }
+
+      div.classList.add("updated");
+      setTimeout(() => div.classList.remove("updated"), 800);
+    }
+  });
+
+  lastLeaderboardState = newState;
+}
 
       // Update highlight
       if (highlightPlayerId === player.id) div.classList.add("highlight");
