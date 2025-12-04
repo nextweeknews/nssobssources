@@ -101,14 +101,11 @@ const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leader
 const REFRESH_MS = 15000;
 const ANIMATION_DURATION = 500;
 const leaderboardEl = document.getElementById("leaderboardList");
+let initialLoad = true;
 
 function getPlayerId() {
   const params = new URLSearchParams(window.location.search);
   return params.get("player_id") || null;
-}
-
-function setLoading() {
-  leaderboardEl.innerHTML = '<div class="loading">Loading leaderboard…</div>';
 }
 
 function setError(msg) {
@@ -116,9 +113,7 @@ function setError(msg) {
   console.error(msg);
 }
 
-/* -----------------------------
-   FLIP + Fade Animations
-   ----------------------------- */
+/* FLIP animation for vertical movement */
 function getRects() {
   const rects = {};
   document.querySelectorAll("[data-player-id]").forEach(el => {
@@ -155,9 +150,7 @@ function flipAnimation(beforeRects, afterRects) {
   });
 }
 
-/* -----------------------------
-   Render leaderboard safely
-   ----------------------------- */
+/* Render leaderboard safely */
 function displayLeaderboard(entries, resolvedPlayers) {
   const highlightId = getPlayerId();
   const totalDisplay = 15;
@@ -185,7 +178,6 @@ function displayLeaderboard(entries, resolvedPlayers) {
   const existingMap = {};
   existingRows.forEach(r => existingMap[r.dataset.playerId] = r);
 
-  // Track removed rows
   const removedRows = [];
 
   // Insert/update rows
@@ -195,7 +187,6 @@ function displayLeaderboard(entries, resolvedPlayers) {
       row = document.createElement("div");
       row.className = "entry";
       row.dataset.playerId = player.id;
-      row.style.opacity = "0"; // start invisible
 
       row.innerHTML = `
         <span class="rank"></span>
@@ -205,11 +196,14 @@ function displayLeaderboard(entries, resolvedPlayers) {
 
       leaderboardEl.insertBefore(row, leaderboardEl.children[index] || null);
 
-      // Fade in
-      requestAnimationFrame(() => {
-        row.style.transition = `opacity ${ANIMATION_DURATION}ms ease`;
-        row.style.opacity = "1";
-      });
+      // Fade-in only if not initial load
+      if (!initialLoad) {
+        row.style.opacity = "0";
+        requestAnimationFrame(() => {
+          row.style.transition = `opacity ${ANIMATION_DURATION}ms ease`;
+          row.style.opacity = "1";
+        });
+      }
     }
 
     row.querySelector(".name").textContent = player.name;
@@ -229,30 +223,33 @@ function displayLeaderboard(entries, resolvedPlayers) {
     }
   });
 
-  // Remove rows not in newState (fade out)
+  // Remove rows not in newState (fade-out only if not initial load)
   existingRows.forEach(row => {
     if (!newState.find(p => p.id === row.dataset.playerId)) {
-      row.style.transition = `opacity ${ANIMATION_DURATION}ms ease`;
-      row.style.opacity = "0";
-      removedRows.push(row);
+      if (!initialLoad) {
+        row.style.transition = `opacity ${ANIMATION_DURATION}ms ease`;
+        row.style.opacity = "0";
+        removedRows.push(row);
+      } else {
+        row.remove();
+      }
     }
   });
 
-  // After fade out, remove from DOM
-  setTimeout(() => {
-    removedRows.forEach(r => r.remove());
-  }, ANIMATION_DURATION);
+  if (!initialLoad) {
+    setTimeout(() => removedRows.forEach(r => r.remove()), ANIMATION_DURATION);
+  }
 
   // Capture new positions after DOM changes
   const afterRects = getRects();
 
   // Play FLIP animation for moved rows
   flipAnimation(beforeRects, afterRects);
+
+  initialLoad = false; // disable initial-load behavior after first render
 }
 
-/* -----------------------------
-   Fetch leaderboard
-   ----------------------------- */
+/* Fetch leaderboard */
 async function fetchLeaderboard() {
   try {
     const resp = await fetch(WORKER_URL, {
@@ -273,9 +270,7 @@ async function fetchLeaderboard() {
   }
 }
 
-/* -----------------------------
-   Start refresh loop
-   ----------------------------- */
+/* Start refresh loop */
 window.addEventListener("load", () => {
   fetchLeaderboard();
   setInterval(fetchLeaderboard, REFRESH_MS);
