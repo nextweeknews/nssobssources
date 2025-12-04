@@ -109,7 +109,6 @@
     }
 
     async function fetchMatchResults() {
-      setLoading();
       try {
         const resp = await fetch(API_URL, {
           method: "POST",
