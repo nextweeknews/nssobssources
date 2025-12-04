@@ -18,74 +18,75 @@
     align-items:center;
   }
 
-.card {
-  width: 400px;
-  height: auto;
-  background: rgba(28,28,28,0.85);
-  border-radius: 10px;
-  padding: 8px 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  text-align: left;
-  color: #e9eef8;
-}
+  .card {
+    width:400px;
+    height:auto;
+    background: rgba(28,28,28,0.85);
+    border-radius:12px;
+    padding:10px 0; /* only top and bottom */
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    text-align:center;
+    color: #e9eef8;
+  }
 
   .leaderboard-title {
     font-size:28px;
     color:#bcd4ff;
     font-weight:600;
-    margin-bottom:8px;
-    text-align:center;
+    margin-bottom:10px;
   }
 
   .entry {
     width:100%;
     display:flex;
     justify-content:space-between;
-    padding:4px 6px;
-    font-size:20px;
+    padding:4px 0; /* only top and bottom */
+    font-size:22px;
     font-weight:600;
     color:#ffffff;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
   }
 
   .entry span.rank {
-    width:30px;
-    text-align:right;
+    width:40px;
+    text-align:left;
     color:#bcd4ff;
-  }
-
-  .entry span.name {
-    flex:1;
-    padding-left:6px;
   }
 
   .entry span.elo {
     width:60px;
-    text-align:center;
+    text-align:center; /* center Elo */
+  }
+
+  .entry.highlight {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
   }
 
   .loading, .error {
     font-size:16px;
     color:#aab6d9;
-    text-align:center;
-    padding:10px 0;
   }
 </style>
 </head>
 <body>
   <div class="card" id="cardRoot">
-    <div class="leaderboard-title">Season 10</div>
+    <div class="leaderboard-title">Top 16 ELO</div>
     <div id="leaderboardList"></div>
   </div>
 
 <script>
 const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
-const REFRESH_MS = 15000;
+const REFRESH_MS = 15000; // 15 seconds auto-refresh
 
 const leaderboardEl = document.getElementById("leaderboardList");
+
+function getPlayerId() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("player_id") || null;
+}
 
 function setLoading() {
   leaderboardEl.innerHTML = '<div class="loading">Loading leaderboard…</div>';
@@ -96,22 +97,26 @@ function setError(msg) {
   console.error(msg);
 }
 
-function displayLeaderboard(data) {
+function displayLeaderboard(entries, resolvedPlayers) {
+  const highlightPlayerId = getPlayerId();
   leaderboardEl.innerHTML = ""; // Clear previous
 
-  const entries = data.leaderboard || [];
-  const playersMap = data.resolved?.players || {};
-
-  entries.forEach((entry, index) => {
-    const playerId = entry.team?.[0] || null;
-    const playerName = (playerId && playersMap[playerId]?.display_name) || "Unknown";
-
+  entries.forEach((player, index) => {
     const div = document.createElement("div");
     div.className = "entry";
+
+    const playerId = player.team[0];
+    const displayName = (resolvedPlayers?.[playerId]?.display_name) || "Unknown";
+
+    // Highlight player if it matches the URL
+    if (highlightPlayerId && playerId === highlightPlayerId) {
+      div.classList.add("highlight");
+    }
+
     div.innerHTML = `
-      <span class="rank">${index+1}</span>
-      <span class="name">${playerName}</span>
-      <span class="elo">${entry.elo ?? "—"}</span>
+      <span class="rank">${index + 1}</span>
+      ${displayName}
+      <span class="elo">${player.elo ?? "—"}</span>
     `;
     leaderboardEl.appendChild(div);
   });
@@ -124,7 +129,7 @@ async function fetchLeaderboard() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        leaderboard: "Season_10",
+        leaderboard: "season_10",
         rating_type: "player_global_all",
         client_id: "DISCORD|1069003073311211601",
         limit: 16
@@ -137,13 +142,16 @@ async function fetchLeaderboard() {
     }
 
     const data = await resp.json();
-    displayLeaderboard(data);
+    const entries = data.leaderboard || [];
+    const resolvedPlayers = data.resolved?.players || {};
+    displayLeaderboard(entries, resolvedPlayers);
 
   } catch (err) {
     setError(err.message);
   }
 }
 
+// Auto-refresh every REFRESH_MS
 let intervalHandle = null;
 function startAutoRefresh() {
   fetchLeaderboard();
