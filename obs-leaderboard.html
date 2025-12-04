@@ -5,96 +5,103 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Leaderboard Overlay</title>
 <style>
-html, body {
-  height:100%;
-  margin:0;
-  background: transparent;
-  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-  -webkit-font-smoothing:antialiased;
-  -moz-osx-font-smoothing:grayscale;
-  overflow: hidden;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-}
+  html, body {
+    height:100%;
+    margin:0;
+    background: transparent;
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+    overflow: hidden;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+  }
 
-.card {
-  width:420px;
-  background: rgba(28,28,28,0.85);
-  border-radius:12px;
-  padding:10px 0;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  text-align:center;
-  color: #e9eef8;
-  transition: height 0.5s ease;
-}
+  .card {
+    width:400px;
+    height:auto;
+    background: rgba(28,28,28,0.85);
+    border-radius:12px;
+    padding:10px 0; /* only top and bottom */
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    text-align:center;
+    color: #e9eef8;
+  }
 
-.leaderboard-title {
-  font-size:28px;
-  color:#bcd4ff;
-  font-weight:600;
-  margin-bottom:10px;
-}
+  .leaderboard-title {
+    font-size:28px;
+    color:#bcd4ff;
+    font-weight:600;
+    margin-bottom:10px;
+  }
 
-#leaderboardList {
-  width: 100%;
-  position: relative;
-}
+  .entry {
+    width:100%;
+    display:flex;
+    justify-content:space-between;
+    padding:4px 0; /* only top and bottom */
+    font-size:22px;
+    font-weight:600;
+    color:#ffffff;
+  }
 
-.entry {
-  width: calc(100% - 24px);
-  display:flex;
-  justify-content:space-between;
-  padding:6px 12px;
-  font-size:22px;
-  font-weight:600;
-  color:#ffffff;
-  align-items:center;
-  border-radius:6px;
-  box-sizing: border-box;
-  transition: background 0.3s, transform 0.3s, color 0.3s;
-}
+  .entry span.rank {
+    width:40px;
+    text-align:left;
+    color:#bcd4ff;
+  }
 
-.entry span.rank { width:30px; text-align:right; color:#bcd4ff; }
-.entry span.name { flex:1; text-align:left; padding-left:8px; }
-.entry span.elo { width:60px; text-align:center; padding-left:8px; }
+  .entry span.elo {
+    width:60px;
+    text-align:center; /* center Elo */
+  }
 
-.entry.updated {
-  animation: highlightChange 0.8s ease;
-}
+  .entry.highlight {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+  }
 
-@keyframes highlightChange {
-  0%   { background-color: rgba(255,255,255,0.4); transform: scale(1.02); }
-  50%  { background-color: rgba(255,255,255,0.15); transform: scale(1.01); }
-  100% { background-color: rgba(28,28,28,0.85); transform: scale(1); }
-}
+  .loading, .error {
+    font-size:16px;
+    color:#aab6d9;
+  }
 
-.entry.highlight {
-  background: rgba(255,255,255,0.15);
-}
-
-.loading, .error {
-  font-size:16px;
-  color:#aab6d9;
-}
+  .btn-leaderboard {
+    margin-top: 10px;
+    padding: 6px 12px;
+    font-size: 16px;
+    font-weight:600;
+    border-radius:6px;
+    border:none;
+    background-color:#607d8b;
+    color:white;
+    cursor:pointer;
+    text-decoration:none;
+  }
+  .btn-leaderboard:hover {
+    background-color:#4a6570;
+  }
 </style>
 </head>
 <body>
-<div class="card" id="cardRoot">
-  <div class="leaderboard-title">Season 10</div>
-  <div id="leaderboardList"></div>
-</div>
+  <div class="card" id="cardRoot">
+    <div class="leaderboard-title">Top 16 ELO</div>
+    <div id="leaderboardList"></div>
+
+    <!-- Button linking to OBS leaderboard -->
+    <a id="obsLeaderboardBtn" class="btn-leaderboard" href="#">View in OBS</a>
+  </div>
 
 <script>
 const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
 const REFRESH_MS = 15000; // 15 seconds auto-refresh
-const ROW_HEIGHT = 33;
 
 const leaderboardEl = document.getElementById("leaderboardList");
-const cardRoot = document.getElementById("cardRoot");
-let lastLeaderboardState = [];
+const obsBtn = document.getElementById("obsLeaderboardBtn");
 
 function getPlayerId() {
   const params = new URLSearchParams(window.location.search);
@@ -112,87 +119,27 @@ function setError(msg) {
 
 function displayLeaderboard(entries, resolvedPlayers) {
   const highlightPlayerId = getPlayerId();
+  leaderboardEl.innerHTML = ""; // Clear previous
 
-  // Transform data
-  const newState = entries.map((player, index) => {
+  entries.forEach((player, index) => {
+    const div = document.createElement("div");
+    div.className = "entry";
+
     const playerId = player.team[0];
-    const displayName = resolvedPlayers?.[playerId]?.display_name || "Unknown";
-    return { rank: index + 1, id: playerId, name: displayName, elo: player.elo ?? "—" };
-  });
+    const displayName = (resolvedPlayers?.[playerId]?.display_name) || "Unknown";
 
-  // Animate card height
-  cardRoot.style.height = `${newState.length * ROW_HEIGHT + 40}px`;
-
-  // Map existing entries
-  const existingMap = {};
-  Array.from(leaderboardEl.children).forEach(div => {
-    existingMap[div.dataset.playerId] = div;
-    div.dataset.marked = "false"; // mark for removal
-  });
-
-  // Add or update
-  newState.forEach((player, index) => {
-    let div = existingMap[player.id];
-    if (!div) {
-      // New entry
-      div = document.createElement("div");
-      div.className = "entry updated";
-      div.dataset.playerId = player.id;
-      div.innerHTML = `
-        <span class="rank">${player.rank}</span>
-        <span class="name">${player.name}</span>
-        <span class="elo">${player.elo}</span>
-      `;
-      if (highlightPlayerId === player.id) div.classList.add("highlight");
-      if (leaderboardEl.children[index]) {
-        leaderboardEl.insertBefore(div, leaderboardEl.children[index]);
-      } else {
-        leaderboardEl.appendChild(div);
-      }
-      setTimeout(() => div.classList.remove("updated"), 800);
-    } else {
-      // Existing entry
-      const nameEl = div.querySelector(".name");
-      const eloEl = div.querySelector(".elo");
-      let updated = false;
-
-      if (nameEl && nameEl.textContent !== player.name) {
-        nameEl.textContent = player.name;
-        updated = true;
-      }
-      if (eloEl && eloEl.textContent !== player.elo) {
-        eloEl.textContent = player.elo;
-        updated = true;
-      }
-
-      // Highlight
-      if (highlightPlayerId === player.id) div.classList.add("highlight");
-      else div.classList.remove("highlight");
-
-      if (updated) {
-        div.classList.add("updated");
-        setTimeout(() => div.classList.remove("updated"), 800);
-      }
-
-      // Move to correct position
-      if (leaderboardEl.children[index] !== div) {
-        leaderboardEl.insertBefore(div, leaderboardEl.children[index]);
-      }
-
-      div.querySelector(".rank")?.textContent = player.rank;
+    // Highlight player if it matches the URL
+    if (highlightPlayerId && playerId === highlightPlayerId) {
+      div.classList.add("highlight");
     }
 
-    div.dataset.marked = "true"; // mark as still present
+    div.innerHTML = `
+      <span class="rank">${index + 1}</span>
+      ${displayName}
+      <span class="elo">${player.elo ?? "—"}</span>
+    `;
+    leaderboardEl.appendChild(div);
   });
-
-  // Remove old entries
-  Array.from(leaderboardEl.children).forEach(div => {
-    if (div.dataset.marked === "false") {
-      div.remove();
-    }
-  });
-
-  lastLeaderboardState = newState;
 }
 
 async function fetchLeaderboard() {
@@ -224,12 +171,16 @@ async function fetchLeaderboard() {
   }
 }
 
-// Auto-refresh
+// Auto-refresh every REFRESH_MS
 let intervalHandle = null;
 function startAutoRefresh() {
   fetchLeaderboard();
   if (intervalHandle) clearInterval(intervalHandle);
   intervalHandle = setInterval(fetchLeaderboard, REFRESH_MS);
+
+  // Set OBS button link with current player_id
+  const playerId = getPlayerId();
+  obsBtn.href = `obs-leaderboard.html${playerId ? `?player_id=${playerId}` : ""}`;
 }
 
 window.addEventListener("load", startAutoRefresh);
