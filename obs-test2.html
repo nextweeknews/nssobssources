@@ -145,7 +145,7 @@ function showDelta(oldValue, newValue) {
 
   // Reset animation
   deltaEl.style.transition = "none";
-  deltaEl.style.transform = "translateY(-50%) translateX(40px)";
+  deltaEl.style.transform = "translateY(-50%) translateX(20px)";
   deltaEl.style.opacity = "0";
 
   deltaEl.offsetWidth; // force reflow
@@ -157,7 +157,7 @@ function showDelta(oldValue, newValue) {
 
   if (deltaTimeout) clearTimeout(deltaTimeout);
   deltaTimeout = setTimeout(() => {
-    deltaEl.style.transform = "translateY(-50%) translateX(40px)";
+    deltaEl.style.transform = "translateY(-50%) translateX(20px)";
     deltaEl.style.opacity = "0";
   }, 10000);
 }
