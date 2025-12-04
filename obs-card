@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>OBS Leaderboard Card</title>
+<style>
+  /* Make background transparent for OBS */
+  html,body {
+    height:100%;
+    margin:0;
+    background: transparent;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  }
+
+  /* Container centers card inside the browser source */
+  .wrap {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none; /* so OBS clicks pass through if desired */
+  }
+
+  .card {
+    pointer-events: auto; /* allow interactivity if you want (disable if not) */
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    min-width: 360px;
+    max-width: 800px;
+    padding: 14px 18px;
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(30,30,30,0.95), rgba(24,24,24,0.85));
+    border: 1px solid rgba(255,255,255,0.04);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    color: #e9eef8;
+  }
+
+  .avatar {
+    width:64px;
+    height:64px;
+    border-radius:50%;
+    object-fit:cover;
+    flex: 0 0 64px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.6);
+    border: 2px solid rgba(255,255,255,0.03);
+  }
+
+  .meta {
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+
+  .name {
+    font-size:18px;
+    font-weight:700;
+    color:#fff;
+    line-height:1;
+  }
+
+  .rating {
+    font-size:14px;
+    color:#bcd4ff;
+    font-weight:600;
+  }
+
+  /* Small screens */
+  @media (max-width:420px) {
+    .card { padding:12px; gap:12px; min-width:260px; }
+    .avatar { width:48px; height:48px; flex:0 0 48px; }
+    .name { font-size:16px; }
+    .rating { font-size:13px; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card" id="card">
+      <img class="avatar" id="avatar" src="" alt="avatar">
+      <div class="meta">
+        <div class="name" id="display_name">Loading…</div>
+        <div class="rating" id="rating">Rating: —</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // Read query params: ?name=...&rating=...&avatar=...
+  function param(key, fallback = "") {
+    try {
+      const params = new URLSearchParams(location.search);
+      return params.get(key) ?? fallback;
+    } catch {
+      return fallback;
+    }
+  }
+
+  function setCard(name, rating, avatar) {
+    const display = document.getElementById("display_name");
+    const rate = document.getElementById("rating");
+    const av = document.getElementById("avatar");
+
+    display.textContent = name || "Unknown Player";
+    rate.textContent = (rating !== null && rating !== undefined && rating !== "") ? `Rating: ${rating}` : "Rating: N/A";
+    if (avatar) {
+      av.src = avatar;
+      av.style.display = "block";
+    } else {
+      av.style.display = "none";
+    }
+  }
+
+  // Try to get JSON from window.name (if you want to push data via OBS "Local File" + JS)
+  function tryFromWindowName(){
+    if (!window.name) return null;
+    try {
+      const parsed = JSON.parse(window.name);
+      if (parsed && typeof parsed === 'object') return parsed;
+    } catch {}
+    return null;
+  }
+
+  // Initialize: priority: window.name JSON -> query params -> defaults
+  (function init(){
+    const fromName = tryFromWindowName();
+    if (fromName && (fromName.display_name || fromName.rating || fromName.avatar_url)) {
+      setCard(fromName.display_name, fromName.rating, fromName.avatar_url);
+      return;
+    }
+
+    const name = decodeURIComponent(param('name', '')).replace(/\+/g, ' ');
+    const rating = decodeURIComponent(param('rating', ''));
+    const avatar = param('avatar', '');
+
+    if (name || rating || avatar) {
+      setCard(name, rating, avatar);
+      return;
+    }
+
+    // fallback defaults
+    setCard("Name", "1200", "");
+  })();
+</script>
+</body>
+</html>
