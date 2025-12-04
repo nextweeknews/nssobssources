@@ -144,7 +144,7 @@ function displayLeaderboard(entries, resolvedPlayers) {
 
   const removedRows = [];
 
-  // Insert/update rows
+  // Build or update rows in exact new order
   newState.forEach((player, index) => {
     let row = existingMap[player.id];
     if (!row) {
@@ -159,6 +159,11 @@ function displayLeaderboard(entries, resolvedPlayers) {
         <span class="elo"></span>
       `;
       leaderboardEl.insertBefore(row, leaderboardEl.children[index] || null);
+    } else {
+      // Reinsert row in correct order
+      if (leaderboardEl.children[index] !== row) {
+        leaderboardEl.insertBefore(row, leaderboardEl.children[index] || null);
+      }
     }
 
     row.querySelector(".name").textContent = player.name;
@@ -179,31 +184,34 @@ function displayLeaderboard(entries, resolvedPlayers) {
     if (!newState.find(p => p.id === row.dataset.playerId)) removedRows.push(row);
   });
 
-  // Animate movement + fade
+  // Apply FLIP animation
   requestAnimationFrame(() => {
+    // Animate existing and new rows
     Array.from(leaderboardEl.children).forEach(row => {
       const id = row.dataset.playerId;
+      if (!id) return;
+
       const first = oldPos.get(id);
       const last = row.getBoundingClientRect().top;
       if (first != null) {
         const deltaY = first - last;
         if (deltaY !== 0) {
           row.style.transform = `translateY(${deltaY}px)`;
-          row.offsetHeight;
+          row.offsetHeight; // force reflow
           row.style.transition = `transform ${ANIMATION_DURATION}ms ease`;
           row.style.transform = "";
           row.addEventListener("transitionend", () => row.style.transition = "", { once: true });
         }
       }
 
-      // Fade in new rows (skip on initial load)
-      if (!initialLoad && row.style.opacity === "0") {
+      // Fade-in for new rows
+      if (!initialLoad && parseFloat(row.style.opacity) === 0) {
         row.style.transition = `opacity ${ANIMATION_DURATION}ms ease`;
         row.style.opacity = "1";
       }
     });
 
-    // Fade out removed rows
+    // Fade-out removed rows
     removedRows.forEach(r => {
       r.style.transition = `opacity ${ANIMATION_DURATION}ms ease`;
       r.style.opacity = "0";
@@ -234,6 +242,7 @@ async function fetchLeaderboard() {
   }
 }
 
+// Start refresh loop
 window.addEventListener("load", () => {
   fetchLeaderboard();
   setInterval(fetchLeaderboard, REFRESH_MS);
