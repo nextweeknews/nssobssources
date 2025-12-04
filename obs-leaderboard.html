@@ -20,9 +20,10 @@
 
   .card {
     width:400px;
-    height:120px;
+    height:auto;
     background: rgba(28,28,28,0.85);
     border-radius:12px;
+    padding:10px;
     display:flex;
     flex-direction:column;
     justify-content:center;
@@ -31,62 +32,77 @@
     color: #e9eef8;
   }
 
-  .label {
+  .leaderboard-title {
     font-size:28px;
     color:#bcd4ff;
     font-weight:600;
+    margin-bottom:10px;
   }
 
-  .rating {
-    font-size:60px;
-    font-weight:700;
+  .entry {
+    width:100%;
+    display:flex;
+    justify-content:space-between;
+    padding:4px 8px;
+    font-size:22px;
+    font-weight:600;
     color:#ffffff;
+  }
+
+  .entry span.rank {
+    color:#bcd4ff;
+  }
+
+  .loading, .error {
+    font-size:16px;
+    color:#aab6d9;
   }
 </style>
 </head>
 <body>
-  <div class="card">
-    <div class="label">ELO</div>
-    <div class="rating" id="rating">—</div>
+  <div class="card" id="cardRoot">
+    <div class="leaderboard-title">Top 16 ELO</div>
+    <div id="leaderboardList"></div>
   </div>
 
 <script>
 const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
-const DEFAULT_PLAYER_ID = "702730732220579950";
-const REFRESH_MS = 15000;
+const REFRESH_MS = 15000; // 15 seconds auto-refresh
 
-const ratingEl = document.getElementById("rating");
-let lastRating = null;
-
-function setRating(value) {
-  if (value !== lastRating) {
-    ratingEl.textContent = (value !== null && value !== undefined) ? value : "—";
-    lastRating = value;
-  }
-}
+const leaderboardEl = document.getElementById("leaderboardList");
 
 function setLoading() {
-  if (lastRating === null) {
-    ratingEl.textContent = "—";
-  }
+  leaderboardEl.innerHTML = '<div class="loading">Loading leaderboard…</div>';
 }
 
 function setError(msg) {
-  ratingEl.textContent = "—";
+  leaderboardEl.innerHTML = `<div class="error">Error: ${msg}</div>`;
   console.error(msg);
 }
 
-function buildBody(playerId) {
-  return JSON.stringify({ player_id: playerId });
+function displayLeaderboard(entries) {
+  leaderboardEl.innerHTML = ""; // Clear previous
+
+  entries.forEach((player, index) => {
+    const div = document.createElement("div");
+    div.className = "entry";
+    div.innerHTML = `<span class="rank">#${index+1}</span> ${player.display_name || "Unknown"} <span>${player.rating ?? "—"}</span>`;
+    leaderboardEl.appendChild(div);
+  });
 }
 
-async function fetchRating(playerId) {
+async function fetchLeaderboard() {
   setLoading();
   try {
     const resp = await fetch(WORKER_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: buildBody(playerId)
+      body: JSON.stringify({
+        leaderboard: "season_10",
+        rating_type: "player_global_all",
+        client_id: "DISCORD|1069003073311211601",
+        limit: 16
+      })
     });
 
     if (!resp.ok) {
@@ -95,29 +111,26 @@ async function fetchRating(playerId) {
     }
 
     const data = await resp.json();
-    const player = data.player || data;
-    setRating(player.rating);
+    const entries = data.entries || data.players || [];
+    displayLeaderboard(entries);
 
   } catch (err) {
     setError(err.message);
   }
 }
 
-function getPlayerId() {
-  const params = new URLSearchParams(location.search);
-  return params.get("player_id") || DEFAULT_PLAYER_ID;
-}
-
+// Auto-refresh every REFRESH_MS
 let intervalHandle = null;
 function startAutoRefresh() {
-  const pid = getPlayerId();
-  fetchRating(pid);
+  fetchLeaderboard();
   if (intervalHandle) clearInterval(intervalHandle);
-  intervalHandle = setInterval(() => fetchRating(pid), REFRESH_MS);
+  intervalHandle = setInterval(fetchLeaderboard, REFRESH_MS);
 }
 
 window.addEventListener("load", startAutoRefresh);
 </script>
+</body>
+</html>
 
 </body>
 </html>
