@@ -63,74 +63,47 @@
 
   <script>
     const API_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_rating_history";
-    const PLAYER_ID = "702730732220579950"; // Change to the player you want to highlight
+    const PLAYER_ID = "702730732220579950"; // Highlight this player
     const CLIENT_ID = "DISCORD|1069003073311211601";
-    const REFRESH_MS = 15000; // 15 seconds
+    const REFRESH_MS = 15000;
 
     const resultsEl = document.getElementById("resultsList");
-    let lastState = [];
 
     function setLoading() { resultsEl.innerHTML = '<div class="loading">Loading match results…</div>'; }
     function setError(msg) { resultsEl.innerHTML = `<div class="error">Error: ${msg}</div>`; console.error(msg); }
 
-    function displayResults(matches, resolvedPlayers) {
-      if (!matches || matches.length === 0) {
-        resultsEl.innerHTML = '<div class="loading">No matches found.</div>';
+    function displayResults(match, resolvedPlayers) {
+      if (!match || !match.ratingResults || !match.ratingResults[0]?.newRatings) {
+        resultsEl.innerHTML = '<div class="loading">No match data available.</div>';
         return;
       }
 
-      const match = matches[0]; // only one match (latest with player)
-      const newRatings = match.ratingResults[0].newRatings;
+      let newRatings = match.ratingResults[0].newRatings;
 
-      // Map current DOM rows by playerId
-      const existingRows = {};
-      Array.from(resultsEl.children).forEach(row => {
-        const id = row.dataset.playerId;
-        if (id) existingRows[id] = row;
-      });
+      // Sort by place ascending
+      newRatings.sort((a, b) => a.place - b.place);
+
+      // Clear previous entries
+      resultsEl.innerHTML = '';
 
       newRatings.forEach(player => {
         const name = resolvedPlayers[player.id]?.display_name || "Unknown";
-        let row = existingRows[player.id];
-
         const deltaText = player.delta > 0 ? '+' + player.delta : player.delta;
 
-        if (row) {
-          if (row.querySelector(".place").textContent != player.place)
-            row.querySelector(".place").textContent = player.place;
-          if (row.querySelector(".name").textContent != name)
-            row.querySelector(".name").textContent = name;
-          if (row.querySelector(".elo").textContent != player.elo)
-            row.querySelector(".elo").textContent = player.elo;
-          if (row.querySelector(".delta").textContent != deltaText)
-            row.querySelector(".delta").textContent = deltaText;
+        const row = document.createElement("div");
+        row.className = "entry";
+        if (player.id === PLAYER_ID) row.classList.add("highlight");
+        row.dataset.playerId = player.id;
 
-          row.classList.toggle("highlight", player.id === PLAYER_ID);
-        } else {
-          row = document.createElement("div");
-          row.className = "entry";
-          if (player.id === PLAYER_ID) row.classList.add("highlight");
-          row.dataset.playerId = player.id;
+        row.innerHTML = `
+          <span class="place">${player.place}</span>
+          <span class="name">${name}</span>
+          <span class="elo">${player.elo}</span>
+          <span class="delta">${deltaText}</span>
+        `;
 
-          row.innerHTML = `
-            <span class="place">${player.place}</span>
-            <span class="name">${name}</span>
-            <span class="elo">${player.elo}</span>
-            <span class="delta">${deltaText}</span>
-          `;
-
-          resultsEl.appendChild(row);
-        }
+        resultsEl.appendChild(row);
       });
-
-      // Remove old rows
-      Array.from(resultsEl.children).forEach(row => {
-        if (!newRatings.find(p => p.id === row.dataset.playerId)) {
-          resultsEl.removeChild(row);
-        }
-      });
-
-      lastState = newRatings;
     }
 
     async function fetchMatchResults() {
@@ -141,15 +114,19 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ player_id: PLAYER_ID, client_id: CLIENT_ID, limit: 10 })
         });
+
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = await resp.json();
         const matches = data.matches || [];
         const resolvedPlayers = data.resolved?.players || {};
 
-        // Find the most recent match containing the player
-        const recentMatch = matches.find(m => m.allPlayers.includes(PLAYER_ID));
+        // Sort matches by timestamp descending and pick the most recent match containing PLAYER_ID
+        const recentMatch = matches
+          .sort((a, b) => b.ts - a.ts)
+          .find(m => m.allPlayers.some(p => String(p) === String(PLAYER_ID)));
+
         if (recentMatch) {
-          displayResults([recentMatch], resolvedPlayers);
+          displayResults(recentMatch, resolvedPlayers);
         } else {
           resultsEl.innerHTML = '<div class="loading">No recent match found for this player.</div>';
         }
