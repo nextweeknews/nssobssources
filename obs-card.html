@@ -5,8 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Leaderboard Overlay</title>
 <style>
-  /* Transparent background for OBS */
-  html,body {
+  html, body {
     height:100%;
     margin:0;
     background: transparent;
@@ -16,46 +15,29 @@
     overflow: hidden;
   }
 
-  /* Centering container (you can resize OBS source to desired dimensions) */
   .wrap {
     width:100%;
     height:100%;
     display:flex;
     align-items:center;
     justify-content:center;
-    pointer-events: none; /* lets clicks pass through OBS by default */
+    pointer-events: none;
   }
 
   .card {
-    pointer-events: auto; /* allow interaction if needed (set to none to pass clicks) */
+    pointer-events: auto;
     display:flex;
-    align-items:center;
-    gap:14px;
+    flex-direction:column;
+    gap:6px;
     padding:14px 18px;
     border-radius:12px;
-    min-width: 320px;
-    max-width: 760px;
+    min-width: 240px;
+    max-width: 500px;
     background: linear-gradient(180deg, rgba(28,28,28,0.96), rgba(20,20,20,0.9));
     border: 1px solid rgba(255,255,255,0.04);
     box-shadow: 0 8px 30px rgba(0,0,0,0.6);
     color: #e9eef8;
-  }
-
-  .avatar {
-    width:64px;
-    height:64px;
-    border-radius:50%;
-    object-fit:cover;
-    flex:0 0 64px;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.6);
-    border:2px solid rgba(255,255,255,0.03);
-    background: rgba(255,255,255,0.03);
-  }
-
-  .meta {
-    display:flex;
-    flex-direction:column;
-    gap:6px;
+    text-align: center;
   }
 
   .name {
@@ -66,14 +48,9 @@
   }
 
   .rating {
-    font-size:15px;
+    font-size:16px;
     color:#bcd4ff;
     font-weight:600;
-  }
-
-  .small {
-    font-size:12px;
-    color:#9aa7c7;
   }
 
   .loading, .error {
@@ -81,10 +58,8 @@
     color:#aab6d9;
   }
 
-  /* responsive */
   @media (max-width:420px) {
-    .card { gap:12px; padding:10px; min-width:240px; }
-    .avatar { width:48px; height:48px; flex:0 0 48px; }
+    .card { gap:4px; padding:10px; min-width:180px; }
     .name { font-size:18px; }
     .rating { font-size:14px; }
   }
@@ -93,160 +68,36 @@
 <body>
   <div class="wrap">
     <div class="card" id="cardRoot" aria-live="polite">
-      <!-- Avatar will be hidden if none -->
-      <img id="avatar" class="avatar" src="" alt="avatar" style="display:none;">
-      <div class="meta">
-        <div id="displayName" class="name">Loading…</div>
-        <div id="rating" class="rating">Rating: —</div>
-        <div id="sub" class="small"></div>
-      </div>
+      <div id="displayName" class="name">Loading…</div>
+      <div id="rating" class="rating">Rating: —</div>
     </div>
   </div>
 
 <script>
-/*
-  CONFIG
-  - WORKER_URL: change to your deployed Cloudflare Worker URL
-  - DEFAULT_PLAYER_ID: optional fallback if no player_id provided from query/window.name
-  - REFRESH_MS: auto-refresh interval in milliseconds (e.g. 15000 = 15s)
-*/
-const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev"; // <- REPLACE with your worker URL
-const DEFAULT_PLAYER_ID = "702730732220579950"; // optional fallback
-const REFRESH_MS = 5000; // 5 seconds
+const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev"; // Replace with your Cloudflare Worker URL
+const DEFAULT_PLAYER_ID = "702730732220579950";
+const REFRESH_MS = 15000; // 15s auto-refresh
 
-// Utilities to read query params or JSON in window.name
-function getQueryParam(key) {
-  try {
-    const params = new URLSearchParams(location.search);
-    return params.get(key);
-  } catch {
-    return null;
-  }
-}
-function tryWindowNameJSON() {
-  try {
-    if (!window.name) return null;
-    const parsed = JSON.parse(window.name);
-    if (parsed && typeof parsed === "object") return parsed;
-  } catch {}
-  return null;
-}
-
-// Set UI
 const el = {
-  avatar: document.getElementById("avatar"),
   displayName: document.getElementById("displayName"),
-  rating: document.getElementById("rating"),
-  sub: document.getElementById("sub"),
-  cardRoot: document.getElementById("cardRoot")
+  rating: document.getElementById("rating")
 };
 
 function setLoading() {
   el.displayName.textContent = "Loading…";
   el.rating.textContent = "Rating: —";
-  el.avatar.style.display = "none";
-  el.sub.textContent = "";
 }
 
 function setError(msg) {
   el.displayName.textContent = "Error";
   el.rating.textContent = msg || "Unable to load";
-  el.avatar.style.display = "none";
-  el.sub.textContent = "";
 }
 
-function setPlayer(display_name, rating, avatar_url) {
+function setPlayer(display_name, rating) {
   el.displayName.textContent = display_name ?? "Unknown";
   el.rating.textContent = (rating !== null && rating !== undefined) ? `Rating: ${rating}` : "Rating: N/A";
-  if (avatar_url) {
-    el.avatar.src = avatar_url;
-    el.avatar.style.display = "";
-  } else {
-    el.avatar.style.display = "none";
-  }
 }
 
-/* Build the worker POST body (frontend provides player_id only) */
+// Build POST body
 function buildBody(playerId) {
-  return JSON.stringify({ player_id: playerId });
-}
-
-/* Fetch helper */
-async function fetchPlayer(playerId) {
-  setLoading();
-  try {
-    const resp = await fetch(WORKER_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: buildBody(playerId)
-    });
-
-    if (!resp.ok) {
-      const text = await resp.text();
-      throw new Error(`HTTP ${resp.status} ${text || ""}`);
-    }
-
-    const data = await resp.json().catch(async () => {
-      // fallback: try raw text
-      const t = await resp.text();
-      throw new Error("Invalid JSON: " + t);
-    });
-
-    // The API returns a player object; adapt if it returns array
-    // Prefer display_name and rating fields
-    const player = data && data.player ? data.player : data; // safe pick
-    const display_name = player.display_name ?? player.displayName ?? player.name ?? null;
-    const rating = player.rating ?? player.RATING ?? null;
-    const avatar = player.avatar_url ?? player.avatar ?? null;
-
-    setPlayer(display_name, rating, avatar);
-    el.sub.textContent = `Updated: ${new Date().toLocaleTimeString()}`;
-  } catch (err) {
-    console.error("Fetch error:", err);
-    setError(err.message);
-  }
-}
-
-/* Determine player_id source:
-   1) window.name JSON { player_id: "..." }
-   2) query param ?player_id=...
-   3) default
-*/
-function getPlayerId() {
-  const fromName = tryWindowNameJSON();
-  if (fromName && fromName.player_id) return fromName.player_id;
-  const q = getQueryParam("player_id");
-  if (q) return q;
-  return DEFAULT_PLAYER_ID;
-}
-
-/* Auto-refresh loop */
-let intervalHandle = null;
-function startAutoRefresh() {
-  const pid = getPlayerId();
-  if (!pid) {
-    setError("Missing player_id");
-    return;
-  }
-  // initial fetch
-  fetchPlayer(pid);
-  // clear any previous interval and set recurring
-  if (intervalHandle) clearInterval(intervalHandle);
-  intervalHandle = setInterval(() => fetchPlayer(pid), REFRESH_MS);
-}
-
-/* Init */
-window.addEventListener("load", () => {
-  // If WORKER_URL not set, show helpful message
-  if (!WORKER_URL || WORKER_URL.includes("your-worker-name")) {
-    setError("Set WORKER_URL in the HTML to your Cloudflare Worker URL");
-    return;
-  }
-  startAutoRefresh();
-});
-
-/* Optional: expose a manual refresh for debugging */
-window.refreshOverlay = () => startAutoRefresh();
-</script>
-</body>
-</html>
+  return JSON.stringify({ player_id: play_
