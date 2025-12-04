@@ -28,7 +28,7 @@
     flex-direction:column;
     justify-content:center;
     align-items:center;
-    text-align:center;
+    text-align:left;
     color: #e9eef8;
   }
 
@@ -37,6 +37,7 @@
     color:#bcd4ff;
     font-weight:600;
     margin-bottom:10px;
+    text-align:center;
   }
 
   .entry {
@@ -44,18 +45,33 @@
     display:flex;
     justify-content:space-between;
     padding:4px 8px;
-    font-size:22px;
+    font-size:20px;
     font-weight:600;
     color:#ffffff;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
   }
 
   .entry span.rank {
     color:#bcd4ff;
+    width:30px;
+  }
+
+  .entry span.name {
+    flex:1;
+    padding-left:8px;
+  }
+
+  .entry span.elo {
+    color:#f1c40f;
+    width:60px;
+    text-align:right;
   }
 
   .loading, .error {
     font-size:16px;
     color:#aab6d9;
+    text-align:center;
+    padding:10px 0;
   }
 </style>
 </head>
@@ -80,13 +96,23 @@ function setError(msg) {
   console.error(msg);
 }
 
-function displayLeaderboard(entries) {
+function displayLeaderboard(data) {
   leaderboardEl.innerHTML = ""; // Clear previous
 
-  entries.forEach((player, index) => {
+  const entries = data.leaderboard || [];
+  const playersMap = data.resolved?.players || {};
+
+  entries.forEach((entry, index) => {
+    const playerId = entry.team?.[0] || null;
+    const playerName = (playerId && playersMap[playerId]?.display_name) || "Unknown";
+
     const div = document.createElement("div");
     div.className = "entry";
-    div.innerHTML = `<span class="rank">#${index+1}</span> ${player.display_name || "Unknown"} <span>${player.rating ?? "—"}</span>`;
+    div.innerHTML = `
+      <span class="rank">#${index+1}</span>
+      <span class="name">${playerName}</span>
+      <span class="elo">${entry.elo ?? "—"}</span>
+    `;
     leaderboardEl.appendChild(div);
   });
 }
@@ -98,7 +124,7 @@ async function fetchLeaderboard() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        leaderboard: "season_10",
+        leaderboard: "Season_10",
         rating_type: "player_global_all",
         client_id: "DISCORD|1069003073311211601",
         limit: 16
@@ -111,15 +137,14 @@ async function fetchLeaderboard() {
     }
 
     const data = await resp.json();
-    const entries = data.entries || data.players || [];
-    displayLeaderboard(entries);
+    displayLeaderboard(data);
 
   } catch (err) {
     setError(err.message);
   }
 }
 
-// Auto-refresh every REFRESH_MS
+// Auto-refresh
 let intervalHandle = null;
 function startAutoRefresh() {
   fetchLeaderboard();
@@ -129,8 +154,5 @@ function startAutoRefresh() {
 
 window.addEventListener("load", startAutoRefresh);
 </script>
-</body>
-</html>
-
 </body>
 </html>
