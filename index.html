@@ -106,4 +106,27 @@ async function lookupPlayer(playerId) {
 
     // Set overlay links
     eloLink.href = `obs-elo.html?player_id=${encodeURIComponent(playerId)}`;
-    leaderboardLink.href
+    leaderboardLink.href = `obs-leaderboard.html?player_id=${encodeURIComponent(playerId)}`;
+    matchLink.href = `obs-match.html?player_id=${encodeURIComponent(playerId)}`;
+
+  } catch (err) {
+    nameEl.textContent = "Error";
+    ratingEl.textContent = err.message;
+  }
+}
+
+document.getElementById("lookupBtn").addEventListener("click", () => {
+  const pid = document.getElementById("playerIdInput").value.trim();
+  if (pid) lookupPlayer(pid);
+});
+</script>
+
+<p>How to find your Player ID:</p>
+<p>1. Find and select your name here: 
+<a href="https://teamupdiscord.com/leaderboard-api/client/DISCORD%7C1069003073311211601/leaderboard/Season_10/rating_type/player_global_all/format/global"
+>Season 10 Leaderboard</a>.
+ This will bring you to your player page.</p>
+<p>2. Within the url, locate "/player/..." and copy that following string of numbers.</p>
+<p>3. Paste those numbers above!</p>
+</body>
+</html>
