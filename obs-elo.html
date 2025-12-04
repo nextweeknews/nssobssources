@@ -4,6 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Leaderboard Overlay</title>
+
 <style>
   html, body {
     height:100%;
@@ -12,7 +13,7 @@
     font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
     -webkit-font-smoothing:antialiased;
     -moz-osx-font-smoothing:grayscale;
-    overflow: hidden;
+    overflow:hidden;
     display:flex;
     justify-content:center;
     align-items:center;
@@ -28,7 +29,7 @@
     justify-content:center;
     align-items:center;
     text-align:center;
-    color: #e9eef8;
+    color:#e9eef8;
   }
 
   .label {
@@ -37,17 +38,32 @@
     font-weight:600;
   }
 
+  .rating-container {
+    position: relative;
+    height: 60px;
+    overflow: hidden;
+  }
+
   .rating {
     font-size:60px;
     font-weight:700;
     color:#ffffff;
+    position:absolute;
+    width:100%;
+    left:0;
+    text-align:center;
+    transition: transform 0.6s ease;
   }
 </style>
 </head>
+
 <body>
   <div class="card">
     <div class="label">ELO</div>
-    <div class="rating" id="rating">—</div>
+    <div class="rating-container">
+      <div class="rating" id="ratingCurrent">—</div>
+      <div class="rating" id="ratingNext" style="transform: translateY(100%);">—</div>
+    </div>
   </div>
 
 <script>
@@ -55,24 +71,57 @@ const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_player
 const DEFAULT_PLAYER_ID = "702730732220579950";
 const REFRESH_MS = 15000;
 
-const ratingEl = document.getElementById("rating");
+const ratingCurrent = document.getElementById("ratingCurrent");
+const ratingNext = document.getElementById("ratingNext");
+
 let lastRating = null;
 
-function setRating(value) {
-  if (value !== lastRating) {
-    ratingEl.textContent = (value !== null && value !== undefined) ? value : "—";
-    lastRating = value;
+// Smooth scrolling number animation
+function animateRatingChange(newValue) {
+  if (lastRating === null) {
+    // First load, no animation
+    ratingCurrent.textContent = newValue;
+    lastRating = newValue;
+    return;
   }
+
+  if (newValue === lastRating) return; // No change → no animation
+
+  // Set starting positions
+  ratingCurrent.style.transform = "translateY(0%)";
+  ratingNext.style.transform = "translateY(100%)";
+
+  // Apply new value to next layer
+  ratingNext.textContent = newValue;
+
+  // Trigger scroll animation
+  requestAnimationFrame(() => {
+    ratingCurrent.style.transform = "translateY(-100%)";
+    ratingNext.style.transform = "translateY(0%)";
+  });
+
+  // After animation completes, reset layers
+  setTimeout(() => {
+    ratingCurrent.textContent = newValue;
+    ratingCurrent.style.transform = "translateY(0%)";
+    ratingNext.style.transform = "translateY(100%)";
+  }, 600);
+
+  lastRating = newValue;
+}
+
+function setRating(value) {
+  const val = (value !== null && value !== undefined) ? value : "—";
+  animateRatingChange(val);
 }
 
 function setLoading() {
   if (lastRating === null) {
-    ratingEl.textContent = "—";
+    ratingCurrent.textContent = "—";
   }
 }
 
 function setError(msg) {
-  ratingEl.textContent = "—";
   console.error(msg);
 }
 
@@ -96,6 +145,7 @@ async function fetchRating(playerId) {
 
     const data = await resp.json();
     const player = data.player || data;
+
     setRating(player.rating);
 
   } catch (err) {
