@@ -52,9 +52,8 @@
     transition: transform 0.5s ease, background 0.3s;
   }
 
-  /* Rank colors */
   .rank {
-    width: 40px;
+    width: 36px;
     text-align: right;
     padding-right: 10px;
     color: #bcd4ff;
@@ -72,7 +71,7 @@
   }
 
   .elo {
-    width: 60px;
+    width: 64px;
     text-align: center;
     flex-shrink: 0;
   }
@@ -113,7 +112,6 @@ function setError(msg) {
   console.error(msg);
 }
 
-/* Smooth reorder animation */
 function animateReorder(rows, newState) {
   const positions = new Map();
   rows.forEach(row => positions.set(row.dataset.playerId, row.getBoundingClientRect().top));
