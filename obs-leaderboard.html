@@ -62,9 +62,10 @@
     .entry span.name {
       width: 280px;
       text-align: left;
-      padding-left: 20px
+      padding-left: 20px;
       text-overflow: ellipsis;
       white-space: nowrap;
+      overflow: hidden;
     }
 
     .entry span.elo {
@@ -95,8 +96,6 @@
     const REFRESH_MS = 15000;
     const leaderboardEl = document.getElementById("leaderboardList");
 
-    let lastState = [];
-
     function getPlayerId() {
       const params = new URLSearchParams(window.location.search);
       return params.get("player_id") || null;
@@ -111,79 +110,19 @@
       console.error(msg);
     }
 
-    let lastState = [];
-
-function displayLeaderboard(entries, resolvedPlayers) {
-  const highlightPlayerId = getPlayerId();
-
-  const newState = entries.map((player, index) => {
-    const playerId = player.team[0];
-    const displayName = resolvedPlayers?.[playerId]?.display_name || "Unknown";
-    return {
-      rank: index + 1,
-      id: playerId,
-      name: displayName,
-      elo: player.elo ?? "—"
-    };
-  });
-
-  // Map current DOM rows by playerId
-  const existingRows = {};
-  Array.from(leaderboardEl.children).forEach(row => {
-    const id = row.dataset.playerId;
-    if (id) existingRows[id] = row;
-  });
-
-  newState.forEach((player, index) => {
-    let row = existingRows[player.id];
-
-    if (row) {
-      // Update content only if changed
-      if (row.querySelector(".name").textContent !== player.name) {
-        row.querySelector(".name").textContent = player.name;
-      }
-      if (row.querySelector(".elo").textContent !== player.elo) {
-        row.querySelector(".elo").textContent = player.elo;
-      }
-
-      // Update highlight
-      if (highlightPlayerId === player.id) row.classList.add("highlight");
-      else row.classList.remove("highlight");
-
-      // Move row to correct index if rank changed
-      if (leaderboardEl.children[index] !== row) {
-        leaderboardEl.insertBefore(row, leaderboardEl.children[index]);
-      }
-    } else {
-      // New row
-      row = document.createElement("div");
-      row.className = "entry";
-      row.dataset.playerId = player.id;
-      if (highlightPlayerId === player.id) row.classList.add("highlight");
-
-      row.innerHTML = `
-        <span class="rank">${player.rank}</span>
-        <span class="name">${player.name}</span>
-        <span class="elo">${player.elo}</span>
-      `;
-
-      if (leaderboardEl.children[index]) {
-        leaderboardEl.insertBefore(row, leaderboardEl.children[index]);
-      } else {
-        leaderboardEl.appendChild(row);
-      }
-    }
-  });
-
-  // Remove rows that are no longer present
-  Array.from(leaderboardEl.children).forEach(row => {
-    if (!newState.find(p => p.id === row.dataset.playerId)) {
-      leaderboardEl.removeChild(row);
-    }
-  });
-
-  lastState = newState;
-}
+    // NEW: dynamically updates rows and reorders them
+    function displayLeaderboard(entries, resolvedPlayers) {
+      const highlightPlayerId = getPlayerId();
+      const newState = entries.map((player, index) => {
+        const playerId = player.team[0];
+        const displayName = resolvedPlayers?.[playerId]?.display_name || "Unknown";
+        return {
+          rank: index + 1,
+          id: playerId,
+          name: displayName,
+          elo: player.elo ?? "—"
+        };
+      });
 
       // Map current DOM rows by playerId
       const existingRows = {};
@@ -196,13 +135,14 @@ function displayLeaderboard(entries, resolvedPlayers) {
         let row = existingRows[player.id];
 
         if (row) {
-          // Update only if something changed
+          // Update only if content changed
           if (row.querySelector(".name").textContent !== player.name) {
             row.querySelector(".name").textContent = player.name;
           }
           if (row.querySelector(".elo").textContent !== player.elo) {
             row.querySelector(".elo").textContent = player.elo;
           }
+
           // Update highlight
           if (highlightPlayerId === player.id) row.classList.add("highlight");
           else row.classList.remove("highlight");
@@ -215,8 +155,8 @@ function displayLeaderboard(entries, resolvedPlayers) {
           // New row
           row = document.createElement("div");
           row.className = "entry";
-          if (highlightPlayerId === player.id) row.classList.add("highlight");
           row.dataset.playerId = player.id;
+          if (highlightPlayerId === player.id) row.classList.add("highlight");
 
           row.innerHTML = `
             <span class="rank">${player.rank}</span>
@@ -232,14 +172,12 @@ function displayLeaderboard(entries, resolvedPlayers) {
         }
       });
 
-      // Remove old rows that are no longer present
+      // Remove rows no longer present
       Array.from(leaderboardEl.children).forEach(row => {
         if (!newState.find(p => p.id === row.dataset.playerId)) {
           leaderboardEl.removeChild(row);
         }
       });
-
-      lastState = newState;
     }
 
     async function fetchLeaderboard() {
