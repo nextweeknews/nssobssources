@@ -18,18 +18,17 @@
     align-items:center;
   }
 
-  .card {
-    width:420px;
-    height:auto;
+  #cardRoot {
+    width: 420px;
     background: rgba(28,28,28,0.85);
-    border-radius:12px;
-    padding:10px 0; /* only top and bottom */
-    display:flex;
-    flex-direction:column;
-    justify-content:center;
-    align-items:center;
-    text-align:center;
+    border-radius: 12px;
+    padding: 10px 0; /* only top and bottom */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
     color: #e9eef8;
+    transition: height 0.5s ease; /* animate container height */
   }
 
   .leaderboard-title {
@@ -39,40 +38,58 @@
     margin-bottom:10px;
   }
 
-.entry {
-  width:100%;
-  display:flex;
-  justify-content:space-between;
-  padding:6px 12px; /* top/bottom + left/right padding */
-  font-size:22px;
-  font-weight:600;
-  color:#ffffff;
-  align-items:center;
-  border-radius:6px; /* so highlight background has rounded corners */
-  box-sizing: border-box;
-}
+  #leaderboardList {
+    position: relative;
+    width: 100%;
+  }
 
-.entry span.rank {
-  width:30px;
-  text-align:right;
-  color:#bcd4ff;
-}
+  .entry {
+    position: absolute;
+    width: calc(100% - 24px);
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 12px;
+    font-size: 22px;
+    font-weight: 600;
+    color: #ffffff;
+    align-items: center;
+    border-radius: 6px;
+    box-sizing: border-box;
+    background: rgba(28,28,28,0.85);
+    transition: transform 0.5s ease, opacity 0.5s ease, background 0.3s;
+    opacity: 1;
+  }
 
-.entry span.name {
-  flex:1;
-  text-align:left;
-  padding-left:8px;
-}
+  .entry.new {
+    opacity: 0;
+    animation: fadeIn 0.5s forwards;
+  }
 
-.entry span.elo {
-  width:60px;
-  text-align:center;
-  padding-left:8px;
-}
+  .entry.removed {
+    opacity: 1;
+    animation: fadeOut 0.5s forwards;
+  }
 
-.entry.highlight {
-  background: rgba(255, 255, 255, 0.15); /* subtle highlight */
-}
+  @keyframes fadeIn { to { opacity: 1; } }
+  @keyframes fadeOut { to { opacity: 0; } }
+
+  .entry.updated {
+    animation: highlightChange 0.8s ease;
+  }
+
+  @keyframes highlightChange {
+    0%   { background-color: rgba(255,255,255,0.4); }
+    50%  { background-color: rgba(255,255,255,0.15); }
+    100% { background-color: rgba(28,28,28,0.85); }
+  }
+
+  .entry.highlight {
+    background: rgba(255,255,255,0.15);
+  }
+
+  .entry span.rank { width: 30px; text-align:right; color:#bcd4ff; }
+  .entry span.name { flex:1; text-align:left; padding-left:8px; }
+  .entry span.elo { width:60px; text-align:center; padding-left:8px; }
 
   .loading, .error {
     font-size:16px;
@@ -81,7 +98,7 @@
 </style>
 </head>
 <body>
-  <div class="card" id="cardRoot">
+  <div id="cardRoot">
     <div class="leaderboard-title">Season 10</div>
     <div id="leaderboardList"></div>
   </div>
@@ -89,8 +106,11 @@
 <script>
 const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
 const REFRESH_MS = 15000; // 15 seconds auto-refresh
+const ROW_HEIGHT = 33; // px
 
 const leaderboardEl = document.getElementById("leaderboardList");
+const cardRoot = document.getElementById("cardRoot");
+let lastLeaderboardState = [];
 
 function getPlayerId() {
   const params = new URLSearchParams(window.location.search);
@@ -108,28 +128,78 @@ function setError(msg) {
 
 function displayLeaderboard(entries, resolvedPlayers) {
   const highlightPlayerId = getPlayerId();
-  leaderboardEl.innerHTML = ""; // Clear previous
-
-  entries.forEach((player, index) => {
-    const div = document.createElement("div");
-    div.className = "entry";
-
+  const newState = entries.map((player, index) => {
     const playerId = player.team[0];
-    const displayName = (resolvedPlayers?.[playerId]?.display_name) || "Unknown";
+    const displayName = resolvedPlayers?.[playerId]?.display_name || "Unknown";
+    return { rank: index, id: playerId, name: displayName, elo: player.elo ?? "—" };
+  });
 
-    // Highlight player if it matches the URL
-    if (highlightPlayerId && playerId === highlightPlayerId) {
-      div.classList.add("highlight");
+  // Only update if something changed
+  const unchanged = JSON.stringify(newState) === JSON.stringify(lastLeaderboardState);
+  if (unchanged) return;
+
+  // Animate card height
+  const newHeight = newState.length * ROW_HEIGHT + 40; // 40 for title + padding
+  cardRoot.style.height = `${newHeight}px`;
+
+  // Map existing divs
+  const existingMap = {};
+  Array.from(leaderboardEl.children).forEach(div => {
+    existingMap[div.dataset.playerId] = div;
+    div.dataset.marked = "false"; // mark for removal detection
+  });
+
+  // Add/update entries
+  newState.forEach((player, index) => {
+    let div = existingMap[player.id];
+    if (!div) {
+      div = document.createElement("div");
+      div.className = "entry new";
+      div.dataset.playerId = player.id;
+      div.innerHTML = `
+        <span class="rank">${index + 1}</span>
+        <span class="name">${player.name}</span>
+        <span class="elo">${player.elo}</span>
+      `;
+      leaderboardEl.appendChild(div);
+      setTimeout(() => div.classList.remove("new"), 500);
+    } else {
+      // Check if name or elo changed
+      let updated = false;
+      if (div.querySelector(".name").textContent !== player.name) {
+        div.querySelector(".name").textContent = player.name;
+        updated = true;
+      }
+      if (div.querySelector(".elo").textContent !== player.elo) {
+        div.querySelector(".elo").textContent = player.elo;
+        updated = true;
+      }
+      if (updated) {
+        div.classList.add("updated");
+        setTimeout(() => div.classList.remove("updated"), 800);
+      }
     }
 
-div.innerHTML = `
-  <span class="rank">${index + 1}</span>
-  <span class="name">${displayName}</span>
-  <span class="elo">${player.elo ?? "—"}</span>
-`;
+    // Highlight current player
+    if (highlightPlayerId === player.id) div.classList.add("highlight");
+    else div.classList.remove("highlight");
 
-    leaderboardEl.appendChild(div);
+    // Slide to new position
+    div.style.transform = `translateY(${index * ROW_HEIGHT}px)`;
+
+    div.dataset.marked = "true"; // mark as still present
+    div.querySelector(".rank").textContent = index + 1;
   });
+
+  // Remove old players
+  Array.from(leaderboardEl.children).forEach(div => {
+    if (div.dataset.marked === "false") {
+      div.classList.add("removed");
+      setTimeout(() => leaderboardEl.removeChild(div), 500);
+    }
+  });
+
+  lastLeaderboardState = newState;
 }
 
 async function fetchLeaderboard() {
