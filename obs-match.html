@@ -71,7 +71,6 @@
 
   const resultsEl = document.getElementById("resultsList");
 
-  // Get player_id from URL query
   const urlParams = new URLSearchParams(window.location.search);
   const PLAYER_ID = urlParams.get('player_id');
   if (!PLAYER_ID) {
@@ -79,7 +78,7 @@
     throw new Error("Missing player_id in URL query");
   }
 
-  let lastMatchHash = ""; // store hash of last match to detect changes
+  let lastMatchHash = "";
 
   function setLoading() { resultsEl.innerHTML = '<div class="loading">Loading match results…</div>'; }
   function setError(msg) { resultsEl.innerHTML = `<div class="error">Error: ${msg}</div>`; console.error(msg); }
@@ -96,8 +95,16 @@
 
     newRatings.forEach(player => {
       const name = resolvedPlayers[player.id]?.display_name || "Unknown";
-      const deltaText = player.delta > 0 ? '+' + player.delta : player.delta;
-      const deltaClass = player.delta > 0 ? 'delta-positive' : (player.delta < 0 ? 'delta-negative' : '');
+
+      let deltaText = player.delta;
+      let deltaClass = "";
+      if (player.delta > 0) {
+        deltaText = `▲${player.delta}`;
+        deltaClass = "delta-positive";
+      } else if (player.delta < 0) {
+        deltaText = `▼${Math.abs(player.delta)}`;
+        deltaClass = "delta-negative";
+      }
 
       const row = document.createElement("div");
       row.className = "entry";
@@ -126,7 +133,6 @@
       const matches = data.matches || [];
       const resolvedPlayers = data.resolved?.players || {};
 
-      // Find the most recent match containing the player
       const recentMatch = matches
         .sort((a,b) => b.ts - a.ts)
         .find(match =>
@@ -143,7 +149,7 @@
       const currentHash = hashMatch(recentMatch);
       if (currentHash !== lastMatchHash) {
         lastMatchHash = currentHash;
-        displayResults(recentMatch, resolvedPlayers); // update only on change
+        displayResults(recentMatch, resolvedPlayers);
       }
 
     } catch (err) {
