@@ -42,15 +42,8 @@ function displayData(data) {
     const container = document.getElementById("data");
     container.innerHTML = "";
 
-    // If the API returns just a single player object
     if (typeof data === "object" && data !== null) {
         makeCard(data);
-        return;
-    }
-
-    // If the API returns an array of players (just in case)
-    if (Array.isArray(data)) {
-        data.forEach(item => makeCard(item));
         return;
     }
 
@@ -69,7 +62,7 @@ function makeCard(obj) {
 
     const html = `
         <h3>${displayName}</h3>
-        <p><strong>Rating:</strong> ${rating}</p>
+        <p><strong>Elo:</strong> ${rating}</p>
     `;
 
     card.innerHTML = html;
