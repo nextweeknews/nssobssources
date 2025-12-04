@@ -65,20 +65,19 @@
     const API_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_rating_history";
     const PLAYER_ID = "702730732220579950"; // Player to highlight
     const CLIENT_ID = "DISCORD|1069003073311211601";
-    const REFRESH_MS = 15000; // refresh every 15 seconds
+    const REFRESH_MS = 15000;
 
     const resultsEl = document.getElementById("resultsList");
 
-    function setLoading() {
-      resultsEl.innerHTML = '<div class="loading">Loading match results…</div>';
-    }
-
-    function setError(msg) {
-      resultsEl.innerHTML = `<div class="error">Error: ${msg}</div>`;
-      console.error(msg);
-    }
+    function setLoading() { resultsEl.innerHTML = '<div class="loading">Loading match results…</div>'; }
+    function setError(msg) { resultsEl.innerHTML = `<div class="error">Error: ${msg}</div>`; console.error(msg); }
 
     function displayResults(match, resolvedPlayers) {
+      if (!match || !match.ratingResults || match.ratingResults.length === 0) {
+        resultsEl.innerHTML = '<div class="loading">No match data available.</div>';
+        return;
+      }
+
       const newRatings = match.ratingResults[0].newRatings;
 
       resultsEl.innerHTML = ''; // clear previous
@@ -89,8 +88,7 @@
 
         const row = document.createElement("div");
         row.className = "entry";
-        if (player.id === PLAYER_ID) row.classList.add("highlight");
-        row.dataset.playerId = player.id;
+        if (String(player.id) === String(PLAYER_ID)) row.classList.add("highlight");
 
         row.innerHTML = `
           <span class="place">${player.place}</span>
@@ -116,12 +114,14 @@
         const matches = data.matches || [];
         const resolvedPlayers = data.resolved?.players || {};
 
-        // Find the most recent match where PLAYER_ID participated
+        console.log("Fetched matches:", matches);
+
+        // Find the most recent match where PLAYER_ID is in any newRatings
         const recentMatch = matches
-          .sort((a, b) => b.ts - a.ts) // newest first
+          .sort((a,b) => b.ts - a.ts) // newest first
           .find(match =>
-            match.ratingResults.some(ratingGroup =>
-              ratingGroup.newRatings.some(player => String(player.id) === String(PLAYER_ID))
+            match.ratingResults.some(rg =>
+              rg.newRatings.some(p => String(p.id) === String(PLAYER_ID))
             )
           );
 
@@ -129,7 +129,9 @@
           displayResults(recentMatch, resolvedPlayers);
         } else {
           resultsEl.innerHTML = '<div class="loading">No recent match found for this player.</div>';
+          console.warn("Player not found in last 10 matches");
         }
+
       } catch (err) {
         setError(err.message);
       }
