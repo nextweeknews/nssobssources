@@ -101,11 +101,10 @@
 <div id="result" class="card" style="display:none;">
   <h3 id="name">—</h3>
   <p><strong>ELO:</strong> <span id="rating">—</span></p>
-  <!-- Original buttons -->
-  <a id="eloLink" class="overlay-link" href="#" target="_blank">Simple Elo Overlay</a>
-  <a id="leaderboardLink" class="overlay-link" href="#" target="_blank">Leaderboard Overlay</a>
-  <!-- New button linking to match overlay -->
-  <a id="matchLink" class="overlay-link" href="#" target="_blank">Match Overlay</a>
+  <a id="eloLink" class="overlay-link" href="#" target="_blank">Your Elo</a>
+  <a id="matchLink" class="overlay-link" href="#" target="_blank">Your Previous Match</a>
+  <a id="rankLink" class="overlay-link" href="#" target="_blank">Your Rank Position</a>
+  <a id="leaderboardLink" class="overlay-link" href="#" target="_blank">Season 10 Top 16</a>
 </div>
 
 <script>
@@ -140,10 +139,10 @@ async function lookupPlayer(playerId) {
     nameEl.textContent = player.display_name || "Unknown";
     ratingEl.textContent = player.rating ?? "N/A";
 
-    // Set overlay links
     eloLink.href = `obs-elo.html?player_id=${encodeURIComponent(playerId)}`;
-    leaderboardLink.href = `obs-leaderboard.html?player_id=${encodeURIComponent(playerId)}`;
     matchLink.href = `obs-match.html?player_id=${encodeURIComponent(playerId)}`;
+    rankLink.href = `obs-rank.html?player_id=${encodeURIComponent(playerId)}`;
+    leaderboardLink.href = `obs-leaderboard.html?player_id=${encodeURIComponent(playerId)}`;
 
   } catch (err) {
     nameEl.textContent = "Error";
