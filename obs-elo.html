@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Leaderboard Overlay</title>
+<title>Elo Overlay</title>
 
 <style>
 html, body {
@@ -20,10 +20,10 @@ html, body {
 }
 
 .card {
-  width:300px;
-  height:120px;
+  width:600px;
+  height:240px;
   background: rgba(28,28,28,0.85);
-  border-radius:12px;
+  border-radius:24px;
   display:flex;
   flex-direction:column;
   justify-content:center;
@@ -33,22 +33,22 @@ html, body {
 }
 
 .label {
-  font-size:28px;
+  font-size:56px;
   color:#bcd4ff;
   font-weight:600;
-  margin-bottom: 4px;
+  margin-bottom: 8px;
 }
 
 .rating-container {
   position: relative;
-  height: 60px;
+  height: 120px;
   display:flex;
   justify-content:center;
   align-items:center;
 }
 
 .rating {
-  font-size:60px;
+  font-size:120px;
   font-weight:700;
   color:#ffffff;
   position: relative;
@@ -58,8 +58,8 @@ html, body {
 .delta {
   position: absolute;
   top: 50%;
-  transform: translateX(20px);
-  font-size:28px;
+  transform: translateX(40px);
+  font-size:56px;
   font-weight:600;
   opacity:0;
   transition: opacity 0.5s ease, transform 0.5s ease;
@@ -89,15 +89,13 @@ const deltaEl = document.getElementById("delta");
 let lastRating = null;
 let deltaTimeout = null;
 
-/* ===== Helper: position delta relative to rating width ===== */
 function updateDeltaPosition() {
   const rect = ratingEl.getBoundingClientRect();
   const containerRect = ratingEl.parentElement.getBoundingClientRect();
-  const leftPos = rect.right - containerRect.left + 8; // 8px margin
+  const leftPos = rect.right - containerRect.left + 16;
   deltaEl.style.left = leftPos + "px";
 }
 
-/* ===== Rating setter ===== */
 function setRating(value) {
   if (lastRating === null) {
     ratingEl.textContent = value ?? "—";
@@ -112,7 +110,6 @@ function setRating(value) {
   lastRating = value;
 }
 
-/* ===== Show Delta with slide-in fade ===== */
 function showDelta(oldValue, newValue) {
   const diff = newValue - oldValue;
   if (diff === 0 || oldValue === null) return;
@@ -123,23 +120,19 @@ function showDelta(oldValue, newValue) {
 
   updateDeltaPosition();
 
-  // Reset to initial slide-out position
   deltaEl.style.transition = "none";
-  deltaEl.style.transform = "translateY(-50%) translateX(20px)";
+  deltaEl.style.transform = "translateY(-50%) translateX(40px)";
   deltaEl.style.opacity = "0";
 
-  // Trigger reflow before starting transition
   deltaEl.offsetWidth;
 
-  // Animate to final position
   deltaEl.style.transition = "opacity 0.5s ease, transform 0.5s ease";
   deltaEl.style.transform = "translateY(-50%) translateX(0)";
   deltaEl.style.opacity = "1";
 
-  // Clear previous timeout
   if (deltaTimeout) clearTimeout(deltaTimeout);
   deltaTimeout = setTimeout(() => {
-    deltaEl.style.transform = "translateY(-50%) translateX(20px)";
+    deltaEl.style.transform = "translateY(-50%) translateX(40px)";
     deltaEl.style.opacity = "0";
   }, 10000);
 }
@@ -158,8 +151,7 @@ async function fetchRating(playerId) {
     });
 
     if (!resp.ok) {
-      const text = await resp.text();
-      throw new Error(`HTTP ${resp.status}: ${text}`);
+      throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
     }
 
     const data = await resp.json();
