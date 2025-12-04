@@ -53,23 +53,21 @@ html, body {
 }
 
 .digit {
-  font-size:60px;
+  font-size: 56px; /* slightly smaller than container height */
   font-weight:700;
   color:#ffffff;
   width: 36px;
   height: 60px;
   overflow: hidden;
   text-align: center;
-  line-height: 60px;
+  line-height: 60px; /* must match height */
   position: relative;
+  box-sizing: border-box;
 }
 
-.digit-inner {
-  position: absolute;
-  top:0;
-  left:0;
-  width: 100%;
-  transition: transform 0.6s ease-in-out;
+.digit-inner div {
+  height: 60px;   /* same as .digit height */
+  line-height: 60px; /* vertically centered */
 }
 
 .delta {
