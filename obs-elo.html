@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Leaderboard Overlay</title>
+<title>ELO Overlay</title>
 
 <style>
   html, body {
@@ -38,6 +38,7 @@
     font-weight:600;
   }
 
+  /* container for the number scroll */
   .rating-container {
     position: relative;
     height: 60px;
@@ -45,14 +46,22 @@
   }
 
   .rating {
-    font-size:60px;
-    font-weight:700;
-    color:#ffffff;
     position:absolute;
     width:100%;
     left:0;
+    font-size:60px;
+    font-weight:700;
     text-align:center;
+    color:#ffffff;
     transition: transform 0.6s ease;
+  }
+
+  #ratingCurrent {
+    transform: translateY(0%);
+  }
+
+  #ratingNext {
+    transform: translateY(100%);
   }
 </style>
 </head>
@@ -62,7 +71,7 @@
     <div class="label">ELO</div>
     <div class="rating-container">
       <div class="rating" id="ratingCurrent">—</div>
-      <div class="rating" id="ratingNext" style="transform: translateY(100%);">—</div>
+      <div class="rating" id="ratingNext">—</div>
     </div>
   </div>
 
@@ -71,61 +80,69 @@ const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_player
 const DEFAULT_PLAYER_ID = "702730732220579950";
 const REFRESH_MS = 15000;
 
+/* Correct element references */
 const ratingCurrent = document.getElementById("ratingCurrent");
 const ratingNext = document.getElementById("ratingNext");
 
 let lastRating = null;
+let animating = false;
 
-/* -------- Vertical Scroll Animation -------- */
-function animateScroll(newValue) {
+/* Slide animation */
+function slideToNewRating(newValue) {
+  if (animating) return; // prevent overlap
+  animating = true;
+
   ratingNext.textContent = newValue;
 
+  // Slide current up, next into view
   ratingCurrent.style.transform = "translateY(-100%)";
   ratingNext.style.transform = "translateY(0%)";
 
+  // After animation completes, swap roles
   setTimeout(() => {
     ratingCurrent.textContent = newValue;
 
-    ratingCurrent.style.transition = "none";
-    ratingNext.style.transition = "none";
-
+    // reset next below
     ratingCurrent.style.transform = "translateY(0%)";
     ratingNext.style.transform = "translateY(100%)";
 
-    void ratingCurrent.offsetHeight;
-
-    ratingCurrent.style.transition = "transform 0.6s ease";
-    ratingNext.style.transition = "transform 0.6s ease";
-  }, 600);
+    animating = false;
+  }, 650);
 }
 
-/* -------- Rating Setter -------- */
-function setRating(value) {
-  // First load → display immediately
+
+/* Main rating update logic */
+function updateRating(value) {
+  // If nothing stored yet → set instantly
   if (lastRating === null) {
     ratingCurrent.textContent = value ?? "—";
     lastRating = value;
     return;
   }
 
+  // No change
   if (value === lastRating) return;
 
-  animateScroll(value);
+  // Animate difference
+  slideToNewRating(value);
+
   lastRating = value;
 }
+
 
 function setLoading() {
   if (lastRating === null) ratingCurrent.textContent = "—";
 }
 
 function setError(msg) {
-  ratingCurrent.textContent = "—";
   console.error(msg);
 }
+
 
 function buildBody(playerId) {
   return JSON.stringify({ player_id: playerId });
 }
+
 
 async function fetchRating(playerId) {
   setLoading();
@@ -143,11 +160,10 @@ async function fetchRating(playerId) {
 
     const data = await resp.json();
     const player = data.player || data;
+    const rating = player.rating;
 
-    if (typeof player.rating === "number") {
-      setRating(player.rating);
-    } else {
-      setRating(null);
+    if (typeof rating === "number") {
+      updateRating(rating);
     }
 
   } catch (err) {
@@ -155,10 +171,12 @@ async function fetchRating(playerId) {
   }
 }
 
+
 function getPlayerId() {
   const params = new URLSearchParams(location.search);
   return params.get("player_id") || DEFAULT_PLAYER_ID;
 }
+
 
 let intervalHandle = null;
 function startAutoRefresh() {
