@@ -63,11 +63,18 @@
 
   <script>
     const API_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_rating_history";
-    const PLAYER_ID = "702730732220579950"; // Player to highlight
     const CLIENT_ID = "DISCORD|1069003073311211601";
     const REFRESH_MS = 15000;
 
     const resultsEl = document.getElementById("resultsList");
+
+    // Get player_id from URL query: ?player_id=...
+    const urlParams = new URLSearchParams(window.location.search);
+    const PLAYER_ID = urlParams.get('player_id');
+    if (!PLAYER_ID) {
+      resultsEl.innerHTML = '<div class="error">Missing player_id in URL</div>';
+      throw new Error("Missing player_id in URL query");
+    }
 
     function setLoading() { resultsEl.innerHTML = '<div class="loading">Loading match results…</div>'; }
     function setError(msg) { resultsEl.innerHTML = `<div class="error">Error: ${msg}</div>`; console.error(msg); }
