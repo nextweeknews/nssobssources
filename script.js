@@ -1,4 +1,4 @@
-const WORKER_BASE_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_player_rating";
+const WORKER_BASE_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_player_rating".replace(/\/+$/, "");
 
 async function fetchLeaderboard(playerId) {
   const container = document.getElementById("data");
