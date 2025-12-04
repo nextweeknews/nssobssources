@@ -23,10 +23,9 @@
     height:auto;
     background: rgba(28,28,28,0.85);
     border-radius:12px;
-    padding:10px 0; /* only top and bottom */
+    padding:10px 0; /* top and bottom */
     display:flex;
     flex-direction:column;
-    justify-content:center;
     align-items:center;
     text-align:center;
     color: #e9eef8;
@@ -40,13 +39,16 @@
   }
 
   .entry {
-    width:100%;
+    width: calc(100% - 20px);
     display:flex;
     justify-content:space-between;
-    padding:4px 0; /* only top and bottom */
+    padding:6px 10px; /* top/bottom + left/right */
     font-size:22px;
     font-weight:600;
     color:#ffffff;
+    align-items:center;
+    border-radius:6px;
+    box-sizing: border-box;
   }
 
   .entry span.rank {
@@ -55,14 +57,21 @@
     color:#bcd4ff;
   }
 
+  .entry span.name {
+    flex:1;
+    text-align:left;
+    padding-left:8px;
+  }
+
   .entry span.elo {
     width:60px;
-    text-align:center; /* center Elo */
+    text-align:center;
   }
 
   .entry.highlight {
     background: rgba(255, 255, 255, 0.15);
     border-radius: 6px;
+    width: calc(100% - 20px);
   }
 
   .loading, .error {
@@ -96,9 +105,7 @@
 <script>
 const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
 const REFRESH_MS = 15000; // 15 seconds auto-refresh
-
 const leaderboardEl = document.getElementById("leaderboardList");
-const obsBtn = document.getElementById("obsLeaderboardBtn");
 
 function getPlayerId() {
   const params = new URLSearchParams(window.location.search);
@@ -125,14 +132,14 @@ function displayLeaderboard(entries, resolvedPlayers) {
     const playerId = player.team[0];
     const displayName = (resolvedPlayers?.[playerId]?.display_name) || "Unknown";
 
-    // Highlight player if it matches the URL
+    // Highlight full width if it matches the URL
     if (highlightPlayerId && playerId === highlightPlayerId) {
       div.classList.add("highlight");
     }
 
     div.innerHTML = `
       <span class="rank">${index + 1}</span>
-      ${displayName}
+      <span class="name">${displayName}</span>
       <span class="elo">${player.elo ?? "—"}</span>
     `;
     leaderboardEl.appendChild(div);
@@ -174,10 +181,6 @@ function startAutoRefresh() {
   fetchLeaderboard();
   if (intervalHandle) clearInterval(intervalHandle);
   intervalHandle = setInterval(fetchLeaderboard, REFRESH_MS);
-
-  // Set OBS button link with current player_id
-  const playerId = getPlayerId();
-  obsBtn.href = `obs-leaderboard.html${playerId ? `?player_id=${playerId}` : ""}`;
 }
 
 window.addEventListener("load", startAutoRefresh);
