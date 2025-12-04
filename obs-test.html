@@ -49,7 +49,9 @@
     align-items: center;
     border-radius: 6px;
     box-sizing: border-box;
-    transition: background 0.3s;
+    transition: background 0.3s, opacity 0.45s ease, transform 0.45s ease;
+    will-change: transform, opacity;
+    opacity: 1;
   }
 
   .rank {
@@ -97,6 +99,7 @@
 <script>
 const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
 const REFRESH_MS = 15000;
+const ANIMATION_DURATION = 500;
 const leaderboardEl = document.getElementById("leaderboardList");
 
 function getPlayerId() {
@@ -112,6 +115,9 @@ function softLogError(msg) {
   console.warn("Non-fatal leaderboard update issue:", msg);
 }
 
+/* -----------------------------
+   FLIP + Fade Animations
+   ----------------------------- */
 function animateReorder(oldPos) {
   const rows = Array.from(leaderboardEl.children)
     .filter(r => r.dataset.playerId);
@@ -128,7 +134,7 @@ function animateReorder(oldPos) {
     row.style.transform = `translateY(${delta}px)`;
     row.offsetHeight;
 
-    row.style.transition = "transform 0.45s ease";
+    row.style.transition = `transform ${ANIMATION_DURATION}ms ease`;
     row.style.transform = "";
 
     row.addEventListener("transitionend", () => {
@@ -151,6 +157,7 @@ function displayLeaderboard(entries, resolvedPlayers = {}) {
     return { rank: i + 1, id, name, elo: player.elo ?? "—" };
   });
 
+  // capture old positions
   const oldPos = new Map();
   Array.from(leaderboardEl.children).forEach(row => {
     if (row.dataset.playerId)
@@ -162,17 +169,27 @@ function displayLeaderboard(entries, resolvedPlayers = {}) {
     if (r.dataset.playerId) existing[r.dataset.playerId] = r;
   });
 
+  const removedRows = [];
+
   newState.forEach((p, index) => {
     let row = existing[p.id];
+
     if (!row) {
       row = document.createElement("div");
       row.className = "entry";
       row.dataset.playerId = p.id;
+      row.style.opacity = "0"; // fade-in
       row.innerHTML = `
         <span class="rank"></span>
         <span class="name"></span>
         <span class="elo"></span>
       `;
+      leaderboardEl.insertBefore(row, leaderboardEl.children[index] || null);
+
+      requestAnimationFrame(() => {
+        row.style.transition = `opacity ${ANIMATION_DURATION}ms ease`;
+        row.style.opacity = "1";
+      });
     }
 
     row.querySelector(".name").textContent = p.name;
@@ -187,13 +204,20 @@ function displayLeaderboard(entries, resolvedPlayers = {}) {
 
     row.classList.toggle("highlight", highlightId === p.id);
 
-    leaderboardEl.insertBefore(row, leaderboardEl.children[index] || null);
+    if (leaderboardEl.children[index] !== row)
+      leaderboardEl.insertBefore(row, leaderboardEl.children[index] || null);
   });
 
+  // fade out removed rows
   Array.from(leaderboardEl.children).forEach(row => {
-    if (!newState.find(p => p.id === row.dataset.playerId))
-      row.remove();
+    if (!newState.find(p => p.id === row.dataset.playerId)) {
+      row.style.transition = `opacity ${ANIMATION_DURATION}ms ease`;
+      row.style.opacity = "0";
+      removedRows.push(row);
+    }
   });
+
+  setTimeout(() => removedRows.forEach(r => r.remove()), ANIMATION_DURATION);
 
   requestAnimationFrame(() => animateReorder(oldPos));
 }
@@ -212,14 +236,10 @@ async function fetchLeaderboard() {
     });
 
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-
     const data = await resp.json();
     if (!data.leaderboard) throw new Error("Empty leaderboard");
 
-    displayLeaderboard(
-      data.leaderboard,
-      data.resolved?.players || {}
-    );
+    displayLeaderboard(data.leaderboard, data.resolved?.players || {});
   }
   catch (err) {
     softLogError(err.message);
