@@ -4,7 +4,6 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Player Rank</title>
-
 <style>
 html, body {
   height: 100%;
@@ -20,7 +19,7 @@ html, body {
 }
 
 .card {
-  width: 450px;
+  width: 440px;
   background: rgba(28,28,28,0.85);
   border-radius: 12px;
   padding: 10px 0;
@@ -89,7 +88,6 @@ html, body {
 }
 </style>
 </head>
-
 <body>
 <div class="card">
   <div class="leaderboard-title">NSS Golf Rankings: Season 10</div>
@@ -113,7 +111,6 @@ function setError(msg) {
   console.error(msg);
 }
 
-/* FLIP + fade animations */
 function displayLeaderboard(entries, resolvedPlayers) {
   const highlightId = getPlayerId();
   const totalDisplay = 15;
@@ -137,9 +134,9 @@ function displayLeaderboard(entries, resolvedPlayers) {
 
   // Capture old positions
   const oldPos = new Map();
-  Array.from(leaderboardEl.children)
-    .filter(r => r.dataset.playerId)
-    .forEach(r => oldPos.set(r.dataset.playerId, r.getBoundingClientRect().top));
+  Array.from(leaderboardEl.children).forEach(row => {
+    if (row.dataset.playerId) oldPos.set(row.dataset.playerId, row.getBoundingClientRect().top);
+  });
 
   const existingRows = Array.from(leaderboardEl.children).filter(r => r.dataset.playerId);
   const existingMap = {};
@@ -154,14 +151,13 @@ function displayLeaderboard(entries, resolvedPlayers) {
       row = document.createElement("div");
       row.className = "entry";
       row.dataset.playerId = player.id;
-      row.style.opacity = "0"; // start hidden
+      row.style.opacity = initialLoad ? "1" : "0";
 
       row.innerHTML = `
         <span class="rank"></span>
         <span class="name"></span>
         <span class="elo"></span>
       `;
-
       leaderboardEl.insertBefore(row, leaderboardEl.children[index] || null);
     }
 
@@ -185,28 +181,23 @@ function displayLeaderboard(entries, resolvedPlayers) {
 
   // Animate movement + fade
   requestAnimationFrame(() => {
-    const newPos = {};
-    Array.from(leaderboardEl.children)
-      .filter(r => r.dataset.playerId)
-      .forEach(r => newPos[r.dataset.playerId] = r.getBoundingClientRect().top);
-
-    Object.keys(newPos).forEach(id => {
-      const row = leaderboardEl.querySelector(`[data-player-id="${id}"]`);
+    Array.from(leaderboardEl.children).forEach(row => {
+      const id = row.dataset.playerId;
       const first = oldPos.get(id);
-      const last = newPos[id]?.top;
-      if (first == null || last == null) return;
-
-      const deltaY = first - last;
-      if (deltaY !== 0) {
-        row.style.transform = `translateY(${deltaY}px)`;
-        row.offsetHeight; // force reflow
-        row.style.transition = `transform ${ANIMATION_DURATION}ms ease`;
-        row.style.transform = "";
-        row.addEventListener("transitionend", () => row.style.transition = "", { once: true });
+      const last = row.getBoundingClientRect().top;
+      if (first != null) {
+        const deltaY = first - last;
+        if (deltaY !== 0) {
+          row.style.transform = `translateY(${deltaY}px)`;
+          row.offsetHeight;
+          row.style.transition = `transform ${ANIMATION_DURATION}ms ease`;
+          row.style.transform = "";
+          row.addEventListener("transitionend", () => row.style.transition = "", { once: true });
+        }
       }
 
-      // Fade in new rows
-      if (row.style.opacity === "0") {
+      // Fade in new rows (skip on initial load)
+      if (!initialLoad && row.style.opacity === "0") {
         row.style.transition = `opacity ${ANIMATION_DURATION}ms ease`;
         row.style.opacity = "1";
       }
@@ -218,14 +209,12 @@ function displayLeaderboard(entries, resolvedPlayers) {
       r.style.opacity = "0";
     });
 
-    // Remove removed rows after fade-out
     setTimeout(() => removedRows.forEach(r => r.remove()), ANIMATION_DURATION);
   });
 
   initialLoad = false;
 }
 
-/* Fetch leaderboard */
 async function fetchLeaderboard() {
   try {
     const resp = await fetch(WORKER_URL, {
@@ -237,7 +226,6 @@ async function fetchLeaderboard() {
         client_id: "DISCORD|1069003073311211601"
       })
     });
-
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
     displayLeaderboard(data.leaderboard || [], data.resolved?.players || {});
@@ -246,7 +234,6 @@ async function fetchLeaderboard() {
   }
 }
 
-/* Start refresh loop */
 window.addEventListener("load", () => {
   fetchLeaderboard();
   setInterval(fetchLeaderboard, REFRESH_MS);
