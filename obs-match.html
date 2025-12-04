@@ -47,7 +47,15 @@
       align-items: center;
     }
 
-    .entry span.place { width: 30px; text-align: center; color: #bcd4ff; }
+    .entry span.place { 
+      width: 30px; 
+      text-align: center; 
+      color: #bcd4ff; 
+    }
+    .entry span.place.gold { color: #ffd700; }
+    .entry span.place.silver { color: #c0c0c0; }
+    .entry span.place.bronze { color: #cd7f32; }
+
     .entry span.name { width: 290px; text-align: left; margin-left: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .entry span.elo { width: 65px; text-align: center; }
     .entry span.delta { width: 55px; text-align: center; display: flex; justify-content: center; align-items: center; }
@@ -98,10 +106,10 @@
     newRatings.forEach(player => {
       const name = resolvedPlayers[player.id]?.display_name || "Unknown";
 
+      // Conditional formatting for delta
       let arrowSpan = '';
       let deltaText = Math.abs(player.delta);
       let deltaClass = '';
-
       if (player.delta > 0) {
         arrowSpan = '<span class="delta-arrow">▲</span>';
         deltaClass = 'delta-positive';
@@ -110,12 +118,18 @@
         deltaClass = 'delta-negative';
       }
 
+      // Conditional formatting for place
+      let placeClass = '';
+      if (player.place === 1) placeClass = 'gold';
+      else if (player.place === 2) placeClass = 'silver';
+      else if (player.place === 3) placeClass = 'bronze';
+
       const row = document.createElement("div");
       row.className = "entry";
       if (String(player.id) === String(PLAYER_ID)) row.classList.add("highlight");
 
       row.innerHTML = `
-        <span class="place">${player.place}</span>
+        <span class="place ${placeClass}">${player.place}</span>
         <span class="name">${name}</span>
         <span class="elo">${player.elo}</span>
         <span class="delta ${deltaClass}">${arrowSpan}${deltaText}</span>
