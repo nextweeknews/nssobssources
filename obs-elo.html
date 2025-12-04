@@ -71,57 +71,50 @@ const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_player
 const DEFAULT_PLAYER_ID = "702730732220579950";
 const REFRESH_MS = 15000;
 
-const ratingCurrent = document.getElementById("ratingCurrent");
-const ratingNext = document.getElementById("ratingNext");
-
+const ratingEl = document.getElementById("rating");
 let lastRating = null;
 
-// Smooth scrolling number animation
-function animateRatingChange(newValue) {
+/* -------- Number Scroll Animation -------- */
+function animateNumberScroll(from, to, duration = 800) {
+  const start = performance.now();
+
+  function frame(now) {
+    const progress = Math.min((now - start) / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+    const current = Math.round(from + (to - from) * eased);
+    ratingEl.textContent = current;
+
+    if (progress < 1) {
+      requestAnimationFrame(frame);
+    }
+  }
+
+  requestAnimationFrame(frame);
+}
+
+/* -------- Rating Setter -------- */
+function setRating(value) {
+  // No stored rating yet → show instantly
   if (lastRating === null) {
-    // First load, no animation
-    ratingCurrent.textContent = newValue;
-    lastRating = newValue;
+    ratingEl.textContent = value ?? "—";
+    lastRating = value;
     return;
   }
 
-  if (newValue === lastRating) return; // No change → no animation
+  // No change
+  if (value === lastRating) return;
 
-  // Set starting positions
-  ratingCurrent.style.transform = "translateY(0%)";
-  ratingNext.style.transform = "translateY(100%)";
-
-  // Apply new value to next layer
-  ratingNext.textContent = newValue;
-
-  // Trigger scroll animation
-  requestAnimationFrame(() => {
-    ratingCurrent.style.transform = "translateY(-100%)";
-    ratingNext.style.transform = "translateY(0%)";
-  });
-
-  // After animation completes, reset layers
-  setTimeout(() => {
-    ratingCurrent.textContent = newValue;
-    ratingCurrent.style.transform = "translateY(0%)";
-    ratingNext.style.transform = "translateY(100%)";
-  }, 600);
-
-  lastRating = newValue;
-}
-
-function setRating(value) {
-  const val = (value !== null && value !== undefined) ? value : "—";
-  animateRatingChange(val);
+  // Animate change
+  animateNumberScroll(lastRating, value);
+  lastRating = value;
 }
 
 function setLoading() {
-  if (lastRating === null) {
-    ratingCurrent.textContent = "—";
-  }
+  if (lastRating === null) ratingEl.textContent = "—";
 }
 
 function setError(msg) {
+  ratingEl.textContent = "—";
   console.error(msg);
 }
 
@@ -146,7 +139,11 @@ async function fetchRating(playerId) {
     const data = await resp.json();
     const player = data.player || data;
 
-    setRating(player.rating);
+    if (typeof player.rating === "number") {
+      setRating(player.rating);
+    } else {
+      setRating(null);
+    }
 
   } catch (err) {
     setError(err.message);
