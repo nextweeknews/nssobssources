@@ -112,9 +112,6 @@ function softLogError(msg) {
   console.warn("Non-fatal leaderboard update issue:", msg);
 }
 
-/* ============================================
-   FLIP Animation
-   ============================================ */
 function animateReorder(oldPos) {
   const rows = Array.from(leaderboardEl.children)
     .filter(r => r.dataset.playerId);
@@ -140,13 +137,9 @@ function animateReorder(oldPos) {
   });
 }
 
-/* ============================================
-   RENDER SAFE AGAINST PARTIAL DATA
-   ============================================ */
 function displayLeaderboard(entries, resolvedPlayers = {}) {
   const highlightId = getPlayerId();
 
-  // Always allow rendering, even if partial
   if (!Array.isArray(entries)) {
     softLogError("Invalid leaderboard format");
     return;
@@ -158,7 +151,6 @@ function displayLeaderboard(entries, resolvedPlayers = {}) {
     return { rank: i + 1, id, name, elo: player.elo ?? "—" };
   });
 
-  /* Capture OLD positions */
   const oldPos = new Map();
   Array.from(leaderboardEl.children).forEach(row => {
     if (row.dataset.playerId)
@@ -170,7 +162,6 @@ function displayLeaderboard(entries, resolvedPlayers = {}) {
     if (r.dataset.playerId) existing[r.dataset.playerId] = r;
   });
 
-  /* Apply new DOM state */
   newState.forEach((p, index) => {
     let row = existing[p.id];
     if (!row) {
@@ -199,7 +190,6 @@ function displayLeaderboard(entries, resolvedPlayers = {}) {
     leaderboardEl.insertBefore(row, leaderboardEl.children[index] || null);
   });
 
-  /* Remove old rows */
   Array.from(leaderboardEl.children).forEach(row => {
     if (!newState.find(p => p.id === row.dataset.playerId))
       row.remove();
@@ -208,9 +198,6 @@ function displayLeaderboard(entries, resolvedPlayers = {}) {
   requestAnimationFrame(() => animateReorder(oldPos));
 }
 
-/* ============================================
-   FETCH WITH AUTO-RETRY
-   ============================================ */
 async function fetchLeaderboard() {
   try {
     const resp = await fetch(WORKER_URL, {
@@ -236,7 +223,6 @@ async function fetchLeaderboard() {
   }
   catch (err) {
     softLogError(err.message);
-    // Do NOT halt — next refresh will retry
   }
 }
 
