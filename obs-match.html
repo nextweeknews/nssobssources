@@ -56,16 +56,46 @@
     .entry span.place.silver { color: #c0c0c0; }
     .entry span.place.bronze { color: #cd7f32; }
 
-    .entry span.name { width: 290px; text-align: left; margin-left: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .entry span.name {
+      width: 290px;
+      text-align: left;
+      margin-left: 10px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
     .entry span.elo { width: 65px; text-align: center; }
-    .entry span.delta { width: 55px; text-align: center; display: flex; justify-content: center; align-items: center; }
-    .delta-arrow { font-size: 0.6em; margin-right: 2px; display: inline-block; line-height: 1; }
+
+    .entry span.delta {
+      width: 55px;
+      text-align: center;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .delta-arrow {
+      font-size: 0.6em;
+      margin-right: 2px;
+      display: inline-block;
+      line-height: 1;
+    }
 
     .entry.highlight { background: rgba(255, 255, 255, 0.15); }
     .delta-positive { color: #4ade80; }
     .delta-negative { color: #f87171; }
 
-    .loading, .error { font-size: 16px; color: #aab6d9; }
+    .loading, .error {
+      font-size: 16px;
+      color: #aab6d9;
+    }
+
+    /* Fade transition only for results list */
+    #resultsList {
+      opacity: 1;
+      transition: opacity 0.3s ease;
+    }
   </style>
 </head>
 <body>
@@ -80,33 +110,37 @@
   const REFRESH_MS = 15000;
 
   const resultsEl = document.getElementById("resultsList");
-
   const urlParams = new URLSearchParams(window.location.search);
   const PLAYER_ID = urlParams.get('player_id');
+
   if (!PLAYER_ID) {
     resultsEl.innerHTML = '<div class="error">Missing player_id in URL</div>';
     throw new Error("Missing player_id in URL query");
   }
 
   let lastMatchHash = "";
+  let initialLoad = true;
 
-  function setLoading() { resultsEl.innerHTML = '<div class="loading">Loading match results…</div>'; }
-  function setError(msg) { resultsEl.innerHTML = `<div class="error">Error: ${msg}</div>`; console.error(msg); }
+  function setError(msg) {
+    resultsEl.innerHTML = `<div class="error">Error: ${msg}</div>`;
+    console.error(msg);
+  }
 
   function hashMatch(match) {
     if (!match || !match.ratingResults) return "";
-    const newRatings = match.ratingResults[0].newRatings;
-    return newRatings.map(p => `${p.id}:${p.place}:${p.elo}:${p.delta}`).join("|");
+    return match.ratingResults[0].newRatings
+      .map(p => `${p.id}:${p.place}:${p.elo}:${p.delta}`)
+      .join("|");
   }
 
   function displayResults(match, resolvedPlayers) {
     const newRatings = match.ratingResults[0].newRatings;
-    resultsEl.innerHTML = ''; // clear previous
+    resultsEl.innerHTML = '';
 
     newRatings.forEach(player => {
       const name = resolvedPlayers[player.id]?.display_name || "Unknown";
 
-      // Conditional formatting for delta
+      // delta formatting
       let arrowSpan = '';
       let deltaText = Math.abs(player.delta);
       let deltaClass = '';
@@ -118,7 +152,7 @@
         deltaClass = 'delta-negative';
       }
 
-      // Conditional formatting for place
+      // place formatting
       let placeClass = '';
       if (player.place === 1) placeClass = 'gold';
       else if (player.place === 2) placeClass = 'silver';
@@ -165,9 +199,26 @@
       }
 
       const currentHash = hashMatch(recentMatch);
-      if (currentHash !== lastMatchHash) {
+
+      if (initialLoad) {
+        initialLoad = false;
         lastMatchHash = currentHash;
         displayResults(recentMatch, resolvedPlayers);
+        return;
+      }
+
+      if (currentHash !== lastMatchHash) {
+        lastMatchHash = currentHash;
+
+        // Fade out only results list
+        resultsEl.style.opacity = 0;
+
+        setTimeout(() => {
+          displayResults(recentMatch, resolvedPlayers);
+
+          // Fade in after DOM update
+          requestAnimationFrame(() => resultsEl.style.opacity = 1);
+        }, 300);
       }
 
     } catch (err) {
