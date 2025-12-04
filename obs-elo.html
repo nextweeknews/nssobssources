@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>ELO Overlay</title>
+<title>Leaderboard Overlay</title>
 
 <style>
   html, body {
@@ -13,7 +13,7 @@
     font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
     -webkit-font-smoothing:antialiased;
     -moz-osx-font-smoothing:grayscale;
-    overflow:hidden;
+    overflow: hidden;
     display:flex;
     justify-content:center;
     align-items:center;
@@ -29,7 +29,7 @@
     justify-content:center;
     align-items:center;
     text-align:center;
-    color:#e9eef8;
+    color: #e9eef8;
   }
 
   .label {
@@ -38,84 +38,66 @@
     font-weight:600;
   }
 
-  /* container for the number scroll */
-  .rating-container {
-    position: relative;
-    height: 60px;
-    overflow: hidden;
-  }
-
   .rating {
-    position:absolute;
-    width:100%;
-    left:0;
     font-size:60px;
     font-weight:700;
-    text-align:center;
     color:#ffffff;
-    transition: transform 0.6s ease;
+    transition: transform 0.4s ease, opacity 0.4s ease;
   }
 
-  #ratingCurrent {
-    transform: translateY(0%);
+  .scroll-out {
+    transform: translateY(-40%);
+    opacity: 0;
   }
 
-  #ratingNext {
-    transform: translateY(100%);
+  .scroll-in {
+    transform: translateY(40%);
+    opacity: 0;
   }
 </style>
 </head>
 
 <body>
-  <div class="card">
-    <div class="label">ELO</div>
-    <div class="rating-container">
-      <div class="rating" id="ratingCurrent">—</div>
-      <div class="rating" id="ratingNext">—</div>
-    </div>
-  </div>
+<div class="card">
+  <div class="label">ELO</div>
+  <div class="rating" id="rating">—</div>
+</div>
 
 <script>
 const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_player_rating";
 const DEFAULT_PLAYER_ID = "702730732220579950";
 const REFRESH_MS = 15000;
 
-/* Correct element references */
-const ratingCurrent = document.getElementById("ratingCurrent");
-const ratingNext = document.getElementById("ratingNext");
-
+const ratingEl = document.getElementById("rating");
 let lastRating = null;
-let animating = false;
 
-/* Slide animation */
-function slideToNewRating(newValue) {
-  if (animating) return; // prevent overlap
-  animating = true;
+/* ===== Smooth Number Scroll Animation ===== */
+function animateRatingChange(newValue) {
+  // Start scroll-out
+  ratingEl.classList.add("scroll-out");
 
-  ratingNext.textContent = newValue;
-
-  // Slide current up, next into view
-  ratingCurrent.style.transform = "translateY(-100%)";
-  ratingNext.style.transform = "translateY(0%)";
-
-  // After animation completes, swap roles
   setTimeout(() => {
-    ratingCurrent.textContent = newValue;
+    ratingEl.textContent = newValue;
 
-    // reset next below
-    ratingCurrent.style.transform = "translateY(0%)";
-    ratingNext.style.transform = "translateY(100%)";
+    // Prepare scroll-in state
+    ratingEl.classList.remove("scroll-out");
+    ratingEl.classList.add("scroll-in");
 
-    animating = false;
-  }, 650);
+    requestAnimationFrame(() => {
+      // Then animate back to normal
+      requestAnimationFrame(() => {
+        ratingEl.classList.remove("scroll-in");
+      });
+    });
+
+  }, 250);
 }
 
-
-/* Main rating update logic */
-function updateRating(value) {
-  // If nothing stored yet → set instantly
+/* ===== Rating Setter ===== */
+function setRating(value) {
+  // First-time display (NO animation)
   if (lastRating === null) {
-    ratingCurrent.textContent = value ?? "—";
+    ratingEl.textContent = value ?? "—";
     lastRating = value;
     return;
   }
@@ -123,26 +105,23 @@ function updateRating(value) {
   // No change
   if (value === lastRating) return;
 
-  // Animate difference
-  slideToNewRating(value);
-
+  // Animate only on change
+  animateRatingChange(value);
   lastRating = value;
 }
 
-
 function setLoading() {
-  if (lastRating === null) ratingCurrent.textContent = "—";
+  if (lastRating === null) ratingEl.textContent = "—";
 }
 
 function setError(msg) {
+  ratingEl.textContent = "—";
   console.error(msg);
 }
-
 
 function buildBody(playerId) {
   return JSON.stringify({ player_id: playerId });
 }
-
 
 async function fetchRating(playerId) {
   setLoading();
@@ -160,23 +139,18 @@ async function fetchRating(playerId) {
 
     const data = await resp.json();
     const player = data.player || data;
-    const rating = player.rating;
 
-    if (typeof rating === "number") {
-      updateRating(rating);
-    }
+    setRating(player.rating);
 
   } catch (err) {
     setError(err.message);
   }
 }
 
-
 function getPlayerId() {
   const params = new URLSearchParams(location.search);
   return params.get("player_id") || DEFAULT_PLAYER_ID;
 }
-
 
 let intervalHandle = null;
 function startAutoRefresh() {
