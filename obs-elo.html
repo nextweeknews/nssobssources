@@ -58,11 +58,11 @@ html, body {
 .delta {
   position: absolute;
   top: 50%;
-  transform: translateY(-50%);
+  transform: translateY(-50%) translateX(20px);
   font-size:28px;
   font-weight:600;
   opacity:0;
-  transition: opacity 0.5s ease, left 0.3s ease;
+  transition: opacity 0.5s ease, transform 0.5s ease;
 }
 
 .delta.green { color:#00ff88; }
@@ -97,7 +97,7 @@ function updateDeltaPosition() {
   deltaEl.style.left = leftPos + "px";
 }
 
-/* ===== Animate rating change (instant first time, scroll for updates) ===== */
+/* ===== Rating setter ===== */
 function setRating(value) {
   if (lastRating === null) {
     ratingEl.textContent = value ?? "—";
@@ -107,16 +107,12 @@ function setRating(value) {
 
   if (value === lastRating) return;
 
-  // Animate rating
   ratingEl.textContent = value;
-
-  // Show delta
   showDelta(lastRating, value);
-
   lastRating = value;
 }
 
-/* ===== Show Delta ===== */
+/* ===== Show Delta with slide-in fade ===== */
 function showDelta(oldValue, newValue) {
   const diff = newValue - oldValue;
   if (diff === 0 || oldValue === null) return;
@@ -126,17 +122,30 @@ function showDelta(oldValue, newValue) {
   deltaEl.classList.add(diff > 0 ? "green":"red");
 
   updateDeltaPosition();
-  deltaEl.style.opacity = 1;
 
+  // Reset to initial slide-out position
+  deltaEl.style.transition = "none";
+  deltaEl.style.transform = "translateY(-50%) translateX(20px)";
+  deltaEl.style.opacity = "0";
+
+  // Trigger reflow before starting transition
+  deltaEl.offsetWidth;
+
+  // Animate to final position
+  deltaEl.style.transition = "opacity 0.5s ease, transform 0.5s ease";
+  deltaEl.style.transform = "translateY(-50%) translateX(0)";
+  deltaEl.style.opacity = "1";
+
+  // Clear previous timeout
   if (deltaTimeout) clearTimeout(deltaTimeout);
   deltaTimeout = setTimeout(() => {
-    deltaEl.style.opacity = 0;
+    deltaEl.style.transform = "translateY(-50%) translateX(20px)";
+    deltaEl.style.opacity = "0";
   }, 10000);
 }
 
 function setLoading() { if (lastRating === null) ratingEl.textContent = "—"; }
 function setError(msg) { ratingEl.textContent = "—"; console.error(msg); }
-
 function buildBody(playerId) { return JSON.stringify({ player_id: playerId }); }
 
 async function fetchRating(playerId) {
@@ -174,7 +183,6 @@ function startAutoRefresh() {
   intervalHandle = setInterval(() => fetchRating(pid), REFRESH_MS);
 }
 
-/* Recompute delta position on resize */
 window.addEventListener("resize", updateDeltaPosition);
 window.addEventListener("load", startAutoRefresh);
 </script>
