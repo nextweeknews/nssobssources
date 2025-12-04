@@ -50,7 +50,6 @@
     border-radius: 6px;
     box-sizing: border-box;
     transition: background 0.3s;
-    will-change: transform;
   }
 
   .rank {
@@ -114,148 +113,105 @@ function setError(msg) {
   console.error(msg);
 }
 
-/* Helper: get rects map for existing rows */
-function captureRects() {
-  const map = {};
-  Array.from(leaderboardEl.children)
-    .filter(el => el.dataset && el.dataset.playerId)
-    .forEach(el => {
-      map[el.dataset.playerId] = el.getBoundingClientRect();
-    });
-  return map;
-}
+/* ============================================
+   FLIP: Animate Reordering (after DOM update)
+   ============================================ */
+function animateReorder(oldPos) {
+  const rows = Array.from(leaderboardEl.children)
+    .filter(r => r.dataset.playerId);
 
-/* FLIP animator: given before/after rect maps */
-function runFlip(beforeRects, afterRects) {
-  // For each element present after update, animate if there was a before rect
-  Object.keys(afterRects).forEach(id => {
-    const el = Array.from(leaderboardEl.children).find(r => r.dataset.playerId === id);
-    if (!el) return;
+  rows.forEach(row => {
+    const id = row.dataset.playerId;
+    const oldTop = oldPos.get(id);
+    if (oldTop == null) return;
 
-    const before = beforeRects[id];
-    const after = afterRects[id];
-
-    // If no before rect (new element), do a small fade/slide-in (optional)
-    if (!before) {
-      el.style.transform = "translateY(8px)";
-      el.style.opacity = "0";
-      el.style.transition = "transform 300ms ease, opacity 300ms ease";
-      requestAnimationFrame(() => {
-        el.style.transform = "";
-        el.style.opacity = "";
-      });
-      el.addEventListener("transitionend", () => {
-        el.style.transition = "";
-      }, { once: true });
-      return;
-    }
-
-    const deltaY = before.top - after.top;
-    if (deltaY === 0) return;
+    const newTop = row.getBoundingClientRect().top;
+    const delta = oldTop - newTop;
+    if (delta === 0) return;
 
     // Invert
-    el.style.transform = `translateY(${deltaY}px)`;
-    // Force layout
-    el.offsetHeight;
+    row.style.transform = `translateY(${delta}px)`;
+    row.offsetHeight; // force layout
 
     // Play
-    el.style.transition = "transform 500ms ease";
-    el.style.transform = "";
+    row.style.transition = "transform 0.45s ease";
+    row.style.transform = "";
 
-    el.addEventListener("transitionend", () => {
-      el.style.transition = "";
+    row.addEventListener("transitionend", () => {
+      row.style.transition = "";
     }, { once: true });
   });
 }
 
-/* ===========================
-   RENDERING & UPDATE LOGIC (with correct FLIP)
-   =========================== */
+/* ============================================
+   RENDER + FLIP ANIMATION
+   ============================================ */
 function displayLeaderboard(entries, resolvedPlayers) {
   const highlightId = getPlayerId();
 
-  // Build newState
   const newState = entries.slice(0, 16).map((player, i) => {
     const id = player.team[0];
     const name = resolvedPlayers?.[id]?.display_name || "Unknown";
     return { rank: i + 1, id, name, elo: player.elo ?? "—" };
   });
 
-  // 1) FIRST: capture rects BEFORE DOM changes
-  const beforeRects = captureRects();
+  /* ---- Capture OLD positions ---- */
+  const oldPos = new Map();
+  Array.from(leaderboardEl.children).forEach(row => {
+    if (row.dataset.playerId) {
+      oldPos.set(row.dataset.playerId, row.getBoundingClientRect().top);
+    }
+  });
 
-  // Build existing map for quick lookup
-  const existingRows = Array.from(leaderboardEl.children).filter(row => row.dataset && row.dataset.playerId);
-  const existingMap = {};
-  existingRows.forEach(row => existingMap[row.dataset.playerId] = row);
+  /* ---- Build/Update DOM rows BEFORE animation ---- */
+  const existing = {};
+  Array.from(leaderboardEl.children).forEach(r => {
+    if (r.dataset.playerId) existing[r.dataset.playerId] = r;
+  });
 
-  // 2) LAST: apply DOM updates (create/update/move)
   newState.forEach((player, index) => {
-    let row = existingMap[player.id];
-
-    if (row) {
-      // Update fields
-      const nameEl = row.querySelector(".name");
-      if (nameEl) nameEl.textContent = player.name;
-      const eloEl = row.querySelector(".elo");
-      if (eloEl) eloEl.textContent = player.elo;
-
-      const rankEl = row.querySelector(".rank");
-      if (rankEl) {
-        rankEl.textContent = player.rank;
-        rankEl.className = "rank";
-        if (player.rank === 1) rankEl.classList.add("gold");
-        else if (player.rank === 2) rankEl.classList.add("silver");
-        else if (player.rank === 3) rankEl.classList.add("bronze");
-      }
-
-      row.classList.toggle("highlight", highlightId === player.id);
-
-      // Move to correct index if necessary
-      if (leaderboardEl.children[index] !== row) {
-        leaderboardEl.insertBefore(row, leaderboardEl.children[index] || null);
-      }
-
-    } else {
-      // Create new row element
+    let row = existing[player.id];
+    if (!row) {
       row = document.createElement("div");
       row.className = "entry";
       row.dataset.playerId = player.id;
-      row.classList.toggle("highlight", highlightId === player.id);
-
       row.innerHTML = `
-        <span class="rank">${player.rank}</span>
-        <span class="name">${player.name}</span>
-        <span class="elo">${player.elo}</span>
+        <span class="rank"></span>
+        <span class="name"></span>
+        <span class="elo"></span>
       `;
-
-      const rankEl = row.querySelector(".rank");
-      rankEl.className = "rank";
-      if (player.rank === 1) rankEl.classList.add("gold");
-      else if (player.rank === 2) rankEl.classList.add("silver");
-      else if (player.rank === 3) rankEl.classList.add("bronze");
-
-      leaderboardEl.insertBefore(row, leaderboardEl.children[index] || null);
     }
+
+    row.querySelector(".name").textContent = player.name;
+    row.querySelector(".elo").textContent = player.elo;
+
+    const rankEl = row.querySelector(".rank");
+    rankEl.textContent = player.rank;
+    rankEl.className = "rank";
+    if (player.rank === 1) rankEl.classList.add("gold");
+    else if (player.rank === 2) rankEl.classList.add("silver");
+    else if (player.rank === 3) rankEl.classList.add("bronze");
+
+    row.classList.toggle("highlight", highlightId === player.id);
+
+    // Insert at correct position
+    leaderboardEl.insertBefore(row, leaderboardEl.children[index] || null);
   });
 
-  // Remove rows not in new state
-  Array.from(existingRows).forEach(row => {
+  // Remove players no longer in list
+  Array.from(leaderboardEl.children).forEach(row => {
     if (!newState.find(p => p.id === row.dataset.playerId)) {
-      leaderboardEl.removeChild(row);
+      row.remove();
     }
   });
 
-  // 3) LAST: capture rects AFTER DOM changes
-  const afterRects = captureRects();
-
-  // 4) PLAY: animate via FLIP
-  runFlip(beforeRects, afterRects);
+  /* ---- Animate after reorder ---- */
+  requestAnimationFrame(() => animateReorder(oldPos));
 }
 
-/* ===========================
-   FETCH LOGIC
-   =========================== */
+/* ============================================
+   FETCH DATA
+   ============================================ */
 async function fetchLeaderboard() {
   try {
     const resp = await fetch(WORKER_URL, {
@@ -272,20 +228,15 @@ async function fetchLeaderboard() {
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
     const data = await resp.json();
-
-    // Defensive: ensure we pass arrays/objects even if missing
-    const leaderboard = Array.isArray(data.leaderboard) ? data.leaderboard : [];
-    const resolvedPlayers = (data.resolved && data.resolved.players) ? data.resolved.players : (data.players || {});
-
-    displayLeaderboard(leaderboard, resolvedPlayers);
+    displayLeaderboard(data.leaderboard || [], data.resolved?.players || {});
   } catch (err) {
     setError(err.message);
   }
 }
 
-/* ===========================
+/* ============================================
    START
-   =========================== */
+   ============================================ */
 window.addEventListener("load", () => {
   fetchLeaderboard();
   setInterval(fetchLeaderboard, REFRESH_MS);
