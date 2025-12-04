@@ -20,7 +20,7 @@ html, body {
 }
 
 .card {
-  width: 420px;
+  width: 440px;
   background: rgba(28,28,28,0.85);
   border-radius: 12px;
   padding: 10px 0;
@@ -52,9 +52,8 @@ html, body {
   transition: transform 0.5s ease, background 0.3s;
 }
 
-/* Rank colors */
 .rank {
-  width: 30px;
+  width: 36px;
   text-align: right;
   padding-right: 10px;
   color: #bcd4ff;
@@ -64,7 +63,7 @@ html, body {
 .rank.bronze { color: #cd7f32; }
 
 .name {
-  width: 280px;
+  width: 290px;
   text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -72,7 +71,7 @@ html, body {
 }
 
 .elo {
-  width: 60px;
+  width: 64px;
   text-align: center;
   flex-shrink: 0;
 }
@@ -113,7 +112,6 @@ function setError(msg) {
   console.error(msg);
 }
 
-/* Smooth reorder animation */
 function animateReorder(rows, newState) {
   const positions = new Map();
   rows.forEach(row => positions.set(row.dataset.playerId, row.getBoundingClientRect().top));
@@ -142,10 +140,9 @@ function animateReorder(rows, newState) {
 
 function displayLeaderboard(entries, resolvedPlayers) {
   const highlightId = getPlayerId();
-  const totalDisplay = 15; // number of entries to show
+  const totalDisplay = 15;
   const highlightIndex = entries.findIndex(e => e.team[0] === highlightId);
   
-  // determine start index for slicing
   let startIndex = 0;
   if (highlightIndex >= 0) {
     startIndex = Math.max(0, highlightIndex - Math.floor(totalDisplay/2));
