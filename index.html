@@ -40,6 +40,7 @@
   .overlay-link {
     display: inline-block;
     margin-top: 12px;
+    margin-right: 6px;
     padding: 10px 14px;
     border-radius: 8px;
     background: #4a4a4a;
@@ -64,10 +65,11 @@
 <div id="result" class="card" style="display:none;">
   <h3 id="name">—</h3>
   <p><strong>ELO:</strong> <span id="rating">—</span></p>
-  <!-- Original button -->
+  <!-- Original buttons -->
   <a id="eloLink" class="overlay-link" href="#" target="_blank">Simple Elo Overlay</a>
-  <!-- New button linking to obs-leaderboard -->
   <a id="leaderboardLink" class="overlay-link" href="#" target="_blank">Leaderboard Overlay</a>
+  <!-- New button linking to match overlay -->
+  <a id="matchLink" class="overlay-link" href="#" target="_blank">Match Overlay</a>
 </div>
 
 <script>
@@ -77,6 +79,7 @@ const ratingEl = document.getElementById("rating");
 const resultBox = document.getElementById("result");
 const eloLink = document.getElementById("eloLink");
 const leaderboardLink = document.getElementById("leaderboardLink");
+const matchLink = document.getElementById("matchLink");
 
 async function lookupPlayer(playerId) {
   resultBox.style.display = "block";
@@ -101,29 +104,6 @@ async function lookupPlayer(playerId) {
     nameEl.textContent = player.display_name || "Unknown";
     ratingEl.textContent = player.rating ?? "N/A";
 
-    // Original ELO overlay
+    // Set overlay links
     eloLink.href = `obs-elo.html?player_id=${encodeURIComponent(playerId)}`;
-    // New leaderboard overlay
-    leaderboardLink.href = `obs-leaderboard.html?player_id=${encodeURIComponent(playerId)}`;
-
-  } catch (err) {
-    nameEl.textContent = "Error";
-    ratingEl.textContent = err.message;
-  }
-}
-
-document.getElementById("lookupBtn").addEventListener("click", () => {
-  const pid = document.getElementById("playerIdInput").value.trim();
-  if (pid) lookupPlayer(pid);
-});
-</script>
-
-<p>How to find your Player ID:</p>
-<p>1. Find and select your name here: 
-<a href="https://teamupdiscord.com/leaderboard-api/client/DISCORD%7C1069003073311211601/leaderboard/Season_10/rating_type/player_global_all/format/global"
->Season 10 Leaderboard</a>.
- This will bring you to your player page.</p>
-<p>2. Within the url, locate "/player/..." and copy that following string of numbers.</p>
-<p>3. Paste those numbers above!</p>
-</body>
-</html>
+    leaderboardLink.href
