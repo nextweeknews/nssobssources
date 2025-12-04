@@ -36,18 +36,29 @@ html, body {
   font-size:28px;
   color:#bcd4ff;
   font-weight:600;
+  margin-bottom: 4px;
 }
 
 .rating-container {
-  display:flex;
-  align-items:center;
+  position: relative;
   font-size:60px;
   font-weight:700;
   color:#ffffff;
+  height:60px;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
+.rating {
+  z-index:1;
 }
 
 .delta {
-  margin-left:10px;
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
   font-size:28px;
   font-weight:600;
   opacity:0;
@@ -63,7 +74,7 @@ html, body {
 <div class="card">
   <div class="label">ELO</div>
   <div class="rating-container">
-    <div id="rating">—</div>
+    <div id="rating" class="rating">—</div>
     <div id="delta" class="delta"></div>
   </div>
 </div>
@@ -188,6 +199,9 @@ function startAutoRefresh() {
 
 window.addEventListener("load", startAutoRefresh);
 </script>
+
+</body>
+</html>
 
 </body>
 </html>
