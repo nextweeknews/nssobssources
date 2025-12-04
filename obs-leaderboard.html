@@ -176,4 +176,63 @@ function displayLeaderboard(entries, resolvedPlayers) {
 
       // Move to correct position
       if (leaderboardEl.children[index] !== div) {
-        leaderboardEl.insertBefore(div,
+        leaderboardEl.insertBefore(div, leaderboardEl.children[index]);
+      }
+
+      div.querySelector(".rank")?.textContent = player.rank;
+    }
+
+    div.dataset.marked = "true"; // mark as still present
+  });
+
+  // Remove old entries
+  Array.from(leaderboardEl.children).forEach(div => {
+    if (div.dataset.marked === "false") {
+      div.remove();
+    }
+  });
+
+  lastLeaderboardState = newState;
+}
+
+async function fetchLeaderboard() {
+  setLoading();
+  try {
+    const resp = await fetch(WORKER_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        leaderboard: "season_10",
+        rating_type: "player_global_all",
+        client_id: "DISCORD|1069003073311211601",
+        limit: 16
+      })
+    });
+
+    if (!resp.ok) {
+      const text = await resp.text();
+      throw new Error(`HTTP ${resp.status}: ${text}`);
+    }
+
+    const data = await resp.json();
+    const entries = data.leaderboard || [];
+    const resolvedPlayers = data.resolved?.players || {};
+    displayLeaderboard(entries, resolvedPlayers);
+
+  } catch (err) {
+    setError(err.message);
+  }
+}
+
+// Auto-refresh
+let intervalHandle = null;
+function startAutoRefresh() {
+  fetchLeaderboard();
+  if (intervalHandle) clearInterval(intervalHandle);
+  intervalHandle = setInterval(fetchLeaderboard, REFRESH_MS);
+}
+
+window.addEventListener("load", startAutoRefresh);
+</script>
+</body>
+</html>
