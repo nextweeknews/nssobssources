@@ -61,90 +61,96 @@
     <div id="resultsList"></div>
   </div>
 
-  <script>
-    const API_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_rating_history";
-    const CLIENT_ID = "DISCORD|1069003073311211601";
-    const REFRESH_MS = 15000;
+<script>
+  const API_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_rating_history";
+  const CLIENT_ID = "DISCORD|1069003073311211601";
+  const REFRESH_MS = 15000;
 
-    const resultsEl = document.getElementById("resultsList");
+  const resultsEl = document.getElementById("resultsList");
 
-    // Get player_id from URL query: ?player_id=...
-    const urlParams = new URLSearchParams(window.location.search);
-    const PLAYER_ID = urlParams.get('player_id');
-    if (!PLAYER_ID) {
-      resultsEl.innerHTML = '<div class="error">Missing player_id in URL</div>';
-      throw new Error("Missing player_id in URL query");
-    }
+  const urlParams = new URLSearchParams(window.location.search);
+  const PLAYER_ID = urlParams.get('player_id');
+  if (!PLAYER_ID) {
+    resultsEl.innerHTML = '<div class="error">Missing player_id in URL</div>';
+    throw new Error("Missing player_id in URL query");
+  }
 
-    function setLoading() { resultsEl.innerHTML = '<div class="loading">Loading match results…</div>'; }
-    function setError(msg) { resultsEl.innerHTML = `<div class="error">Error: ${msg}</div>`; console.error(msg); }
+  let lastMatchHash = ""; // store hash of last match to detect changes
 
-    function displayResults(match, resolvedPlayers) {
-      if (!match || !match.ratingResults || match.ratingResults.length === 0) {
-        resultsEl.innerHTML = '<div class="loading">No match data available.</div>';
+  function setLoading() { resultsEl.innerHTML = '<div class="loading">Loading match results…</div>'; }
+  function setError(msg) { resultsEl.innerHTML = `<div class="error">Error: ${msg}</div>`; console.error(msg); }
+
+  function hashMatch(match) {
+    // create a simple hash based on player ids, places, elo, and delta
+    if (!match || !match.ratingResults) return "";
+    const newRatings = match.ratingResults[0].newRatings;
+    return newRatings.map(p => `${p.id}:${p.place}:${p.elo}:${p.delta}`).join("|");
+  }
+
+  function displayResults(match, resolvedPlayers) {
+    const newRatings = match.ratingResults[0].newRatings;
+    resultsEl.innerHTML = ''; // clear previous
+
+    newRatings.forEach(player => {
+      const name = resolvedPlayers[player.id]?.display_name || "Unknown";
+      const deltaText = player.delta > 0 ? '+' + player.delta : player.delta;
+
+      const row = document.createElement("div");
+      row.className = "entry";
+      if (String(player.id) === String(PLAYER_ID)) row.classList.add("highlight");
+
+      row.innerHTML = `
+        <span class="place">${player.place}</span>
+        <span class="name">${name}</span>
+        <span class="elo">${player.elo}</span>
+        <span class="delta">${deltaText}</span>
+      `;
+
+      resultsEl.appendChild(row);
+    });
+  }
+
+  async function fetchMatchResults() {
+    try {
+      const resp = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ player_id: PLAYER_ID, client_id: CLIENT_ID, limit: 10 })
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      const matches = data.matches || [];
+      const resolvedPlayers = data.resolved?.players || {};
+
+      // find the most recent match containing the player
+      const recentMatch = matches
+        .sort((a,b) => b.ts - a.ts)
+        .find(match =>
+          match.ratingResults.some(rg =>
+            rg.newRatings.some(p => String(p.id) === String(PLAYER_ID))
+          )
+        );
+
+      if (!recentMatch) {
+        resultsEl.innerHTML = '<div class="loading">No recent match found for this player.</div>';
         return;
       }
 
-      const newRatings = match.ratingResults[0].newRatings;
-
-      resultsEl.innerHTML = ''; // clear previous
-
-      newRatings.forEach(player => {
-        const name = resolvedPlayers[player.id]?.display_name || "Unknown";
-        const deltaText = player.delta > 0 ? '+' + player.delta : player.delta;
-
-        const row = document.createElement("div");
-        row.className = "entry";
-        if (String(player.id) === String(PLAYER_ID)) row.classList.add("highlight");
-
-        row.innerHTML = `
-          <span class="place">${player.place}</span>
-          <span class="name">${name}</span>
-          <span class="elo">${player.elo}</span>
-          <span class="delta">${deltaText}</span>
-        `;
-
-        resultsEl.appendChild(row);
-      });
-    }
-
-    async function fetchMatchResults() {
-      try {
-        const resp = await fetch(API_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ player_id: PLAYER_ID, client_id: CLIENT_ID, limit: 10 })
-        });
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const data = await resp.json();
-        const matches = data.matches || [];
-        const resolvedPlayers = data.resolved?.players || {};
-
-        console.log("Fetched matches:", matches);
-
-        // Find the most recent match where PLAYER_ID is in any newRatings
-        const recentMatch = matches
-          .sort((a,b) => b.ts - a.ts) // newest first
-          .find(match =>
-            match.ratingResults.some(rg =>
-              rg.newRatings.some(p => String(p.id) === String(PLAYER_ID))
-            )
-          );
-
-        if (recentMatch) {
-          displayResults(recentMatch, resolvedPlayers);
-        } else {
-          resultsEl.innerHTML = '<div class="loading">No recent match found for this player.</div>';
-          console.warn("Player not found in last 10 matches");
-        }
-
-      } catch (err) {
-        setError(err.message);
+      const currentHash = hashMatch(recentMatch);
+      if (currentHash !== lastMatchHash) {
+        lastMatchHash = currentHash;
+        displayResults(recentMatch, resolvedPlayers); // update only on change
+      } else {
+        // console.log("No change detected, skipping update");
       }
-    }
 
-    fetchMatchResults();
-    setInterval(fetchMatchResults, REFRESH_MS);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  fetchMatchResults();
+  setInterval(fetchMatchResults, REFRESH_MS);
   </script>
 </body>
 </html>
