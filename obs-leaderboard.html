@@ -52,8 +52,9 @@
   }
 
   .entry span.rank {
-    color:#bcd4ff;
     width:30px;
+    text-align:left;
+    color:#bcd4ff;
   }
 
   .entry span.name {
@@ -62,9 +63,9 @@
   }
 
   .entry span.elo {
-    color:#f1c40f;
     width:60px;
-    text-align:right;
+    text-align:center;
+    color:#f1c40f;
   }
 
   .loading, .error {
@@ -77,13 +78,13 @@
 </head>
 <body>
   <div class="card" id="cardRoot">
-    <div class="leaderboard-title">Top 16 ELO</div>
+    <div class="leaderboard-title">Season 10</div>
     <div id="leaderboardList"></div>
   </div>
 
 <script>
 const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
-const REFRESH_MS = 15000; // 15 seconds auto-refresh
+const REFRESH_MS = 15000;
 
 const leaderboardEl = document.getElementById("leaderboardList");
 
@@ -109,7 +110,7 @@ function displayLeaderboard(data) {
     const div = document.createElement("div");
     div.className = "entry";
     div.innerHTML = `
-      <span class="rank">#${index+1}</span>
+      <span class="rank">${index+1}</span>
       <span class="name">${playerName}</span>
       <span class="elo">${entry.elo ?? "—"}</span>
     `;
@@ -144,7 +145,6 @@ async function fetchLeaderboard() {
   }
 }
 
-// Auto-refresh
 let intervalHandle = null;
 function startAutoRefresh() {
   fetchLeaderboard();
