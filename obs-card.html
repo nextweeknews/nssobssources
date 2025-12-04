@@ -74,7 +74,7 @@
   </div>
 
 <script>
-const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev"; // Replace with your Cloudflare Worker URL
+const WORKER_URL = "https://your-worker-name.your-domain.workers.dev/"; // Replace with your Cloudflare Worker URL
 const DEFAULT_PLAYER_ID = "702730732220579950";
 const REFRESH_MS = 15000; // 15s auto-refresh
 
@@ -100,4 +100,64 @@ function setPlayer(display_name, rating) {
 
 // Build POST body
 function buildBody(playerId) {
-  return JSON.stringify({ player_id: play_
+  return JSON.stringify({ player_id: playerId });
+}
+
+// Fetch player from worker
+async function fetchPlayer(playerId) {
+  setLoading();
+  try {
+    const resp = await fetch(WORKER_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: buildBody(playerId)
+    });
+
+    if (!resp.ok) {
+      const text = await resp.text();
+      throw new Error(`HTTP ${resp.status} ${text || ""}`);
+    }
+
+    const data = await resp.json();
+    const player = data && data.player ? data.player : data;
+    setPlayer(player.display_name, player.rating);
+
+  } catch (err) {
+    console.error("Fetch error:", err);
+    setError(err.message);
+  }
+}
+
+// Get player_id from query string or default
+function getPlayerId() {
+  try {
+    const params = new URLSearchParams(location.search);
+    return params.get("player_id") || DEFAULT_PLAYER_ID;
+  } catch {
+    return DEFAULT_PLAYER_ID;
+  }
+}
+
+// Auto-refresh
+let intervalHandle = null;
+function startAutoRefresh() {
+  const pid = getPlayerId();
+  if (!pid) {
+    setError("Missing player_id");
+    return;
+  }
+  fetchPlayer(pid);
+  if (intervalHandle) clearInterval(intervalHandle);
+  intervalHandle = setInterval(() => fetchPlayer(pid), REFRESH_MS);
+}
+
+window.addEventListener("load", () => {
+  if (!WORKER_URL || WORKER_URL.includes("your-worker-name")) {
+    setError("Set WORKER_URL in the HTML to your Cloudflare Worker URL");
+    return;
+  }
+  startAutoRefresh();
+});
+</script>
+</body>
+</html>
