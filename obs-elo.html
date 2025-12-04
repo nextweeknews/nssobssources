@@ -41,7 +41,6 @@ html, body {
 
 .rating-container {
   position: relative;
-  width: 200px;       /* Fixed width keeps rating centered */
   height: 60px;
   display:flex;
   justify-content:center;
@@ -52,19 +51,18 @@ html, body {
   font-size:60px;
   font-weight:700;
   color:#ffffff;
+  position: relative;
   z-index:1;
 }
 
 .delta {
   position: absolute;
-  left: 100%;          /* Place completely outside rating container */
-  margin-left: 8px;    /* small spacing */
   top: 50%;
   transform: translateY(-50%);
   font-size:28px;
   font-weight:600;
   opacity:0;
-  transition: opacity 0.5s ease;
+  transition: opacity 0.5s ease, left 0.3s ease;
 }
 
 .delta.green { color:#00ff88; }
@@ -91,46 +89,15 @@ const deltaEl = document.getElementById("delta");
 let lastRating = null;
 let deltaTimeout = null;
 
-/* ===== Smooth Number Scroll Animation ===== */
-function animateRatingChange(newValue) {
-  ratingEl.style.transform = "translateY(-40%)";
-  ratingEl.style.opacity = 0;
-
-  setTimeout(() => {
-    ratingEl.textContent = newValue;
-    ratingEl.style.transform = "translateY(40%)";
-    ratingEl.style.opacity = 0;
-
-    requestAnimationFrame(() => {
-      ratingEl.style.transition = "transform 0.4s ease, opacity 0.4s ease";
-      ratingEl.style.transform = "translateY(0)";
-      ratingEl.style.opacity = 1;
-
-      ratingEl.addEventListener('transitionend', () => {
-        ratingEl.style.transition = "";
-      }, { once: true });
-    });
-  }, 250);
+/* ===== Helper: position delta relative to rating width ===== */
+function updateDeltaPosition() {
+  const rect = ratingEl.getBoundingClientRect();
+  const containerRect = ratingEl.parentElement.getBoundingClientRect();
+  const leftPos = rect.right - containerRect.left + 8; // 8px margin
+  deltaEl.style.left = leftPos + "px";
 }
 
-/* ===== Show Delta ===== */
-function showDelta(oldValue, newValue) {
-  if (oldValue === null) return;
-  const diff = newValue - oldValue;
-  if (diff === 0) return;
-
-  deltaEl.textContent = (diff > 0 ? "+" : "") + diff;
-  deltaEl.classList.remove("green","red");
-  deltaEl.classList.add(diff > 0 ? "green":"red");
-  deltaEl.style.opacity = 1;
-
-  if (deltaTimeout) clearTimeout(deltaTimeout);
-  deltaTimeout = setTimeout(() => {
-    deltaEl.style.opacity = 0;
-  }, 10000); // hide after 10s
-}
-
-/* ===== Rating Setter ===== */
+/* ===== Animate rating change (instant first time, scroll for updates) ===== */
 function setRating(value) {
   if (lastRating === null) {
     ratingEl.textContent = value ?? "—";
@@ -140,8 +107,8 @@ function setRating(value) {
 
   if (value === lastRating) return;
 
-  // Animate rating change
-  animateRatingChange(value);
+  // Animate rating
+  ratingEl.textContent = value;
 
   // Show delta
   showDelta(lastRating, value);
@@ -149,18 +116,28 @@ function setRating(value) {
   lastRating = value;
 }
 
-function setLoading() {
-  if (lastRating === null) ratingEl.textContent = "—";
+/* ===== Show Delta ===== */
+function showDelta(oldValue, newValue) {
+  const diff = newValue - oldValue;
+  if (diff === 0 || oldValue === null) return;
+
+  deltaEl.textContent = (diff > 0 ? "+" : "") + diff;
+  deltaEl.classList.remove("green","red");
+  deltaEl.classList.add(diff > 0 ? "green":"red");
+
+  updateDeltaPosition();
+  deltaEl.style.opacity = 1;
+
+  if (deltaTimeout) clearTimeout(deltaTimeout);
+  deltaTimeout = setTimeout(() => {
+    deltaEl.style.opacity = 0;
+  }, 10000);
 }
 
-function setError(msg) {
-  ratingEl.textContent = "—";
-  console.error(msg);
-}
+function setLoading() { if (lastRating === null) ratingEl.textContent = "—"; }
+function setError(msg) { ratingEl.textContent = "—"; console.error(msg); }
 
-function buildBody(playerId) {
-  return JSON.stringify({ player_id: playerId });
-}
+function buildBody(playerId) { return JSON.stringify({ player_id: playerId }); }
 
 async function fetchRating(playerId) {
   setLoading();
@@ -178,9 +155,7 @@ async function fetchRating(playerId) {
 
     const data = await resp.json();
     const player = data.player || data;
-
-    setRating(player.rating);
-
+    if (typeof player.rating === "number") setRating(player.rating);
   } catch (err) {
     setError(err.message);
   }
@@ -199,6 +174,8 @@ function startAutoRefresh() {
   intervalHandle = setInterval(() => fetchRating(pid), REFRESH_MS);
 }
 
+/* Recompute delta position on resize */
+window.addEventListener("resize", updateDeltaPosition);
 window.addEventListener("load", startAutoRefresh);
 </script>
 
