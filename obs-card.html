@@ -33,21 +33,16 @@
   }
 
   .label {
-    font-size:28px;
-    color:#bcd4ff;;
+    font-size:16px;
+    color:#bcd4ff;
+    margin-bottom:6px;
     font-weight:600;
   }
 
   .rating {
-    font-size:60px;
+    font-size:48px;
     font-weight:700;
     color:#ffffff;
-  }
-
-  @media (max-width:420px) {
-    .card { width:300px; height:100px; }
-    .label { font-size:14px; }
-    .rating { font-size:36px; }
   }
 </style>
 </head>
@@ -58,12 +53,12 @@
   </div>
 
 <script>
-const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev"; // your Cloudflare Worker
+const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev";
 const DEFAULT_PLAYER_ID = "702730732220579950";
-const REFRESH_MS = 15000; // auto-refresh interval
+const REFRESH_MS = 15000;
 
 const ratingEl = document.getElementById("rating");
-let lastRating = null; // store previous rating
+let lastRating = null;
 
 function setRating(value) {
   if (value !== lastRating) {
@@ -102,7 +97,7 @@ async function fetchRating(playerId) {
     }
 
     const data = await resp.json();
-    const player = data && data.player ? data.player : data;
+    const player = data.player || data;
     setRating(player.rating);
 
   } catch (err) {
@@ -111,12 +106,8 @@ async function fetchRating(playerId) {
 }
 
 function getPlayerId() {
-  try {
-    const params = new URLSearchParams(location.search);
-    return params.get("player_id") || DEFAULT_PLAYER_ID;
-  } catch {
-    return DEFAULT_PLAYER_ID;
-  }
+  const params = new URLSearchParams(location.search);
+  return params.get("player_id") || DEFAULT_PLAYER_ID;
 }
 
 let intervalHandle = null;
@@ -129,5 +120,6 @@ function startAutoRefresh() {
 
 window.addEventListener("load", startAutoRefresh);
 </script>
+
 </body>
 </html>
