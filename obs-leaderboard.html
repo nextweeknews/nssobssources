@@ -4,6 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Leaderboard Overlay</title>
+
 <style>
   html, body {
     height: 100%;
@@ -20,7 +21,6 @@
 
   .card {
     width: 420px;
-    height: auto;
     background: rgba(28,28,28,0.85);
     border-radius: 12px;
     padding: 10px 0;
@@ -52,26 +52,18 @@
     transition: transform 0.5s ease, background 0.3s;
   }
 
-  .entry span.rank {
+  /* Rank colors */
+  .rank {
     width: 30px;
     text-align: right;
     padding-right: 10px;
     color: #bcd4ff;
   }
-  
-  .rank.gold {
-    color: #ffd700;
-  }
+  .rank.gold { color: #ffd700; }
+  .rank.silver { color: #c0c0c0; }
+  .rank.bronze { color: #cd7f32; }
 
-  .rank.silver {
-    color: #c0c0c0;
-  }
-
-  .rank.bronze {
-    color: #cd7f32;
-  }
-
-  .entry span.name {
+  .name {
     width: 280px;
     text-align: left;
     text-overflow: ellipsis;
@@ -79,14 +71,13 @@
     overflow: hidden;
   }
 
-  .entry span.elo {
+  .elo {
     width: 60px;
     text-align: center;
-    padding-left: 8px;
     flex-shrink: 0;
   }
 
-  .entry.highlight {
+  .highlight {
     background: rgba(255, 255, 255, 0.15);
   }
 
@@ -96,8 +87,9 @@
   }
 </style>
 </head>
+
 <body>
-<div class="card" id="cardRoot">
+<div class="card">
   <div class="leaderboard-title">Season 10</div>
   <div id="leaderboardList"></div>
 </div>
@@ -121,14 +113,15 @@ function setError(msg) {
   console.error(msg);
 }
 
-// Animate position changes
-function animateReorder(rows, newOrder) {
+/* Smooth reorder animation */
+function animateReorder(rows, newState) {
   const positions = new Map();
   rows.forEach(row => positions.set(row.dataset.playerId, row.getBoundingClientRect().top));
 
-  newOrder.forEach((player, index) => {
+  newState.forEach(player => {
     const row = rows.find(r => r.dataset.playerId === player.id);
     if (!row) return;
+
     const oldTop = positions.get(player.id);
     const newTop = row.getBoundingClientRect().top;
     const delta = oldTop - newTop;
@@ -136,65 +129,78 @@ function animateReorder(rows, newOrder) {
     if (delta) {
       row.style.transform = `translateY(${delta}px)`;
       requestAnimationFrame(() => {
-        row.style.transition = 'transform 0.5s ease';
-        row.style.transform = '';
+        row.style.transition = "transform 0.5s ease";
+        row.style.transform = "";
       });
-      row.addEventListener('transitionend', () => {
-        row.style.transition = '';
+
+      row.addEventListener("transitionend", () => {
+        row.style.transition = "";
       }, { once: true });
     }
   });
 }
 
-// Main display function
 function displayLeaderboard(entries, resolvedPlayers) {
-  const highlightPlayerId = getPlayerId();
-  const newState = entries.map((player, index) => {
-    const playerId = player.team[0];
-    const displayName = resolvedPlayers?.[playerId]?.display_name || "Unknown";
-    return { rank: index + 1, id: playerId, name: displayName, elo: player.elo ?? "—" };
+  const highlightId = getPlayerId();
+
+  const newState = entries.map((player, i) => {
+    const id = player.team[0];
+    const name = resolvedPlayers?.[id]?.display_name || "Unknown";
+    return { rank: i + 1, id, name, elo: player.elo ?? "—" };
   });
 
   const existingRows = Array.from(leaderboardEl.children).filter(row => row.dataset.playerId);
-
-  // Map by id for quick lookup
   const existingMap = {};
   existingRows.forEach(row => existingMap[row.dataset.playerId] = row);
 
   newState.forEach((player, index) => {
     let row = existingMap[player.id];
 
-if (row) {
-  // Update only changed content
-  if (row.querySelector(".name").textContent !== player.name)
-    row.querySelector(".name").textContent = player.name;
+    if (row) {
+      row.querySelector(".name").textContent = player.name;
+      row.querySelector(".elo").textContent = player.elo;
 
-  if (row.querySelector(".elo").textContent !== player.elo)
-    row.querySelector(".elo").textContent = player.elo;
+      const rankEl = row.querySelector(".rank");
+      rankEl.textContent = player.rank;
+      rankEl.className = "rank";
+      if (player.rank === 1) rankEl.classList.add("gold");
+      else if (player.rank === 2) rankEl.classList.add("silver");
+      else if (player.rank === 3) rankEl.classList.add("bronze");
 
-  // Update rank color
-  const rankEl = row.querySelector(".rank");
-  rankEl.textContent = player.rank;
-  rankEl.className = "rank";
-  if (player.rank === 1) rankEl.classList.add("gold");
-  else if (player.rank === 2) rankEl.classList.add("silver");
-  else if (player.rank === 3) rankEl.classList.add("bronze");
+      row.classList.toggle("highlight", highlightId === player.id);
 
-  // Update highlight
-  row.classList.toggle("highlight", highlightPlayerId === player.id);
+      if (leaderboardEl.children[index] !== row) {
+        leaderboardEl.insertBefore(row, leaderboardEl.children[index]);
+      }
 
-  // Reorder in DOM if necessary
-  if (leaderboardEl.children[index] !== row)
-    leaderboardEl.insertBefore(row, leaderboardEl.children[index]);
+    } else {
+      row = document.createElement("div");
+      row.className = "entry";
+      row.dataset.playerId = player.id;
+      row.classList.toggle("highlight", highlightId === player.id);
+
+      row.innerHTML = `
+        <span class="rank">${player.rank}</span>
+        <span class="name">${player.name}</span>
+        <span class="elo">${player.elo}</span>
+      `;
+
+      const rankEl = row.querySelector(".rank");
+      rankEl.className = "rank";
+      if (player.rank === 1) rankEl.classList.add("gold");
+      else if (player.rank === 2) rankEl.classList.add("silver");
+      else if (player.rank === 3) rankEl.classList.add("bronze");
+
+      leaderboardEl.insertBefore(row, leaderboardEl.children[index] || null);
+    }
   });
 
-  // Remove old rows
   existingRows.forEach(row => {
-    if (!newState.find(p => p.id === row.dataset.playerId))
+    if (!newState.find(p => p.id === row.dataset.playerId)) {
       leaderboardEl.removeChild(row);
+    }
   });
 
-  // Animate reordering
   const finalRows = Array.from(leaderboardEl.children).filter(r => r.dataset.playerId);
   animateReorder(finalRows, newState);
 }
@@ -212,28 +218,20 @@ async function fetchLeaderboard() {
       })
     });
 
-    if (!resp.ok) {
-      const text = await resp.text();
-      throw new Error(`HTTP ${resp.status}: ${text}`);
-    }
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
     const data = await resp.json();
-    const entries = data.leaderboard || [];
-    const resolvedPlayers = data.resolved?.players || {};
-    displayLeaderboard(entries, resolvedPlayers);
+    displayLeaderboard(data.leaderboard || [], data.resolved?.players || {});
+
   } catch (err) {
     setError(err.message);
   }
 }
 
-let intervalHandle = null;
-function startAutoRefresh() {
+window.addEventListener("load", () => {
   fetchLeaderboard();
-  if (intervalHandle) clearInterval(intervalHandle);
-  intervalHandle = setInterval(fetchLeaderboard, REFRESH_MS);
-}
-
-window.addEventListener("load", startAutoRefresh);
+  setInterval(fetchLeaderboard, REFRESH_MS);
+});
 </script>
 </body>
 </html>
