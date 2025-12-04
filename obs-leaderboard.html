@@ -1,100 +1,87 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Leaderboard Overlay</title>
-<style>
-  html, body {
-    height:100%;
-    margin:0;
-    background: transparent;
-    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-    -webkit-font-smoothing:antialiased;
-    -moz-osx-font-smoothing:grayscale;
-    overflow: hidden;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-  }
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Leaderboard Overlay</title>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: transparent;
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
 
-  .card {
-    width:420px;
-    height:auto;
-    background: rgba(28,28,28,0.85);
-    border-radius:12px;
-    padding:10px 0; /* top and bottom */
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    text-align:center;
-    color: #e9eef8;
-  }
+    .card {
+      width: 420px;
+      height: auto;
+      background: rgba(28,28,28,0.85);
+      border-radius: 12px;
+      padding: 10px 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      color: #e9eef8;
+    }
 
-  .leaderboard-title {
-    font-size:28px;
-    color:#bcd4ff;
-    font-weight:600;
-    margin-bottom:10px;
-  }
+    .leaderboard-title {
+      font-size: 28px;
+      color: #bcd4ff;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
 
-  .entry {
-    width: calc(100% - 20px);
-    display:flex;
-    justify-content:space-between;
-    padding:6px 10px; /* top/bottom + left/right */
-    font-size:22px;
-    font-weight:600;
-    color:#ffffff;
-    align-items:center;
-    border-radius:6px;
-    box-sizing: border-box;
-  }
+    .entry {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 12px;
+      font-size: 22px;
+      font-weight: 600;
+      color: #ffffff;
+      align-items: center;
+      border-radius: 6px;
+      box-sizing: border-box;
+    }
 
-  .entry span.rank {
-    width:40px;
-    text-align:right;
-    color:#bcd4ff;
-  }
+    .entry span.rank {
+      width: 30px;
+      text-align: right;
+      color: #bcd4ff;
+    }
 
-  .entry span.name {
-    flex: 1;
-    text-align: left;
-    padding-left: 8px;
-    margin-right: 10px;
-  }
+    .entry span.name {
+      flex: 1;
+      text-align: left;
+      padding-left: 8px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
 
-  .entry span.elo {
-    width: 50px;
-    text-align: center;
-  }
+    .entry span.elo {
+      width: 60px;
+      text-align: center;
+      flex-shrink: 0;
+    }
 
-  .entry.highlight {
-    background: rgba(255, 255, 255, 0.15);
-    width: 100%;
-  }
+    .entry.highlight {
+      background: rgba(255, 255, 255, 0.15);
+    }
 
-  .loading, .error {
-    font-size:16px;
-    color:#aab6d9;
-  }
-
-  .btn-leaderboard {
-    margin-top: 10px;
-    padding: 6px 12px;
-    font-size: 16px;
-    font-weight:600;
-    border-radius:6px;
-    border:none;
-    background-color:#607d8b;
-    color:white;
-    cursor:pointer;
-    text-decoration:none;
-  }
-  .btn-leaderboard:hover {
-    background-color:#4a6570;
-  }
-</style>
+    .loading, .error {
+      font-size: 16px;
+      color: #aab6d9;
+    }
+  </style>
 </head>
 <body>
   <div class="card" id="cardRoot">
@@ -102,88 +89,89 @@
     <div id="leaderboardList"></div>
   </div>
 
-<script>
-const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
-const REFRESH_MS = 15000; // 15 seconds auto-refresh
-const leaderboardEl = document.getElementById("leaderboardList");
+  <script>
+    const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
+    const REFRESH_MS = 15000; // 15 seconds auto-refresh
+    const leaderboardEl = document.getElementById("leaderboardList");
 
-function getPlayerId() {
-  const params = new URLSearchParams(window.location.search);
-  return params.get("player_id") || null;
-}
-
-function setLoading() {
-  leaderboardEl.innerHTML = '<div class="loading">Loading leaderboard…</div>';
-}
-
-function setError(msg) {
-  leaderboardEl.innerHTML = `<div class="error">Error: ${msg}</div>`;
-  console.error(msg);
-}
-
-function displayLeaderboard(entries, resolvedPlayers) {
-  const highlightPlayerId = getPlayerId();
-  leaderboardEl.innerHTML = ""; // Clear previous
-
-  entries.forEach((player, index) => {
-    const div = document.createElement("div");
-    div.className = "entry";
-
-    const playerId = player.team[0];
-    const displayName = (resolvedPlayers?.[playerId]?.display_name) || "Unknown";
-
-    // Highlight full width if it matches the URL
-    if (highlightPlayerId && playerId === highlightPlayerId) {
-      div.classList.add("highlight");
+    function getPlayerId() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("player_id") || null;
     }
 
-    div.innerHTML = `
-      <span class="rank">${index + 1}</span>
-      <span class="name">${displayName}</span>
-      <span class="elo">${player.elo ?? "—"}</span>
-    `;
-    leaderboardEl.appendChild(div);
-  });
-}
-
-async function fetchLeaderboard() {
-  setLoading();
-  try {
-    const resp = await fetch(WORKER_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        leaderboard: "season_10",
-        rating_type: "player_global_all",
-        client_id: "DISCORD|1069003073311211601",
-        limit: 16
-      })
-    });
-
-    if (!resp.ok) {
-      const text = await resp.text();
-      throw new Error(`HTTP ${resp.status}: ${text}`);
+    function setLoading() {
+      leaderboardEl.innerHTML = '<div class="loading">Loading leaderboard…</div>';
     }
 
-    const data = await resp.json();
-    const entries = data.leaderboard || [];
-    const resolvedPlayers = data.resolved?.players || {};
-    displayLeaderboard(entries, resolvedPlayers);
+    function setError(msg) {
+      leaderboardEl.innerHTML = `<div class="error">Error: ${msg}</div>`;
+      console.error(msg);
+    }
 
-  } catch (err) {
-    setError(err.message);
-  }
-}
+    function displayLeaderboard(entries, resolvedPlayers) {
+      const highlightPlayerId = getPlayerId();
+      leaderboardEl.innerHTML = ""; // Clear previous
 
-// Auto-refresh every REFRESH_MS
-let intervalHandle = null;
-function startAutoRefresh() {
-  fetchLeaderboard();
-  if (intervalHandle) clearInterval(intervalHandle);
-  intervalHandle = setInterval(fetchLeaderboard, REFRESH_MS);
-}
+      entries.forEach((player, index) => {
+        const div = document.createElement("div");
+        div.className = "entry";
 
-window.addEventListener("load", startAutoRefresh);
-</script>
+        const playerId = player.team[0];
+        const displayName = (resolvedPlayers?.[playerId]?.display_name) || "Unknown";
+
+        // Highlight player if it matches the URL
+        if (highlightPlayerId && playerId === highlightPlayerId) {
+          div.classList.add("highlight");
+        }
+
+        div.innerHTML = `
+          <span class="rank">${index + 1}</span>
+          <span class="name">${displayName}</span>
+          <span class="elo">${player.elo ?? "—"}</span>
+        `;
+
+        leaderboardEl.appendChild(div);
+      });
+    }
+
+    async function fetchLeaderboard() {
+      setLoading();
+      try {
+        const resp = await fetch(WORKER_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            leaderboard: "season_10",
+            rating_type: "player_global_all",
+            client_id: "DISCORD|1069003073311211601",
+            limit: 16
+          })
+        });
+
+        if (!resp.ok) {
+          const text = await resp.text();
+          throw new Error(`HTTP ${resp.status}: ${text}`);
+        }
+
+        const data = await resp.json();
+        const entries = data.leaderboard || [];
+        const resolvedPlayers = data.resolved?.players || {};
+        displayLeaderboard(entries, resolvedPlayers);
+
+      } catch (err) {
+        setError(err.message);
+      }
+    }
+
+    // Auto-refresh every REFRESH_MS
+    let intervalHandle = null;
+    function startAutoRefresh() {
+      fetchLeaderboard();
+      if (intervalHandle) clearInterval(intervalHandle);
+      intervalHandle = setInterval(fetchLeaderboard, REFRESH_MS);
+    }
+
+    window.addEventListener("load", startAutoRefresh);
+  </script>
 </body>
 </html>
