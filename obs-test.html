@@ -2,187 +2,261 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Elo Overlay</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Leaderboard Overlay</title>
 
 <style>
-html, body {
-  height:100%;
-  margin:0;
-  background: transparent;
-  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-  -webkit-font-smoothing:antialiased;
-  -moz-osx-font-smoothing:grayscale;
-  overflow: hidden;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-}
+  html, body {
+    height: 100%;
+    margin: 0;
+    background: transparent;
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
 
-/* Card doubled: 300×120 → 600×240; radius 12 → 24 */
-.card {
-  width:600px;
-  height:240px;
-  background: rgba(28,28,28,0.85);
-  border-radius:24px;
-  display:flex;
-  flex-direction:column;
-  justify-content:center;
-  align-items:center;
-  text-align:center;
-  color: #e9eef8;
-}
+  .card {
+    width: 440px;
+    background: rgba(28,28,28,0.85);
+    border-radius: 12px;
+    padding: 10px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    color: #e9eef8;
+  }
 
-/* Label doubled: 28 → 56 */
-.label {
-  font-size:56px;
-  color:#bcd4ff;
-  font-weight:600;
-  margin-bottom: 8px;
-}
+  .leaderboard-title {
+    font-size: 28px;
+    color: #bcd4ff;
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
 
-.rating-container {
-  position: relative;
-  height: 120px; /* doubled from 60 */
-  display:flex;
-  justify-content:center;
-  align-items:center;
-}
+  .entry {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 12px;
+    font-size: 22px;
+    font-weight: 600;
+    color: #ffffff;
+    align-items: center;
+    border-radius: 6px;
+    box-sizing: border-box;
+    transition: background 0.3s;
+  }
 
-/* Rating doubled: 60 → 120 */
-.rating {
-  font-size:120px;
-  font-weight:700;
-  color:#ffffff;
-  position: relative;
-  z-index:1;
-}
+  .rank {
+    width: 36px;
+    text-align: right;
+    padding-right: 10px;
+    color: #bcd4ff;
+  }
+  .rank.gold { color: #ffd700; }
+  .rank.silver { color: #c0c0c0; }
+  .rank.bronze { color: #cd7f32; }
 
-/* Delta doubled: 28 → 56, offsets doubled */
-.delta {
-  position: absolute;
-  top: 50%;
-  transform: translateX(40px);
-  font-size:56px;
-  font-weight:600;
-  opacity:0;
-  transition: opacity 0.5s ease, transform 0.5s ease;
-}
+  .name {
+    width: 290px;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+  }
 
-.delta.green { color:#00ff88; }
-.delta.red   { color:#ff5c5c; }
+  .elo {
+    width: 64px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .highlight {
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  .loading, .error {
+    font-size: 16px;
+    color: #aab6d9;
+  }
 </style>
 </head>
 
 <body>
 <div class="card">
-  <div class="label">ELO</div>
-  <div class="rating-container">
-    <div id="rating" class="rating">—</div>
-    <div id="delta" class="delta"></div>
-  </div>
+  <div class="leaderboard-title">NSS Golf Leaders: Season 10</div>
+  <div id="leaderboardList"></div>
 </div>
 
 <script>
-const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_player_rating";
-const DEFAULT_PLAYER_ID = "702730732220579950";
+const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
 const REFRESH_MS = 15000;
+const leaderboardEl = document.getElementById("leaderboardList");
 
-const ratingEl = document.getElementById("rating");
-const deltaEl = document.getElementById("delta");
-let lastRating = null;
-let deltaTimeout = null;
-
-/* Adjust for doubled size: margin from 8 → 16 */
-function updateDeltaPosition() {
-  const rect = ratingEl.getBoundingClientRect();
-  const containerRect = ratingEl.parentElement.getBoundingClientRect();
-  const leftPos = rect.right - containerRect.left + 16;
-  deltaEl.style.left = leftPos + "px";
+/* Highlight logic */
+function getPlayerId() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("player_id") || null;
 }
 
-function setRating(value) {
-  if (lastRating === null) {
-    ratingEl.textContent = value ?? "—";
-    lastRating = value;
-    return;
-  }
-
-  if (value === lastRating) return;
-
-  ratingEl.textContent = value;
-  showDelta(lastRating, value);
-  lastRating = value;
+/* State indicators */
+function setLoading() {
+  leaderboardEl.innerHTML = '<div class="loading">Loading leaderboard…</div>';
 }
 
-function showDelta(oldValue, newValue) {
-  const diff = newValue - oldValue;
-  if (diff === 0 || oldValue === null) return;
-
-  deltaEl.textContent = (diff > 0 ? "+" : "") + diff;
-  deltaEl.classList.remove("green","red");
-  deltaEl.classList.add(diff > 0 ? "green":"red");
-
-  updateDeltaPosition();
-
-  deltaEl.style.transition = "none";
-  deltaEl.style.transform = "translateY(-50%) translateX(40px)";
-  deltaEl.style.opacity = "0";
-
-  deltaEl.offsetWidth;
-
-  deltaEl.style.transition = "opacity 0.5s ease, transform 0.5s ease";
-  deltaEl.style.transform = "translateY(-50%) translateX(0)";
-  deltaEl.style.opacity = "1";
-
-  if (deltaTimeout) clearTimeout(deltaTimeout);
-  deltaTimeout = setTimeout(() => {
-    deltaEl.style.transform = "translateY(-50%) translateX(40px)";
-    deltaEl.style.opacity = "0";
-  }, 10000);
+function setError(msg) {
+  leaderboardEl.innerHTML = `<div class="error">Error: ${msg}</div>`;
+  console.error(msg);
 }
 
-function setLoading() { if (lastRating === null) ratingEl.textContent = "—"; }
-function setError(msg) { ratingEl.textContent = "—"; console.error(msg); }
-function buildBody(playerId) { return JSON.stringify({ player_id: playerId }); }
+/* ===========================
+   FLIP REORDER ANIMATION FIX  
+   =========================== */
+function animateReorder() {
+  const rows = Array.from(leaderboardEl.children).filter(r => r.dataset.playerId);
 
-async function fetchRating(playerId) {
-  setLoading();
+  // 1. Capture initial (old) positions
+  const oldPos = new Map();
+  rows.forEach(row => {
+    oldPos.set(row.dataset.playerId, row.getBoundingClientRect().top);
+  });
+
+  // 2. Next frame: measure new positions and animate
+  requestAnimationFrame(() => {
+    rows.forEach(row => {
+      const id = row.dataset.playerId;
+      const oldTop = oldPos.get(id);
+      const newTop = row.getBoundingClientRect().top;
+      const delta = oldTop - newTop;
+
+      if (!delta) return;
+
+      // Apply inverted transform
+      row.style.transform = `translateY(${delta}px)`;
+
+      // Force layout flush
+      row.offsetHeight;
+
+      // Animate to natural position
+      row.style.transition = "transform 0.5s ease";
+      row.style.transform = "";
+
+      row.addEventListener("transitionend", () => {
+        row.style.transition = "";
+      }, { once: true });
+    });
+  });
+}
+
+/* ===========================
+   RENDERING & UPDATE LOGIC
+   =========================== */
+function displayLeaderboard(entries, resolvedPlayers) {
+  const highlightId = getPlayerId();
+
+  const newState = entries.slice(0, 16).map((player, i) => {
+    const id = player.team[0];
+    const name = resolvedPlayers?.[id]?.display_name || "Unknown";
+    return { rank: i + 1, id, name, elo: player.elo ?? "—" };
+  });
+
+  const existingRows = Array.from(leaderboardEl.children).filter(row => row.dataset.playerId);
+  const existingMap = {};
+  existingRows.forEach(row => existingMap[row.dataset.playerId] = row);
+
+  /* ===== Apply DOM changes (before FLIP animate) ===== */
+  newState.forEach((player, index) => {
+    let row = existingMap[player.id];
+
+    if (row) {
+      // Update text
+      row.querySelector(".name").textContent = player.name;
+      row.querySelector(".elo").textContent = player.elo;
+
+      const rankEl = row.querySelector(".rank");
+      rankEl.textContent = player.rank;
+      rankEl.className = "rank";
+      if (player.rank === 1) rankEl.classList.add("gold");
+      else if (player.rank === 2) rankEl.classList.add("silver");
+      else if (player.rank === 3) rankEl.classList.add("bronze");
+
+      row.classList.toggle("highlight", highlightId === player.id);
+
+      // Move to correct position if needed
+      if (leaderboardEl.children[index] !== row) {
+        leaderboardEl.insertBefore(row, leaderboardEl.children[index] || null);
+      }
+
+    } else {
+      // Create a new row
+      row = document.createElement("div");
+      row.className = "entry";
+      row.dataset.playerId = player.id;
+      row.classList.toggle("highlight", highlightId === player.id);
+
+      row.innerHTML = `
+        <span class="rank">${player.rank}</span>
+        <span class="name">${player.name}</span>
+        <span class="elo">${player.elo}</span>
+      `;
+
+      const rankEl = row.querySelector(".rank");
+      if (player.rank === 1) rankEl.classList.add("gold");
+      else if (player.rank === 2) rankEl.classList.add("silver");
+      else if (player.rank === 3) rankEl.classList.add("bronze");
+
+      leaderboardEl.insertBefore(row, leaderboardEl.children[index] || null);
+    }
+  });
+
+  /* Remove players not in new state */
+  existingRows.forEach(row => {
+    if (!newState.find(p => p.id === row.dataset.playerId)) {
+      leaderboardEl.removeChild(row);
+    }
+  });
+
+  /* Run FLIP animation now that DOM order is final */
+  animateReorder();
+}
+
+/* ===========================
+   FETCH LOGIC
+   =========================== */
+async function fetchLeaderboard() {
   try {
     const resp = await fetch(WORKER_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: buildBody(playerId)
+      body: JSON.stringify({
+        leaderboard: "season_10",
+        rating_type: "player_global_all",
+        client_id: "DISCORD|1069003073311211601",
+        limit: 16
+      })
     });
 
-    if (!resp.ok) {
-      throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
-    }
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
     const data = await resp.json();
-    const player = data.player || data;
-    if (typeof player.rating === "number") setRating(player.rating);
+    displayLeaderboard(data.leaderboard || [], data.resolved?.players || {});
   } catch (err) {
     setError(err.message);
   }
 }
 
-function getPlayerId() {
-  const params = new URLSearchParams(location.search);
-  return params.get("player_id") || DEFAULT_PLAYER_ID;
-}
-
-let intervalHandle = null;
-function startAutoRefresh() {
-  const pid = getPlayerId();
-  fetchRating(pid);
-  if (intervalHandle) clearInterval(intervalHandle);
-  intervalHandle = setInterval(() => fetchRating(pid), REFRESH_MS);
-}
-
-window.addEventListener("resize", updateDeltaPosition);
-window.addEventListener("load", startAutoRefresh);
+/* ===========================
+   START
+   =========================== */
+window.addEventListener("load", () => {
+  fetchLeaderboard();
+  setInterval(fetchLeaderboard, REFRESH_MS);
+});
 </script>
-
 </body>
 </html>
