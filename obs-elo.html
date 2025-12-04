@@ -71,50 +71,55 @@ const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_player
 const DEFAULT_PLAYER_ID = "702730732220579950";
 const REFRESH_MS = 15000;
 
-const ratingEl = document.getElementById("rating");
+const ratingCurrent = document.getElementById("ratingCurrent");
+const ratingNext = document.getElementById("ratingNext");
+
 let lastRating = null;
 
-/* -------- Number Scroll Animation -------- */
-function animateNumberScroll(from, to, duration = 800) {
-  const start = performance.now();
+/* -------- Vertical Scroll Animation -------- */
+function animateScroll(newValue) {
+  ratingNext.textContent = newValue;
 
-  function frame(now) {
-    const progress = Math.min((now - start) / duration, 1);
-    const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
-    const current = Math.round(from + (to - from) * eased);
-    ratingEl.textContent = current;
+  ratingCurrent.style.transform = "translateY(-100%)";
+  ratingNext.style.transform = "translateY(0%)";
 
-    if (progress < 1) {
-      requestAnimationFrame(frame);
-    }
-  }
+  setTimeout(() => {
+    ratingCurrent.textContent = newValue;
 
-  requestAnimationFrame(frame);
+    ratingCurrent.style.transition = "none";
+    ratingNext.style.transition = "none";
+
+    ratingCurrent.style.transform = "translateY(0%)";
+    ratingNext.style.transform = "translateY(100%)";
+
+    void ratingCurrent.offsetHeight;
+
+    ratingCurrent.style.transition = "transform 0.6s ease";
+    ratingNext.style.transition = "transform 0.6s ease";
+  }, 600);
 }
 
 /* -------- Rating Setter -------- */
 function setRating(value) {
-  // No stored rating yet → show instantly
+  // First load → display immediately
   if (lastRating === null) {
-    ratingEl.textContent = value ?? "—";
+    ratingCurrent.textContent = value ?? "—";
     lastRating = value;
     return;
   }
 
-  // No change
   if (value === lastRating) return;
 
-  // Animate change
-  animateNumberScroll(lastRating, value);
+  animateScroll(value);
   lastRating = value;
 }
 
 function setLoading() {
-  if (lastRating === null) ratingEl.textContent = "—";
+  if (lastRating === null) ratingCurrent.textContent = "—";
 }
 
 function setError(msg) {
-  ratingEl.textContent = "—";
+  ratingCurrent.textContent = "—";
   console.error(msg);
 }
 
