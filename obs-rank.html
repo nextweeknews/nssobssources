@@ -49,7 +49,8 @@ html, body {
   align-items: center;
   border-radius: 6px;
   box-sizing: border-box;
-  transition: transform 0.5s ease, background 0.3s;
+  transition: background 0.3s;
+  will-change: transform;
 }
 
 .rank {
@@ -112,134 +113,13 @@ function setError(msg) {
   console.error(msg);
 }
 
-function animateReorder(rows, newState) {
-  const positions = new Map();
-  rows.forEach(row => positions.set(row.dataset.playerId, row.getBoundingClientRect().top));
+/* --------------------------------------------------
+   FLIP ANIMATION
+   -------------------------------------------------- */
+function flipAnimation(beforeRects, afterRects) {
+  Object.keys(afterRects).forEach(id => {
+    const el = document.querySelector(`[data-player-id="${]()
 
-  newState.forEach(player => {
-    const row = rows.find(r => r.dataset.playerId === player.id);
-    if (!row) return;
-
-    const oldTop = positions.get(player.id);
-    const newTop = row.getBoundingClientRect().top;
-    const delta = oldTop - newTop;
-
-    if (delta) {
-      row.style.transform = `translateY(${delta}px)`;
-      requestAnimationFrame(() => {
-        row.style.transition = "transform 0.5s ease";
-        row.style.transform = "";
-      });
-
-      row.addEventListener("transitionend", () => {
-        row.style.transition = "";
-      }, { once: true });
-    }
-  });
-}
-
-function displayLeaderboard(entries, resolvedPlayers) {
-  const highlightId = getPlayerId();
-  const totalDisplay = 15;
-  const highlightIndex = entries.findIndex(e => e.team[0] === highlightId);
-  
-  let startIndex = 0;
-  if (highlightIndex >= 0) {
-    startIndex = Math.max(0, highlightIndex - Math.floor(totalDisplay/2));
-    if (startIndex + totalDisplay > entries.length) {
-      startIndex = Math.max(0, entries.length - totalDisplay);
-    }
-  }
-
-  const visibleEntries = entries.slice(startIndex, startIndex + totalDisplay);
-  const newState = visibleEntries.map((player, i) => {
-    const id = player.team[0];
-    const name = resolvedPlayers?.[id]?.display_name || "Unknown";
-    return { rank: startIndex + i + 1, id, name, elo: player.elo ?? "—" };
-  });
-
-  const existingRows = Array.from(leaderboardEl.children).filter(row => row.dataset.playerId);
-  const existingMap = {};
-  existingRows.forEach(row => existingMap[row.dataset.playerId] = row);
-
-  newState.forEach((player, index) => {
-    let row = existingMap[player.id];
-
-    if (row) {
-      row.querySelector(".name").textContent = player.name;
-      row.querySelector(".elo").textContent = player.elo;
-
-      const rankEl = row.querySelector(".rank");
-      rankEl.textContent = player.rank;
-      rankEl.className = "rank";
-      if (player.rank === 1) rankEl.classList.add("gold");
-      else if (player.rank === 2) rankEl.classList.add("silver");
-      else if (player.rank === 3) rankEl.classList.add("bronze");
-
-      row.classList.toggle("highlight", highlightId === player.id);
-
-      if (leaderboardEl.children[index] !== row) {
-        leaderboardEl.insertBefore(row, leaderboardEl.children[index]);
-      }
-
-    } else {
-      row = document.createElement("div");
-      row.className = "entry";
-      row.dataset.playerId = player.id;
-      row.classList.toggle("highlight", highlightId === player.id);
-
-      row.innerHTML = `
-        <span class="rank">${player.rank}</span>
-        <span class="name">${player.name}</span>
-        <span class="elo">${player.elo}</span>
-      `;
-
-      const rankEl = row.querySelector(".rank");
-      rankEl.className = "rank";
-      if (player.rank === 1) rankEl.classList.add("gold");
-      else if (player.rank === 2) rankEl.classList.add("silver");
-      else if (player.rank === 3) rankEl.classList.add("bronze");
-
-      leaderboardEl.insertBefore(row, leaderboardEl.children[index] || null);
-    }
-  });
-
-  existingRows.forEach(row => {
-    if (!newState.find(p => p.id === row.dataset.playerId)) {
-      leaderboardEl.removeChild(row);
-    }
-  });
-
-  const finalRows = Array.from(leaderboardEl.children).filter(r => r.dataset.playerId);
-  animateReorder(finalRows, newState);
-}
-
-async function fetchLeaderboard() {
-  try {
-    const resp = await fetch(WORKER_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        leaderboard: "season_10",
-        rating_type: "player_global_all",
-        client_id: "DISCORD|1069003073311211601"
-      })
-    });
-
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-
-    const data = await resp.json();
-    displayLeaderboard(data.leaderboard || [], data.resolved?.players || {});
-
-  } catch (err) {
-    setError(err.message);
-  }
-}
-
-window.addEventListener("load", () => {
-  fetchLeaderboard();
-  setInterval(fetchLeaderboard, REFRESH_MS);
-});
 </script>
 </body>
 </html>
