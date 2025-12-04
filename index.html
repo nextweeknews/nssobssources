@@ -51,6 +51,41 @@
   .overlay-link:hover {
     background: #5d5d5d;
   }
+  .info-box {
+  background: #141414;
+  padding: 20px;
+  margin-top: 30px;
+  border-radius: 12px;
+  max-width: 520px;
+  line-height: 1.55;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+}
+
+.info-box h3 {
+  margin-top: 0;
+  font-size: 1.25rem;
+  color: #ffffff;
+}
+
+.info-box ol {
+  padding-left: 20px;
+  margin: 12px 0;
+}
+
+.info-box li {
+  margin-bottom: 10px;
+}
+
+.info-link {
+  color: #3a72ff;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.info-link:hover {
+  text-decoration: underline;
+}
+
 </style>
 </head>
 <body>
@@ -120,13 +155,24 @@ document.getElementById("lookupBtn").addEventListener("click", () => {
   if (pid) lookupPlayer(pid);
 });
 </script>
+  
+<div class="info-box">
+  <h3>How to Find Your Player ID</h3>
 
-<p>How to find your Player ID:</p>
-<p>1. Find and select your name here: 
-<a href="https://teamupdiscord.com/leaderboard-api/client/DISCORD%7C1069003073311211601/leaderboard/Season_10/rating_type/player_global_all/format/global"
->Season 10 Leaderboard</a>.
- This will bring you to your player page.</p>
-<p>2. Within the url, locate "/player/..." and copy that following string of numbers.</p>
-<p>3. Paste those numbers above!</p>
+  <ol>
+    <li>
+      Open the Season 10 Leaderboard:  
+      <a class="info-link" 
+         href="https://teamupdiscord.com/leaderboard-api/client/DISCORD%7C1069003073311211601/leaderboard/Season_10/rating_type/player_global_all/format/global"
+         target="_blank">
+         👉 Season 10 Leaderboard
+      </a>
+    </li>
+    <li>Click on your player name to open your player page.</li>
+    <li>Look in the URL for <code>/player/########</code> and copy the numbers.</li>
+    <li>Paste those numbers into the search box above.</li>
+  </ol>
+</div>
+
 </body>
 </html>
