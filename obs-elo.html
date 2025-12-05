@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Elo Overlay (OBS Optimized)</title>
+<title>Elo Rating</title>
 
 <style>
 html, body {
@@ -112,13 +112,11 @@ const numberEl = deltaEl.querySelector(".delta-number");
 let lastRating = null;
 let deltaTimeout = null;
 
-// Position delta relative to the updated number
 function updateDeltaPosition() {
   const width = ratingNumberEl.offsetWidth;
-  deltaEl.style.left = (width + 16) + "px"; // fixed 20px offset from number
+  deltaEl.style.left = (width + 16) + "px";
 }
 
-// Update rating with fade, then update delta
 function setRating(value) {
   if (lastRating === null) {
     ratingNumberEl.textContent = value ?? "—";
@@ -128,23 +126,19 @@ function setRating(value) {
   }
   if (value === lastRating) return;
 
-  // Fade out old number
   ratingNumberEl.style.opacity = "0";
 
   setTimeout(() => {
-    // Update number after fade
     ratingNumberEl.textContent = value;
     ratingNumberEl.style.opacity = "1";
 
-    // Update delta position after number is visible
     updateDeltaPosition();
     showDelta(lastRating, value);
 
     lastRating = value;
-  }, 500); // match opacity transition
+  }, 500);
 }
 
-// Show delta with arrow and number
 function showDelta(oldValue, newValue) {
   const diff = newValue - oldValue;
   if (diff === 0 || oldValue === null) return;
@@ -154,17 +148,15 @@ function showDelta(oldValue, newValue) {
   deltaEl.classList.remove('delta-positive','delta-negative');
   deltaEl.classList.add(diff > 0 ? 'delta-positive' : 'delta-negative');
 
-  // Animate delta from offset to final position
   deltaEl.style.transition = "none";
   deltaEl.style.transform = "translateY(-50%) translateX(20px)";
   deltaEl.style.opacity = "0";
-  deltaEl.offsetWidth; // force reflow
+  deltaEl.offsetWidth;
 
   deltaEl.style.transition = "opacity 0.5s ease, transform 0.5s ease";
   deltaEl.style.transform = "translateY(-50%) translateX(0)";
   deltaEl.style.opacity = "1";
 
-  // Auto-hide delta after 10s
   if (deltaTimeout) clearTimeout(deltaTimeout);
   deltaTimeout = setTimeout(() => {
     deltaEl.style.transform = "translateY(-50%) translateX(20px)";
@@ -183,7 +175,6 @@ function buildBody(playerId) {
   return JSON.stringify({ player_id: playerId });
 }
 
-// Fetch rating from API
 async function fetchRating(playerId) {
   setLoading();
   try {
@@ -199,7 +190,6 @@ async function fetchRating(playerId) {
   } catch (err) { setError(err.message); }
 }
 
-// Get player ID from URL or default
 function getPlayerId() {
   const params = new URLSearchParams(location.search);
   return params.get("player_id") || DEFAULT_PLAYER_ID;
