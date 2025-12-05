@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>NSS OBS Overlays</title>
+<title>Ranked NSS Golf - OBS Overlays</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
@@ -136,7 +136,7 @@
   <a id="eloLink" class="overlay-link" href="#" target="_blank">Your Elo Rating</a>
   <a id="matchLink" class="overlay-link" href="#" target="_blank">Your Previous Match</a>
   <a id="rankLink" class="overlay-link" href="#" target="_blank">Your Rank Position</a>
-  <a id="leaderboardLink" class="overlay-link" href="#" target="_blank">Season 10 Top 16</a>
+  <a id="leaderboardLink" class="overlay-link" href="#" target="_blank">Season 10: Top 16</a>
 </div>
 
 <div class="info-section">
@@ -146,13 +146,11 @@
   </div>
   <div class="info-content">
     <ol>
-      <li>Open the <a href="https://teamupdiscord.com/leaderboard-api/client/DISCORD%7C1069003073311211601/leaderboard/Season_10/rating_type/player_global_all/format/global" target="_blank">Season 10 Leaderboard</a></li>
-      <li>Find and click your player name</li>
-      <li>In the URL, copy the string of numbers after <code>/player/...</code></li>
-      <ul>
-        <li>Example: <code>702730732220579950</code></li>
-      </ul>
-      <li>Paste it into the search box above!</li>
+      <li>Open the <a href="https://teamupdiscord.com/leaderboard/client/DISCORD%7C1069003073311211601/leaderboard/Season_10/rating_type/player_global_all/format/global"
+         >Season 10 Leaderboard</a></li>
+      <li>Click your player name</li>
+      <li>Copy the <strong>full URL</strong> of your player page (or the numbers following <code>player/</code> in the URL)</li>
+      <li>Paste above!</li>
     </ol>
   </div>
 </div>
@@ -164,10 +162,9 @@
   </div>
   <div class="info-content">
     <ol>
-      <li>Open your overlay & copy its <strong>full URL</strong></li>
-      <li>In OBS, go to <strong>Sources → + → Browser</strong></li>
-      <li>Select <strong>“Create New”</strong></li>
-      <li>Paste the <strong>full URL</strong> and set the dimensions!</li>
+      <li>In an overlay page, copy the <strong>full URL</strong></li>
+      <li>Open OBS, then go to <strong>Sources</strong> → <strong>+</strong> → <strong>Browser</strong></li>
+      <li>Paste <strong>full URL</strong> and set the recommended dimensions</li>
     </ol>
   </div>
 </div>
@@ -183,7 +180,6 @@
       <li>Last Match: <code>480×400</code></li>
       <li>Rank Position: <code>450×600</code></li>
       <li>Leaderboard: <code>450×650</code></li>
-      <li>This is just for the setup. You can scale them as desired in your scene!</li>
     </ul>
   </div>
 </div>
@@ -195,12 +191,12 @@
   </div>
   <div class="info-content">
     <ul>
-      <li>If your browser sources seem laggy, frozen, or broken, you may need to disable <strong>Browser Source Hardware Acceleration</strong>.</li>
-      <li>Do this in <strong>OBS Settings/Preferences → Advanced → Sources</strong>, and restart OBS.</li>
+      <li>If overlays are lagging, freezing, or seem broken, you may need to disable <strong>Browser Source Hardware Acceleration</strong> in OBS</li>
+      <li>Apply this in <strong>Settings/Preferences</strong> → <strong>Advanced</strong> → <strong>Sources</strong>
+      <li>Restart OBS</li>
     </ul>
   </div>
 </div>
-
 
 <script>
 const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_player_rating";
@@ -212,8 +208,32 @@ const leaderboardLink = document.getElementById("leaderboardLink");
 const matchLink = document.getElementById("matchLink");
 const rankLink = document.getElementById("rankLink");
 
-async function lookupPlayer(playerId) {
+function extractPlayerId(input) {
+  const clean = input.trim();
+
+  if (/^\d{19}$/.test(clean)) {
+    return clean;
+  }
+
+  const match = clean.toLowerCase().match(/player\/(\d{19})/);
+  if (match) {
+    return match[1];
+  }
+
+  return null;
+}
+
+async function lookupPlayer(rawInput) {
+  const playerId = extractPlayerId(rawInput);
+
   resultBox.style.display = "block";
+
+  if (!playerId) {
+    nameEl.textContent = "Error";
+    ratingEl.textContent = "Invalid Player ID";
+    return;
+  }
+
   nameEl.textContent = "Loading...";
   ratingEl.textContent = "—";
 
@@ -235,10 +255,10 @@ async function lookupPlayer(playerId) {
     nameEl.textContent = player.display_name || "Unknown";
     ratingEl.textContent = player.rating ?? "N/A";
 
-    eloLink.href = `obs-elo.html?player_id=${encodeURIComponent(playerId)}`;
-    matchLink.href = `obs-match.html?player_id=${encodeURIComponent(playerId)}`;
-    rankLink.href = `obs-rank.html?player_id=${encodeURIComponent(playerId)}`;
-    leaderboardLink.href = `obs-leaderboard.html?player_id=${encodeURIComponent(playerId)}`;
+    eloLink.href = `obs-elo.html?player_id=${playerId}`;
+    matchLink.href = `obs-match.html?player_id=${playerId}`;
+    rankLink.href = `obs-rank.html?player_id=${playerId}`;
+    leaderboardLink.href = `obs-leaderboard.html?player_id=${playerId}`;
 
   } catch (err) {
     nameEl.textContent = "Error";
@@ -247,8 +267,7 @@ async function lookupPlayer(playerId) {
 }
 
 document.getElementById("lookupBtn").addEventListener("click", () => {
-  const pid = document.getElementById("playerIdInput").value.trim();
-  if (pid) lookupPlayer(pid);
+  lookupPlayer(document.getElementById("playerIdInput").value);
 });
 
 document.querySelectorAll(".info-section").forEach(section => {
@@ -267,9 +286,6 @@ document.querySelectorAll(".info-section").forEach(section => {
   });
 });
 </script>
-
-</body>
-</html>
 
 </body>
 </html>
