@@ -27,21 +27,20 @@
   .info-section {
   background: #1b1b1b;
   border-radius: 12px;
-  padding: 20px;
-  margin-top: 20px;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.45);
-
-    border-bottom: 1px solid #333;
-    margin-bottom: 10px;
-  }
+  padding: 12px 16px; /* reduced internal padding */
+  margin-top: 12px; /* smaller spacing between cards */
+  box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+}
   .info-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 0;
-    cursor: pointer;
-    user-select: none;
-  }
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px; /* reduced height */
+  cursor: pointer;
+  background: #2a2c34;
+  transition: background 0.2s ease;
+  border-radius: 8px; /* keep soft corners */
+}
   .info-header h3 {
     margin: 0;
     font-size: 18px;
