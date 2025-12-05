@@ -35,21 +35,25 @@
     }
 
     .entry {
+      height: 36px;               /* FIXED ROW HEIGHT */
+      line-height: 36px;          /* VERTICAL ALIGNMENT */
       display: flex;
       justify-content: space-between;
-      padding: 6px 12px;
+      padding: 0 12px;            /* NO VERTICAL PADDING */
       font-size: 22px;
       font-weight: 600;
       color: #ffffff;
       border-radius: 6px;
       transition: background 0.3s;
       align-items: center;
+      box-sizing: border-box;
     }
 
     .entry span.place { 
       width: 30px; 
       text-align: center; 
       color: #bcd4ff; 
+      line-height: 36px;
     }
     .entry span.place.gold { color: #ffd700; }
     .entry span.place.silver { color: #c0c0c0; }
@@ -62,16 +66,22 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      line-height: 36px;
     }
 
-    .entry span.elo { width: 65px; text-align: center; }
+    .entry span.elo { 
+      width: 65px; 
+      text-align: center;
+      line-height: 36px;
+    }
 
     .entry span.delta {
       width: 65px;
       text-align: center;
       display: flex;
       justify-content: center;
-      align-items: center;
+      align-items: center; /* ensure arrow and number vertically align */
+      line-height: 36px;
     }
 
     .delta-arrow {
@@ -90,7 +100,6 @@
       color: #aab6d9;
     }
 
-    /* Fade transition only for results list */
     #resultsList {
       opacity: 1;
       transition: opacity 0.3s ease;
@@ -139,7 +148,6 @@
     newRatings.forEach(player => {
       const name = resolvedPlayers[player.id]?.display_name || "Unknown";
 
-      // delta formatting
       let arrowSpan = '';
       let deltaText = Math.abs(player.delta);
       let deltaClass = '';
@@ -151,7 +159,6 @@
         deltaClass = 'delta-negative';
       }
 
-      // place formatting
       let placeClass = '';
       if (player.place === 1) placeClass = 'gold';
       else if (player.place === 2) placeClass = 'silver';
@@ -208,14 +215,9 @@
 
       if (currentHash !== lastMatchHash) {
         lastMatchHash = currentHash;
-
-        // Fade out only results list
         resultsEl.style.opacity = 0;
-
         setTimeout(() => {
           displayResults(recentMatch, resolvedPlayers);
-
-          // Fade in after DOM update
           requestAnimationFrame(() => resultsEl.style.opacity = 1);
         }, 300);
       }
