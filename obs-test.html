@@ -38,9 +38,13 @@
     margin-bottom: 10px;
   }
 
+  #leaderboardList {
+    width: 100%;
+    transition: opacity 0.5s ease;
+  }
+
   .entry {
     width: 100%;
-    height: 36px;
     display: flex;
     justify-content: space-between;
     padding: 6px 12px;
@@ -50,8 +54,6 @@
     align-items: center;
     border-radius: 6px;
     box-sizing: border-box;
-    opacity: 1;
-    transition: opacity 0.45s ease;
   }
 
   .rank {
@@ -99,116 +101,91 @@
 <script>
 const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
 const REFRESH_MS = 15000;
-const ANIMATION_DURATION = 450;
 const leaderboardEl = document.getElementById("leaderboardList");
+
+let lastTop16State = null;
 
 function getPlayerId() {
   const params = new URLSearchParams(window.location.search);
   return params.get("player_id") || null;
 }
 
+function setLoading() {
+  leaderboardEl.innerHTML = '<div class="loading">Loading leaderboard…</div>';
+}
+
 function softLogError(msg) {
   console.warn("Non-fatal leaderboard update issue:", msg);
 }
 
-function displayLeaderboard(entries, resolvedPlayers = {}) {
+function isTop16Changed(newTop16) {
+  if (!lastTop16State) return true;
+  if (lastTop16State.length !== newTop16.length) return true;
+
+  for (let i = 0; i < newTop16.length; i++) {
+    const oldEntry = lastTop16State[i];
+    const newEntry = newTop16[i];
+    if (
+      oldEntry.id !== newEntry.id ||
+      oldEntry.name !== newEntry.name ||
+      oldEntry.elo !== newEntry.elo
+    ) return true;
+  }
+  return false;
+}
+
+function renderLeaderboard(entries, resolvedPlayers = {}) {
   const highlightId = getPlayerId();
-  const newState = entries.slice(0, 16).map((player, i) => {
+
+  const newTop16 = entries.slice(0, 16).map((player, i) => {
     const id = player.team?.[0] ?? ("unknown_" + i);
     const name = resolvedPlayers[id]?.display_name || "New Player";
     return { rank: i + 1, id, name, elo: player.elo ?? "—" };
   });
 
-  const existingRows = Array.from(leaderboardEl.children).filter(r => r.dataset.playerId);
-  const existingMap = {};
-  existingRows.forEach(r => existingMap[r.dataset.playerId] = r);
+  if (!isTop16Changed(newTop16)) return; // No change, skip rendering
 
-  const removedRows = [];
+  // fade out the entire leaderboard body
+  leaderboardEl.style.opacity = 0;
 
-  newState.forEach((player, index) => {
-    let row = existingMap[player.id];
+  setTimeout(() => {
+    leaderboardEl.innerHTML = "";
 
-    if (!row) {
-      // New row: create and fade in
-      row = document.createElement("div");
+    newTop16.forEach(p => {
+      const row = document.createElement("div");
       row.className = "entry";
-      row.dataset.playerId = player.id;
-      row.style.opacity = "0";
-      row.innerHTML = `
-        <span class="rank"></span>
-        <span class="name"></span>
-        <span class="elo"></span>
-      `;
-      leaderboardEl.insertBefore(row, leaderboardEl.children[index] || null);
+      if (highlightId === p.id) row.classList.add("highlight");
 
-      requestAnimationFrame(() => {
-        row.querySelector(".rank").textContent = player.rank;
-        row.querySelector(".name").textContent = player.name;
-        row.querySelector(".elo").textContent = player.elo;
+      const rankEl = document.createElement("span");
+      rankEl.className = "rank";
+      rankEl.textContent = p.rank;
+      if (p.rank === 1) rankEl.classList.add("gold");
+      else if (p.rank === 2) rankEl.classList.add("silver");
+      else if (p.rank === 3) rankEl.classList.add("bronze");
 
-        const rankEl = row.querySelector(".rank");
-        rankEl.className = "rank";
-        if (player.rank === 1) rankEl.classList.add("gold");
-        else if (player.rank === 2) rankEl.classList.add("silver");
-        else if (player.rank === 3) rankEl.classList.add("bronze");
+      const nameEl = document.createElement("span");
+      nameEl.className = "name";
+      nameEl.textContent = p.name;
 
-        row.classList.toggle("highlight", highlightId === player.id);
-        row.style.opacity = "1";
-      });
-    } else {
-      // Existing row: fade only if content changed
-      const rankEl = row.querySelector(".rank");
-      const nameEl = row.querySelector(".name");
-      const eloEl = row.querySelector(".elo");
+      const eloEl = document.createElement("span");
+      eloEl.className = "elo";
+      eloEl.textContent = p.elo;
 
-      const oldContent = {
-        rank: rankEl.textContent,
-        name: nameEl.textContent,
-        elo: eloEl.textContent
-      };
+      row.appendChild(rankEl);
+      row.appendChild(nameEl);
+      row.appendChild(eloEl);
 
-      const newContent = {
-        rank: player.rank.toString(),
-        name: player.name,
-        elo: player.elo
-      };
+      leaderboardEl.appendChild(row);
+    });
 
-      const changed = oldContent.rank !== newContent.rank ||
-                      oldContent.name !== newContent.name ||
-                      oldContent.elo !== newContent.elo;
+    // fade in
+    requestAnimationFrame(() => {
+      leaderboardEl.style.opacity = 1;
+    });
 
-      if (changed) {
-        row.style.opacity = "0";
-        requestAnimationFrame(() => {
-          rankEl.textContent = newContent.rank;
-          nameEl.textContent = newContent.name;
-          eloEl.textContent = newContent.elo;
-
-          rankEl.className = "rank";
-          if (player.rank === 1) rankEl.classList.add("gold");
-          else if (player.rank === 2) rankEl.classList.add("silver");
-          else if (player.rank === 3) rankEl.classList.add("bronze");
-
-          row.classList.toggle("highlight", highlightId === player.id);
-
-          row.style.opacity = "1";
-        });
-      }
-    }
-
-    // Ensure correct order
-    if (leaderboardEl.children[index] !== row)
-      leaderboardEl.insertBefore(row, leaderboardEl.children[index] || null);
-  });
-
-  // Fade out and remove rows no longer in the leaderboard
-  existingRows.forEach(row => {
-    if (!newState.find(p => p.id === row.dataset.playerId)) {
-      row.style.opacity = "0";
-      removedRows.push(row);
-      setTimeout(() => row.remove(), ANIMATION_DURATION);
-    }
-  });
+    // store state
+    lastTop16State = newTop16;
+  }, 500); // match fade duration
 }
 
 async function fetchLeaderboard() {
@@ -228,7 +205,7 @@ async function fetchLeaderboard() {
     const data = await resp.json();
     if (!data.leaderboard) throw new Error("Empty leaderboard");
 
-    displayLeaderboard(data.leaderboard, data.resolved?.players || {});
+    renderLeaderboard(data.leaderboard, data.resolved?.players || {});
   }
   catch (err) {
     softLogError(err.message);
