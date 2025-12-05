@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Elo + Rank</title>
+<title>Elo • Rank • Tier</title>
 
 <style>
 html, body {
@@ -21,27 +21,26 @@ html, body {
 
 .card {
   width:600px;
-  height:200px;
+  height:240px;
   background: rgba(28,28,28,0.95);
   border-radius:24px;
   display:flex;
-  flex-direction:row;
-  justify-content:space-between;
+  flex-direction:column;
+  justify-content:center;
   align-items:center;
-  padding:0 20px;
   text-align:center;
   color:#e9eef8;
+  padding:10px 20px;
 }
 
-.section-rank {
-  width:40%;
+.row {
+  width:100%;
   display:flex;
-  flex-direction:column;
+  justify-content:space-between;
   align-items:center;
 }
 
-.section-elo {
-  width:60%;
+.section {
   display:flex;
   flex-direction:column;
   align-items:center;
@@ -49,8 +48,8 @@ html, body {
 
 .label {
   font-size:26px;
-  color:#bcd4ff;
   font-weight:600;
+  color:#bcd4ff;
   margin-bottom:4px;
 }
 
@@ -75,30 +74,47 @@ html, body {
 .delta-positive { color:#4ade80; }
 .delta-negative { color:#f87171; }
 .delta-arrow { margin-right:4px; }
+
+#tierLabel {
+  margin-top:12px;
+  font-size:28px;
+  font-weight:700;
+  color:#e9eef8;
+  text-transform:uppercase;
+}
 </style>
 </head>
 
 <body>
 <div class="card">
-  <div class="section-rank">
-    <div class="label">Rank</div>
-    <span id="rankNumber" class="metric">—</span>
-    <span id="rankDelta" class="delta"><span class="delta-arrow"></span><span class="delta-number"></span></span>
+
+  <div class="row">
+    <div class="section" style="width:40%">
+      <div class="label">Rank</div>
+      <span id="rankNumber" class="metric">—</span>
+      <span id="rankDelta" class="delta"><span class="delta-arrow"></span><span class="delta-number"></span></span>
+    </div>
+
+    <div class="section" style="width:60%">
+      <div class="label">ELO</div>
+      <span id="eloNumber" class="metric">—</span>
+      <span id="eloDelta" class="delta"><span class="delta-arrow"></span><span class="delta-number"></span></span>
+    </div>
   </div>
 
-  <div class="section-elo">
-    <div class="label">ELO</div>
-    <span id="eloNumber" class="metric">—</span>
-    <span id="eloDelta" class="delta"><span class="delta-arrow"></span><span class="delta-number"></span></span>
-  </div>
+  <div id="tierLabel">—</div>
+
 </div>
 
 <script>
+// CONFIG
 const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
 const REFRESH_MS = 15000;
 
+// ELEMENTS
 const eloEl = document.getElementById("eloNumber");
 const rankEl = document.getElementById("rankNumber");
+const tierEl = document.getElementById("tierLabel");
 const eloDeltaEl = document.getElementById("eloDelta");
 const rankDeltaEl = document.getElementById("rankDelta");
 const arrowElo = eloDeltaEl.querySelector(".delta-arrow");
@@ -109,11 +125,13 @@ const numberRank = rankDeltaEl.querySelector(".delta-number");
 let lastElo = null;
 let lastRank = null;
 
+// GET PLAYER ID — must be 19 digits
 function getPlayerId() {
-  const params = new URLSearchParams(location.search);
-  return params.get("player_id") || "702730732220579950";
+  const pid = new URLSearchParams(location.search).get("player_id");
+  return /^\d{19}$/.test(pid) ? pid : "702730732220579950";
 }
 
+// DELTA ANIMATIONS
 function animateDelta(el, arrow, number, oldVal, newVal, reverse=false) {
   const diff = newVal - oldVal;
   if (diff === 0 || oldVal === null) return;
@@ -125,26 +143,26 @@ function animateDelta(el, arrow, number, oldVal, newVal, reverse=false) {
   el.classList.add(diff > 0 ^ reverse ? "delta-positive" : "delta-negative");
 
   el.style.opacity = "0";
-  el.style.transform = "translateY(8px)";
+  el.style.transform = "translateY(10px)";
   requestAnimationFrame(() => {
     el.style.opacity = "1";
     el.style.transform = "translateY(0)";
   });
-  
   setTimeout(() => el.style.opacity = "0", 8000);
 }
 
+// DATA FETCH
 async function fetchData() {
   const pid = getPlayerId();
 
   try {
     const resp = await fetch(WORKER_URL, {
-      method: "POST",
-      headers: { "Content-Type":"application/json" },
-      body: JSON.stringify({
-        leaderboard: "season_10",
-        rating_type: "player_global_all",
-        client_id: "DISCORD|1069003073311211601"
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        leaderboard:"season_10",
+        rating_type:"player_global_all",
+        client_id:"DISCORD|1069003073311211601"
       })
     });
 
@@ -158,9 +176,9 @@ async function fetchData() {
     const newElo = player.elo || 0;
     const newRank = idx + 1;
 
+// ---- ELO & RANK UI ----
     if (lastElo !== null && newElo !== lastElo)
       animateDelta(eloDeltaEl, arrowElo, numberElo, lastElo, newElo);
-
     if (lastRank !== null && newRank !== lastRank)
       animateDelta(rankDeltaEl, arrowRank, numberRank, lastRank, newRank, true);
 
@@ -169,8 +187,23 @@ async function fetchData() {
 
     lastElo = newElo;
     lastRank = newRank;
-  }
-  catch(e) {
+
+// ---- TIER CALC ----
+    const tiers = data.player_global_all_tiers || [];
+    let playerTier = null;
+    for (const t of tiers) {
+      if (newElo >= t.required_elo) playerTier = t;
+    }
+
+    if (playerTier) {
+      tierEl.textContent = playerTier.name;
+      tierEl.style.color = playerTier.color;
+    } else {
+      tierEl.textContent = "Unranked";
+      tierEl.style.color = "#e9eef8";
+    }
+
+  } catch(e) {
     console.error("Leaderboard error:", e);
   }
 }
@@ -181,3 +214,4 @@ setInterval(fetchData, REFRESH_MS);
 
 </body>
 </html>
+
