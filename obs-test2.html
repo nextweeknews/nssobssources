@@ -211,7 +211,7 @@ const rankLink = document.getElementById("rankLink");
 
 // Extract player ID:
 // 1) If input is exactly 19 digits, return it
-// 2) Else, try to decode and extract digits after "player/"
+// 2) Else, if "player/<19digits>" exists anywhere, return those digits
 function extractPlayerId(input) {
   const raw = input.trim();
 
@@ -220,24 +220,13 @@ function extractPlayerId(input) {
     return raw;
   }
 
-  // Try to decode URL-ish input safely
-  let decoded = raw;
-  try {
-    decoded = decodeURIComponent(raw);
-  } catch (e) {
-    // If decode fails, just use raw
-  }
-
-  // Normalize backslashes to forward slashes
-  const clean = decoded.replace(/\\/g, "/");
-
-  // Look specifically for "player/<19digits>"
-  const match = clean.match(/player\/(\d{19})/i);
+  // Case 2: search for "player/<19digits>" in the string
+  const match = raw.match(/player\/(\d{19})/i);
   if (match) {
     return match[1];
   }
 
-  // If nothing matched, treat as invalid
+  // Otherwise, invalid
   return null;
 }
 
@@ -273,10 +262,10 @@ async function lookupPlayer(rawInput) {
     nameEl.textContent = player.display_name || "Unknown";
     ratingEl.textContent = player.rating ?? "N/A";
 
-    eloLink.href = `obs-elo.html?player_id=${playerId}`;
-    matchLink.href = `obs-match.html?player_id=${playerId}`;
-    rankLink.href = `obs-rank.html?player_id=${playerId}`;
-    leaderboardLink.href = `obs-leaderboard.html?player_id=${playerId}`;
+    eloLink.href = `obs-elo.html?player_id=${encodeURIComponent(playerId)}`;
+    matchLink.href = `obs-match.html?player_id=${encodeURIComponent(playerId)}`;
+    rankLink.href = `obs-rank.html?player_id=${encodeURIComponent(playerId)}`;
+    leaderboardLink.href = `obs-leaderboard.html?player_id=${encodeURIComponent(playerId)}`;
 
   } catch (err) {
     nameEl.textContent = "Error";
@@ -286,6 +275,13 @@ async function lookupPlayer(rawInput) {
 
 document.getElementById("lookupBtn").addEventListener("click", () => {
   lookupPlayer(document.getElementById("playerIdInput").value);
+});
+
+// Optional: hitting Enter also triggers lookup
+document.getElementById("playerIdInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    lookupPlayer(e.target.value);
+  }
 });
 
 document.querySelectorAll(".info-section").forEach(section => {
@@ -307,4 +303,3 @@ document.querySelectorAll(".info-section").forEach(section => {
 
 </body>
 </html>
-
