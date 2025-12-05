@@ -37,7 +37,7 @@
   align-items: center;
   padding: 8px 12px; /* reduced height */
   cursor: pointer;
-  background: #2a2c34;
+  background: transparent;
   transition: background 0.2s ease;
   border-radius: 8px; /* keep soft corners */
 }
@@ -47,10 +47,11 @@
     color: #fff;
   }
   .chevron {
-    transition: transform 0.25s ease;
-    font-size: 18px;
-    color: #bbb;
-  }
+  transition: transform 0.25s ease, color 0.2s ease;
+  font-size: 14px;
+  color: #777;
+  font-weight: bold;
+}
   .info-section.open .chevron {
     transform: rotate(90deg);
     color: #fff;
