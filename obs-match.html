@@ -50,10 +50,9 @@
     }
 
     .entry span.place { 
-      width: 30px; 
-      text-align: center; 
-      color: #bcd4ff; 
-      line-height: 36px;
+      width: 30px;
+      text-align: center;
+      color: #bcd4ff;
     }
     .entry span.place.gold { color: #ffd700; }
     .entry span.place.silver { color: #c0c0c0; }
@@ -66,13 +65,11 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      line-height: 36px;
     }
 
     .entry span.elo { 
-      width: 65px; 
+      width: 65px;
       text-align: center;
-      line-height: 36px;
     }
 
     .entry span.delta {
@@ -81,17 +78,14 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      line-height: 36px;
     }
 
     .delta-arrow {
-      font-size: 0.6em;
-      margin-right: 2px;
-      display: inline-block;
-      line-height: 1;
+      font-size: 0.7em;
+      margin-right: 3px;
     }
 
-    .entry.highlight { background: rgba(255, 255, 255, 0.15); }
+    .entry.highlight { background: rgba(255,255,255,0.15); }
     .delta-positive { color: #4ade80; }
     .delta-negative { color: #f87171; }
 
@@ -148,15 +142,23 @@
     newRatings.forEach(player => {
       const name = resolvedPlayers[player.id]?.display_name || "Unknown";
 
+      const eloValue = (player.elo === null || player.elo === undefined) ? "—" : player.elo;
+      const deltaValue = 
+        (player.delta === null || player.delta === undefined || isNaN(player.delta))
+          ? "—" 
+          : Math.abs(player.delta);
+
       let arrowSpan = '';
-      let deltaText = Math.abs(player.delta);
       let deltaClass = '';
-      if (player.delta > 0) {
-        arrowSpan = '<span class="delta-arrow">▲</span>';
-        deltaClass = 'delta-positive';
-      } else if (player.delta < 0) {
-        arrowSpan = '<span class="delta-arrow">▼</span>';
-        deltaClass = 'delta-negative';
+
+      if (typeof player.delta === "number") {
+        if (player.delta > 0) {
+          arrowSpan = '<span class="delta-arrow">▲</span>';
+          deltaClass = 'delta-positive';
+        } else if (player.delta < 0) {
+          arrowSpan = '<span class="delta-arrow">▼</span>';
+          deltaClass = 'delta-negative';
+        }
       }
 
       let placeClass = '';
@@ -171,8 +173,8 @@
       row.innerHTML = `
         <span class="place ${placeClass}">${player.place}</span>
         <span class="name">${name}</span>
-        <span class="elo">${player.elo}</span>
-        <span class="delta ${deltaClass}">${arrowSpan}${deltaText}</span>
+        <span class="elo">${eloValue}</span>
+        <span class="delta ${deltaClass}">${arrowSpan}${deltaValue}</span>
       `;
 
       resultsEl.appendChild(row);
@@ -186,6 +188,7 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ player_id: PLAYER_ID, client_id: CLIENT_ID, limit: 10 })
       });
+
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
       const matches = data.matches || [];
@@ -215,6 +218,7 @@
 
       if (currentHash !== lastMatchHash) {
         lastMatchHash = currentHash;
+
         resultsEl.style.opacity = 0;
         setTimeout(() => {
           displayResults(recentMatch, resolvedPlayers);
