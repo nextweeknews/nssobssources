@@ -252,6 +252,15 @@ async function lookupPlayer(rawInput) {
     }
 
     const data = await resp.json();
+
+    console.log("FULL DATA:", data);
+console.log("RESOLVED PATHS:", {
+  resolved: data.resolved,
+  tiers: data?.resolved?.tiers,
+  player_global_all_tiers: data.player_global_all_tiers
+});
+
+    
     const player = data.player || data;
 
     nameEl.textContent = player.display_name || "Unknown";
