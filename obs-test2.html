@@ -1,229 +1,234 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Player Rank</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Previous Match Results</title>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: transparent;
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
 
-<style>
-html, body {
-  height: 100%;
-  margin: 0;
-  background: transparent;
-  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  overflow: hidden;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
+    .card {
+      width: 480px;
+      background: rgba(28,28,28,0.85);
+      border-radius: 12px;
+      padding: 10px;
+      color: #e9eef8;
+      text-align: center;
+    }
 
-.card {
-  width: 450px;
-  background: rgba(28,28,28,0.85);
-  border-radius: 12px;
-  padding: 10px 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  color: #e9eef8;
-}
+    .title {
+      font-size: 28px;
+      color: #bcd4ff;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
 
-.leaderboard-title {
-  font-size: 28px;
-  color: #bcd4ff;
-  font-weight: 600;
-  margin-bottom: 10px;
-}
+    .entry {
+      height: 36px;               /* FIXED ROW HEIGHT */
+      line-height: 36px;          /* VERTICAL ALIGNMENT */
+      display: flex;
+      justify-content: space-between;
+      padding: 0 12px;            /* NO VERTICAL PADDING */
+      font-size: 22px;
+      font-weight: 600;
+      color: #ffffff;
+      border-radius: 6px;
+      transition: background 0.3s;
+      align-items: center;
+      box-sizing: border-box;
+    }
 
-/* Fade wrapper now shrinks to content, like File B */
-.fade-wrapper {
-  display: inline-block;
-  transition: opacity 350ms ease;
-  opacity: 1;
-}
+    .entry span.place { 
+      width: 30px; 
+      text-align: center; 
+      color: #bcd4ff; 
+      line-height: 36px;
+    }
+    .entry span.place.gold { color: #ffd700; }
+    .entry span.place.silver { color: #c0c0c0; }
+    .entry span.place.bronze { color: #cd7f32; }
 
-/* Leaderboard list also shrinks to content, matching File B  */
-#leaderboardList {
-  display: inline-block;
-}
+    .entry span.name {
+      width: 290px;
+      text-align: left;
+      margin-left: 10px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      line-height: 36px;
+    }
 
-/* Row layout (matches File B's width behavior exactly) */
-.entry {
-  width: auto;
-  min-width: 100%;        /* keeps consistent alignment */
-  height: 36px;
-  display: flex;
-  justify-content: space-between;
-  padding: 6px 12px;
-  font-size: 22px;
-  font-weight: 600;
-  color: #ffffff;
-  align-items: center;
-  border-radius: 6px;
-  box-sizing: border-box;
-}
+    .entry span.elo { 
+      width: 65px; 
+      text-align: center;
+      line-height: 36px;
+    }
 
-.rank {
-  width: 36px;
-  text-align: center;
-  padding-right: 10px;
-  color: #bcd4ff;
-}
-.rank.gold   { color: #ffd700; }
-.rank.silver { color: #c0c0c0; }
-.rank.bronze { color: #cd7f32; }
+    .entry span.delta {
+      width: 65px;
+      text-align: center;
+      display: flex;
+      justify-content: center;
+      align-items: center; /* ensure arrow and number vertically align */
+      line-height: 36px;
+    }
 
-.name {
-  width: 290px;
-  text-align: left;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+    .delta-arrow {
+      font-size: 0.6em;
+      margin-right: 2px;
+      display: inline-block;
+      line-height: 1;
+    }
 
-.elo {
-  width: 64px;
-  text-align: center;
-  padding-left: 10px;
-}
+    .entry.highlight { background: rgba(255, 255, 255, 0.15); }
+    .delta-positive { color: #4ade80; }
+    .delta-negative { color: #f87171; }
 
-.highlight {
-  background: rgba(255,255,255,0.15);
-}
+    .loading, .error {
+      font-size: 16px;
+      color: #aab6d9;
+    }
 
-.error {
-  font-size: 16px;
-  color: #aab6d9;
-}
-</style>
+    #resultsList {
+      opacity: 1;
+      transition: opacity 0.3s ease;
+    }
+  </style>
 </head>
-
 <body>
-<div class="card">
-  <div class="leaderboard-title">NSS Golf Rankings: Season 10</div>
-
-  <div class="fade-wrapper" id="fadeWrapper">
-    <div id="leaderboardList"></div>
+  <div class="card">
+    <div class="title">Previous Match Results</div>
+    <div id="resultsList"></div>
   </div>
-</div>
 
 <script>
-const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
-const REFRESH_MS = 15000;
-const TOTAL_DISPLAY = 15;
+  const API_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_rating_history";
+  const CLIENT_ID = "DISCORD|1069003073311211601";
+  const REFRESH_MS = 15000;
 
-const fadeWrapper = document.getElementById("fadeWrapper");
-const leaderboardEl = document.getElementById("leaderboardList");
+  const resultsEl = document.getElementById("resultsList");
+  const urlParams = new URLSearchParams(window.location.search);
+  const PLAYER_ID = urlParams.get('player_id');
 
-let lastRenderedState = null;
-
-function getPlayerId() {
-  const params = new URLSearchParams(window.location.search);
-  return params.get("player_id") || null;
-}
-
-function setError(msg) {
-  leaderboardEl.innerHTML = `<div class="error">Error: ${msg}</div>`;
-  console.error(msg);
-}
-
-function statesEqual(a, b) {
-  if (!a || !b || a.length !== b.length) return false;
-  return a.every((row, i) =>
-    row.id === b[i].id &&
-    row.rank === b[i].rank &&
-    row.name === b[i].name &&
-    row.elo === b[i].elo
-  );
-}
-
-function renderList(state, highlightId) {
-  leaderboardEl.innerHTML = "";
-
-  state.forEach(p => {
-    const row = document.createElement("div");
-    row.className = "entry";
-
-    row.innerHTML = `
-      <span class="rank">${p.rank}</span>
-      <span class="name">${p.name}</span>
-      <span class="elo">${p.elo}</span>
-    `;
-
-    const rankEl = row.querySelector(".rank");
-    rankEl.className = "rank";
-    if (p.rank === 1) rankEl.classList.add("gold");
-    else if (p.rank === 2) rankEl.classList.add("silver");
-    else if (p.rank === 3) rankEl.classList.add("bronze");
-
-    if (p.id === highlightId) row.classList.add("highlight");
-
-    leaderboardEl.appendChild(row);
-  });
-}
-
-function displayLeaderboard(entries, resolvedPlayers) {
-  const highlightId = getPlayerId();
-
-  const highlightIndex = entries.findIndex(e => e.team[0] === highlightId);
-  let startIndex = 0;
-
-  if (highlightIndex >= 0) {
-    startIndex = Math.max(0, highlightIndex - Math.floor(TOTAL_DISPLAY / 2));
-    startIndex = Math.min(startIndex, entries.length - TOTAL_DISPLAY);
+  if (!PLAYER_ID) {
+    resultsEl.innerHTML = '<div class="error">Missing player_id in URL</div>';
+    throw new Error("Missing player_id in URL query");
   }
 
-  const slice = entries.slice(startIndex, startIndex + TOTAL_DISPLAY);
+  let lastMatchHash = "";
+  let initialLoad = true;
 
-  const newState = slice.map((player, i) => ({
-    rank: startIndex + i + 1,
-    id: player.team[0],
-    name: resolvedPlayers?.[player.team[0]]?.display_name || "Unknown",
-    elo: player.elo ?? "—"
-  }));
+  function setError(msg) {
+    resultsEl.innerHTML = `<div class="error">Error: ${msg}</div>`;
+    console.error(msg);
+  }
 
-  const changed = !statesEqual(lastRenderedState, newState);
-  if (!changed) return;
+  function hashMatch(match) {
+    if (!match || !match.ratingResults) return "";
+    return match.ratingResults[0].newRatings
+      .map(p => `${p.id}:${p.place}:${p.elo}:${p.delta}`)
+      .join("|");
+  }
 
-  fadeWrapper.style.opacity = "0";
+  function displayResults(match, resolvedPlayers) {
+    const newRatings = match.ratingResults[0].newRatings;
+    resultsEl.innerHTML = '';
 
-  setTimeout(() => {
-    renderList(newState, highlightId);
-    fadeWrapper.style.opacity = "1";
-  }, 350);
+    newRatings.forEach(player => {
+      const name = resolvedPlayers[player.id]?.display_name || "Unknown";
 
-  lastRenderedState = newState;
-}
+      let arrowSpan = '';
+      let deltaText = Math.abs(player.delta);
+      let deltaClass = '';
+      if (player.delta > 0) {
+        arrowSpan = '<span class="delta-arrow">▲</span>';
+        deltaClass = 'delta-positive';
+      } else if (player.delta < 0) {
+        arrowSpan = '<span class="delta-arrow">▼</span>';
+        deltaClass = 'delta-negative';
+      }
 
-async function fetchLeaderboard() {
-  try {
-    const resp = await fetch(WORKER_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        leaderboard: "season_10",
-        rating_type: "player_global_all",
-        client_id: "DISCORD|1069003073311211601"
-      })
+      let placeClass = '';
+      if (player.place === 1) placeClass = 'gold';
+      else if (player.place === 2) placeClass = 'silver';
+      else if (player.place === 3) placeClass = 'bronze';
+
+      const row = document.createElement("div");
+      row.className = "entry";
+      if (String(player.id) === String(PLAYER_ID)) row.classList.add("highlight");
+
+      row.innerHTML = `
+        <span class="place ${placeClass}">${player.place}</span>
+        <span class="name">${name}</span>
+        <span class="elo">${player.elo}</span>
+        <span class="delta ${deltaClass}">${arrowSpan}${deltaText}</span>
+      `;
+
+      resultsEl.appendChild(row);
     });
-
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const data = await resp.json();
-
-    displayLeaderboard(data.leaderboard || [], data.resolved?.players || {});
   }
-  catch (err) {
-    setError(err.message);
-  }
-}
 
-window.addEventListener("load", () => {
-  fetchLeaderboard();
-  setInterval(fetchLeaderboard, REFRESH_MS);
-});
+  async function fetchMatchResults() {
+    try {
+      const resp = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ player_id: PLAYER_ID, client_id: CLIENT_ID, limit: 10 })
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      const matches = data.matches || [];
+      const resolvedPlayers = data.resolved?.players || {};
+
+      const recentMatch = matches
+        .sort((a,b) => b.ts - a.ts)
+        .find(match =>
+          match.ratingResults.some(rg =>
+            rg.newRatings.some(p => String(p.id) === String(PLAYER_ID))
+          )
+        );
+
+      if (!recentMatch) {
+        resultsEl.innerHTML = '<div class="loading">No recent match found for this player.</div>';
+        return;
+      }
+
+      const currentHash = hashMatch(recentMatch);
+
+      if (initialLoad) {
+        initialLoad = false;
+        lastMatchHash = currentHash;
+        displayResults(recentMatch, resolvedPlayers);
+        return;
+      }
+
+      if (currentHash !== lastMatchHash) {
+        lastMatchHash = currentHash;
+        resultsEl.style.opacity = 0;
+        setTimeout(() => {
+          displayResults(recentMatch, resolvedPlayers);
+          requestAnimationFrame(() => resultsEl.style.opacity = 1);
+        }, 300);
+      }
+
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  fetchMatchResults();
+  setInterval(fetchMatchResults, REFRESH_MS);
 </script>
 </body>
 </html>
