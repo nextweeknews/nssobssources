@@ -26,44 +26,39 @@ html, body {
   border-radius:24px;
   display:flex;
   flex-direction:row;
-  justify-content:space-around;
+  justify-content:space-between;
   align-items:center;
+  padding:0 20px;
   text-align:center;
   color:#e9eef8;
-  padding:0 10px;
 }
 
 .section-rank {
-  width:38%;
+  width:40%;
   display:flex;
   flex-direction:column;
   align-items:center;
 }
 
 .section-elo {
-  width:62%;
+  width:60%;
   display:flex;
   flex-direction:column;
   align-items:center;
 }
 
 .label {
-  font-size:28px;
+  font-size:26px;
   color:#bcd4ff;
   font-weight:600;
-  margin-bottom:2px;
+  margin-bottom:4px;
 }
 
-.metric-rank {
-  font-size:72px;
+.metric {
+  font-size:80px;
   font-weight:700;
   line-height:1;
-}
-
-.metric-elo {
-  font-size:88px;
-  font-weight:700;
-  line-height:1;
+  white-space:nowrap;
 }
 
 .delta {
@@ -85,19 +80,17 @@ html, body {
 
 <body>
 <div class="card">
-
   <div class="section-rank">
     <div class="label">Rank</div>
-    <span id="rankNumber" class="metric-rank">—</span>
+    <span id="rankNumber" class="metric">—</span>
     <span id="rankDelta" class="delta"><span class="delta-arrow"></span><span class="delta-number"></span></span>
   </div>
 
   <div class="section-elo">
     <div class="label">ELO</div>
-    <span id="eloNumber" class="metric-elo">—</span>
+    <span id="eloNumber" class="metric">—</span>
     <span id="eloDelta" class="delta"><span class="delta-arrow"></span><span class="delta-number"></span></span>
   </div>
-
 </div>
 
 <script>
@@ -106,10 +99,8 @@ const REFRESH_MS = 15000;
 
 const eloEl = document.getElementById("eloNumber");
 const rankEl = document.getElementById("rankNumber");
-
 const eloDeltaEl = document.getElementById("eloDelta");
 const rankDeltaEl = document.getElementById("rankDelta");
-
 const arrowElo = eloDeltaEl.querySelector(".delta-arrow");
 const numberElo = eloDeltaEl.querySelector(".delta-number");
 const arrowRank = rankDeltaEl.querySelector(".delta-arrow");
