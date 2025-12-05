@@ -4,6 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Player Rank</title>
+
 <style>
 html, body {
   height: 100%;
@@ -37,17 +38,16 @@ html, body {
   margin-bottom: 10px;
 }
 
-.leaderboard-container {
-  position: relative;
+/* Fade wrapper */
+.fade-wrapper {
   width: 100%;
-  height: 540px; /* 28px x 15 rows */
-  overflow: hidden;
+  transition: opacity 350ms ease;
+  opacity: 1;
 }
 
 .entry {
-  position: absolute;
-  left: 0;
   width: 100%;
+  height: 36px;
   display: flex;
   justify-content: space-between;
   padding: 6px 12px;
@@ -57,9 +57,6 @@ html, body {
   align-items: center;
   border-radius: 6px;
   box-sizing: border-box;
-  background: transparent;
-  transition: transform 0.45s ease, opacity 0.45s ease;
-  opacity: 1;
 }
 
 .rank {
@@ -68,49 +65,53 @@ html, body {
   padding-right: 10px;
   color: #bcd4ff;
 }
-.rank.gold { color: #ffd700; }
+.rank.gold   { color: #ffd700; }
 .rank.silver { color: #c0c0c0; }
 .rank.bronze { color: #cd7f32; }
 
 .name {
   width: 290px;
   text-align: left;
-  text-overflow: ellipsis;
   white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .elo {
   width: 64px;
   text-align: center;
   padding-left: 10px;
-  flex-shrink: 0;
 }
 
 .highlight {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255,255,255,0.15);
 }
 
-.loading, .error {
+.error {
   font-size: 16px;
   color: #aab6d9;
 }
 </style>
 </head>
+
 <body>
 <div class="card">
   <div class="leaderboard-title">NSS Golf Rankings: Season 10</div>
-  <div class="leaderboard-container" id="leaderboardList"></div>
+
+  <!-- wrapper around rankings list only -->
+  <div class="fade-wrapper" id="fadeWrapper">
+    <div id="leaderboardList"></div>
+  </div>
 </div>
 
 <script>
 const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
 const REFRESH_MS = 15000;
-const ANIMATION_DURATION = 450;
-const ROW_HEIGHT = 36; // matches working top-16 leaderboard
 const TOTAL_DISPLAY = 15;
+const fadeWrapper = document.getElementById("fadeWrapper");
 const leaderboardEl = document.getElementById("leaderboardList");
-let initialLoad = true;
+
+let lastRenderedState = null;
 
 function getPlayerId() {
   const params = new URLSearchParams(window.location.search);
@@ -122,96 +123,76 @@ function setError(msg) {
   console.error(msg);
 }
 
+function statesEqual(a, b) {
+  if (!a || !b || a.length !== b.length) return false;
+  return a.every((row, i) =>
+    row.id === b[i].id &&
+    row.rank === b[i].rank &&
+    row.name === b[i].name &&
+    row.elo === b[i].elo
+  );
+}
+
+function renderList(state, highlightId) {
+  leaderboardEl.innerHTML = "";
+
+  state.forEach(p => {
+    const row = document.createElement("div");
+    row.className = "entry";
+
+    row.innerHTML = `
+      <span class="rank">${p.rank}</span>
+      <span class="name">${p.name}</span>
+      <span class="elo">${p.elo}</span>
+    `;
+
+    const rankEl = row.querySelector(".rank");
+    rankEl.className = "rank";
+    if (p.rank === 1) rankEl.classList.add("gold");
+    else if (p.rank === 2) rankEl.classList.add("silver");
+    else if (p.rank === 3) rankEl.classList.add("bronze");
+
+    if (p.id === highlightId) row.classList.add("highlight");
+
+    leaderboardEl.appendChild(row);
+  });
+}
+
 function displayLeaderboard(entries, resolvedPlayers) {
   const highlightId = getPlayerId();
 
-  // determine slice
+  // Determine the 15-row slice based on highlight ID
   const highlightIndex = entries.findIndex(e => e.team[0] === highlightId);
   let startIndex = 0;
+
   if (highlightIndex >= 0) {
     startIndex = Math.max(0, highlightIndex - Math.floor(TOTAL_DISPLAY / 2));
-    if (startIndex + TOTAL_DISPLAY > entries.length) {
-      startIndex = Math.max(0, entries.length - TOTAL_DISPLAY);
-    }
+    startIndex = Math.min(startIndex, entries.length - TOTAL_DISPLAY);
   }
-  const visible = entries.slice(startIndex, startIndex + TOTAL_DISPLAY);
 
-  const newState = visible.map((player, i) => ({
+  const slice = entries.slice(startIndex, startIndex + TOTAL_DISPLAY);
+
+  const newState = slice.map((player, i) => ({
     rank: startIndex + i + 1,
     id: player.team[0],
     name: resolvedPlayers?.[player.team[0]]?.display_name || "Unknown",
     elo: player.elo ?? "—"
   }));
 
-  // Map existing rows
-  const existingRows = Array.from(leaderboardEl.children).filter(r => r.dataset.playerId);
-  const existingMap = {};
-  existingRows.forEach(r => existingMap[r.dataset.playerId] = r);
+  // Only fade when actual change is detected
+  const changed = !statesEqual(lastRenderedState, newState);
 
-  const removedRows = [];
+  if (!changed) return;
 
-  // capture old positions for FLIP
-  const oldPos = new Map();
-  existingRows.forEach(r => oldPos.set(r.dataset.playerId, r.offsetTop));
+  // Fade out → update → fade in
+  fadeWrapper.style.opacity = "0";
 
-  newState.forEach((player, index) => {
-    let row = existingMap[player.id];
-    const targetTop = index * ROW_HEIGHT;
+  setTimeout(() => {
+    renderList(newState, highlightId);
+    fadeWrapper.style.opacity = "1";
+  }, 350);
 
-    if (!row) {
-      row = document.createElement("div");
-      row.className = "entry";
-      row.dataset.playerId = player.id;
-      row.style.top = targetTop + "px";
-      row.style.opacity = initialLoad ? "1" : "0";
-
-      row.innerHTML = `
-        <span class="rank"></span>
-        <span class="name"></span>
-        <span class="elo"></span>
-      `;
-      leaderboardEl.appendChild(row);
-
-      if (!initialLoad) {
-        requestAnimationFrame(() => {
-          row.style.transition = `opacity ${ANIMATION_DURATION}ms ease`;
-          row.style.opacity = "1";
-        });
-      }
-    }
-
-    row.querySelector(".name").textContent = player.name;
-    row.querySelector(".elo").textContent = player.elo;
-
-    const rankEl = row.querySelector(".rank");
-    rankEl.textContent = player.rank;
-    rankEl.className = "rank";
-    if (player.rank === 1) rankEl.classList.add("gold");
-    else if (player.rank === 2) rankEl.classList.add("silver");
-    else if (player.rank === 3) rankEl.classList.add("bronze");
-
-    row.classList.toggle("highlight", highlightId === player.id);
-
-    // FLIP movement
-    const oldTop = oldPos.get(player.id) ?? targetTop;
-    const deltaY = oldTop - targetTop;
-    row.style.transform = `translateY(${deltaY}px)`;
-    row.offsetHeight; // force reflow
-    row.style.transition = `transform ${ANIMATION_DURATION}ms ease`;
-    row.style.transform = "";
-  });
-
-  // Remove rows no longer visible
-  existingRows.forEach(row => {
-    if (!newState.find(p => p.id === row.dataset.playerId)) {
-      removedRows.push(row);
-      row.style.transition = `opacity ${ANIMATION_DURATION}ms ease`;
-      row.style.opacity = "0";
-      setTimeout(() => row.remove(), ANIMATION_DURATION);
-    }
-  });
-
-  initialLoad = false;
+  lastRenderedState = newState;
 }
 
 async function fetchLeaderboard() {
@@ -225,10 +206,13 @@ async function fetchLeaderboard() {
         client_id: "DISCORD|1069003073311211601"
       })
     });
+
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
+
     displayLeaderboard(data.leaderboard || [], data.resolved?.players || {});
-  } catch (err) {
+  }
+  catch (err) {
     setError(err.message);
   }
 }
