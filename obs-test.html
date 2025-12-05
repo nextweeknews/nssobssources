@@ -20,48 +20,60 @@ html, body {
 }
 
 .card {
-  width:720px;
-  height:240px;
+  width:600px;
+  height:200px;
   background: rgba(28,28,28,0.95);
   border-radius:24px;
   display:flex;
   flex-direction:row;
-  justify-content:space-evenly;
+  justify-content:space-around;
   align-items:center;
   text-align:center;
   color:#e9eef8;
-  padding:0 20px;
+  padding:0 10px;
 }
 
-.section {
-  width:45%;
+.section-rank {
+  width:38%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+
+.section-elo {
+  width:62%;
   display:flex;
   flex-direction:column;
   align-items:center;
 }
 
 .label {
-  font-size:36px;
+  font-size:28px;
   color:#bcd4ff;
   font-weight:600;
-  margin-bottom:4px;
+  margin-bottom:2px;
 }
 
-.metric {
+.metric-rank {
+  font-size:72px;
+  font-weight:700;
+  line-height:1;
+}
+
+.metric-elo {
   font-size:88px;
   font-weight:700;
-  color:#ffffff;
-  position:relative;
+  line-height:1;
 }
 
 .delta {
-  font-size:36px;
+  font-size:28px;
   font-weight:600;
   opacity:0;
   pointer-events:none;
   display:inline-flex;
   align-items:center;
-  margin-left:10px;
+  margin-top:4px;
   transition:opacity 0.4s ease, transform 0.4s ease;
 }
 
@@ -73,17 +85,19 @@ html, body {
 
 <body>
 <div class="card">
-  <div class="section">
+
+  <div class="section-rank">
+    <div class="label">Rank</div>
+    <span id="rankNumber" class="metric-rank">—</span>
+    <span id="rankDelta" class="delta"><span class="delta-arrow"></span><span class="delta-number"></span></span>
+  </div>
+
+  <div class="section-elo">
     <div class="label">ELO</div>
-    <span id="eloNumber" class="metric">—</span>
+    <span id="eloNumber" class="metric-elo">—</span>
     <span id="eloDelta" class="delta"><span class="delta-arrow"></span><span class="delta-number"></span></span>
   </div>
 
-  <div class="section">
-    <div class="label">Rank</div>
-    <span id="rankNumber" class="metric">—</span>
-    <span id="rankDelta" class="delta"><span class="delta-arrow"></span><span class="delta-number"></span></span>
-  </div>
 </div>
 
 <script>
@@ -120,7 +134,7 @@ function animateDelta(el, arrow, number, oldVal, newVal, reverse=false) {
   el.classList.add(diff > 0 ^ reverse ? "delta-positive" : "delta-negative");
 
   el.style.opacity = "0";
-  el.style.transform = "translateY(10px)";
+  el.style.transform = "translateY(8px)";
   requestAnimationFrame(() => {
     el.style.opacity = "1";
     el.style.transform = "translateY(0)";
@@ -145,13 +159,13 @@ async function fetchData() {
 
     const data = await resp.json();
     const entries = data.leaderboard || [];
-    const playerIndex = entries.findIndex(p => p.team[0] === pid);
+    const idx = entries.findIndex(p => p.team[0] === pid);
 
-    if (playerIndex < 0) return;
+    if (idx < 0) return;
 
-    const player = entries[playerIndex];
+    const player = entries[idx];
     const newElo = player.elo || 0;
-    const newRank = playerIndex + 1;
+    const newRank = idx + 1;
 
     if (lastElo !== null && newElo !== lastElo)
       animateDelta(eloDeltaEl, arrowElo, numberElo, lastElo, newElo);
@@ -160,7 +174,7 @@ async function fetchData() {
       animateDelta(rankDeltaEl, arrowRank, numberRank, lastRank, newRank, true);
 
     eloEl.textContent = newElo;
-    rankEl.textContent = newRank; // ← removed "#"
+    rankEl.textContent = newRank;
 
     lastElo = newElo;
     lastRank = newRank;
