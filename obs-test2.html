@@ -107,31 +107,37 @@ const deltaEl = document.getElementById("delta");
 let lastRating = null;
 let deltaTimeout = null;
 
+// Position delta relative to the updated rating number
 function updateDeltaPosition() {
   const rect = ratingNumberEl.getBoundingClientRect();
   const containerRect = ratingNumberEl.parentElement.getBoundingClientRect();
-  deltaEl.style.left = (rect.right - containerRect.left + 20) + "px"; // 20px distance
+  deltaEl.style.left = (rect.right - containerRect.left + 20) + "px"; // 20px offset
 }
 
 function setRating(value) {
   if (lastRating === null) {
     ratingNumberEl.textContent = value ?? "—";
+    ratingNumberEl.style.opacity = "1";
     lastRating = value;
     return;
   }
 
   if (value === lastRating) return;
 
-  // fade out, update number, update delta, fade in
+  // Fade out current number
   ratingNumberEl.style.opacity = "0";
-  setTimeout(() => {
-    ratingNumberEl.textContent = value;
-    updateDeltaPosition(); // position delta based on updated number
-    ratingNumberEl.style.opacity = "1";
-  }, 500);
 
-  showDelta(lastRating, value);
-  lastRating = value;
+  setTimeout(() => {
+    // Update rating number after fade
+    ratingNumberEl.textContent = value;
+    ratingNumberEl.style.opacity = "1";
+
+    // Now position delta based on the updated number
+    updateDeltaPosition();
+    showDelta(lastRating, value);
+
+    lastRating = value;
+  }, 500); // match fade duration
 }
 
 function showDelta(oldValue, newValue) {
@@ -155,11 +161,11 @@ function showDelta(oldValue, newValue) {
   deltaEl.appendChild(arrowSpan);
   deltaEl.appendChild(numberSpan);
 
-  // initial position offset for animation
+  // Animate delta from offset to final position
   deltaEl.style.transition = "none";
   deltaEl.style.transform = "translateY(-50%) translateX(20px)";
   deltaEl.style.opacity = "0";
-  deltaEl.offsetWidth;
+  deltaEl.offsetWidth; // force reflow
 
   deltaEl.style.transition = "opacity 0.5s ease, transform 0.5s ease";
   deltaEl.style.transform = "translateY(-50%) translateX(0)";
