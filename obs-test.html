@@ -25,6 +25,25 @@
     border: none;
     outline: none;
     margin-right: 10px;
+    padding-right: 36px; /* space for icons */
+  }
+
+  /* Green check style */
+  input.valid {
+    border: 2px solid #3aff62;
+    background-image: url('data:image/svg+xml;utf8,<svg fill="%233aff62" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M13.485 1.929l.707.707-8.071 8.071-4.243-4.243.707-.707 3.536 3.536z"/></svg>');
+    background-repeat: no-repeat;
+    background-size: 20px;
+    background-position: right 10px center;
+  }
+
+  /* Red X style */
+  input.invalid {
+    border: 2px solid #ff5d5d;
+    background-image: url('data:image/svg+xml;utf8,<svg fill="%23ff5d5d" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M1.293 1.293l13.414 13.414-.707.707L.586 2l.707-.707zm13.414 0L.293 14.707l.707.707L15.414 2l-.707-.707z"/></svg>');
+    background-repeat: no-repeat;
+    background-size: 20px;
+    background-position: right 10px center;
   }
 
   button {
@@ -146,10 +165,10 @@
   </div>
   <div class="info-content">
     <ol>
-      <li>Open the Season 10 Leaderboard</li>
-      <li>Click your name to open profile</li>
-      <li>Copy the number after <code>player/</code></li>
-      <li>Paste into the box above</li>
+      <li>Open leaderboard</li>
+      <li>Select your player name</li>
+      <li>Copy the numbers after <code>/player/</code></li>
+      <li>Paste above!</li>
     </ol>
   </div>
 </div>
@@ -164,7 +183,7 @@
       <li>Copy full overlay URL</li>
       <li>OBS → Sources → + → Browser</li>
       <li>Select “Create New”</li>
-      <li>Paste URL and adjust size</li>
+      <li>Paste URL, set dimensions</li>
     </ol>
   </div>
 </div>
@@ -180,7 +199,6 @@
       <li>Last Match: <code>480×400</code></li>
       <li>Rank Position: <code>450×600</code></li>
       <li>Leaderboard: <code>450×650</code></li>
-      <li>Then resize freely in OBS!</li>
     </ul>
   </div>
 </div>
@@ -192,13 +210,13 @@
   </div>
   <div class="info-content">
     <ul>
-      <li>If overlays freeze or lag:</li>
-      <li>OBS Settings → Advanced → Sources</li>
-      <li>Disable Browser Source Hardware Acceleration</li>
-      <li>Restart OBS</li>
+      <li>If overlay freezes:</li>
+      <li>Disable OBS Browser Source Hardware Acceleration</li>
+      <li>Restart OBS afterwards</li>
     </ul>
   </div>
 </div>
+
 
 <script>
 const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_player_rating";
@@ -210,33 +228,22 @@ const leaderboardLink = document.getElementById("leaderboardLink");
 const matchLink = document.getElementById("matchLink");
 const rankLink = document.getElementById("rankLink");
 
-// 💯 Final robust ID extraction logic
-function extractPlayerId(input) {
-  const clean = input.trim();
-  const lower = clean.toLowerCase();
+// Live validation icon logic
+function validateInput() {
+  const input = document.getElementById("playerIdInput");
+  const value = input.value.trim();
 
-  // Look specifically for "player/<19digits>"
-  const match = lower.match(/player\/(\d{19})/);
-  if (match) return match[1];
+  const isValid = /^\d{19}$/.test(value);
 
-  // Accept exact 19-digit only input
-  if (/^\d{19}$/.test(clean)) return clean;
-
-  return null;
-}
-
-async function lookupPlayer(rawInput) {
-  const playerId = extractPlayerId(rawInput);
-
-  resultBox.style.display = "block";
-
-  if (!playerId) {
-    nameEl.textContent = "Error";
-    ratingEl.textContent = "Invalid Player ID";
-    return;
+  input.classList.remove("valid", "invalid");
+  if (value.length > 0) {
+    input.classList.add(isValid ? "valid" : "invalid");
   }
+}
+document.getElementById("playerIdInput").addEventListener("input", validateInput);
 
-  // UI update
+async function lookupPlayer(playerId) {
+  resultBox.style.display = "block";
   nameEl.textContent = "Loading...";
   ratingEl.textContent = "—";
 
@@ -258,11 +265,10 @@ async function lookupPlayer(rawInput) {
     nameEl.textContent = player.display_name || "Unknown";
     ratingEl.textContent = player.rating ?? "N/A";
 
-    // Proper corrected links
-    eloLink.href = `obs-elo.html?player_id=${playerId}`;
-    matchLink.href = `obs-match.html?player_id=${playerId}`;
-    rankLink.href = `obs-rank.html?player_id=${playerId}`;
-    leaderboardLink.href = `obs-leaderboard.html?player_id=${playerId}`;
+    eloLink.href = `obs-elo.html?player_id=${encodeURIComponent(playerId)}`;
+    matchLink.href = `obs-match.html?player_id=${encodeURIComponent(playerId)}`;
+    rankLink.href = `obs-rank.html?player_id=${encodeURIComponent(playerId)}`;
+    leaderboardLink.href = `obs-leaderboard.html?player_id=${encodeURIComponent(playerId)}`;
 
   } catch (err) {
     nameEl.textContent = "Error";
@@ -270,19 +276,11 @@ async function lookupPlayer(rawInput) {
   }
 }
 
-// Button click
 document.getElementById("lookupBtn").addEventListener("click", () => {
-  lookupPlayer(document.getElementById("playerIdInput").value);
+  const pid = document.getElementById("playerIdInput").value.trim();
+  if (pid) lookupPlayer(pid);
 });
 
-// Press Enter to search
-document.getElementById("playerIdInput").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    lookupPlayer(e.target.value);
-  }
-});
-
-// Expandable info sections
 document.querySelectorAll(".info-section").forEach(section => {
   const header = section.querySelector(".info-header");
   const content = section.querySelector(".info-content");
