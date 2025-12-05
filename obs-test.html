@@ -3,215 +3,234 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Player Rank</title>
+<title>Leaderboard Overlay</title>
+
 <style>
-html, body {
-  height: 100%;
-  margin: 0;
-  background: transparent;
-  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  overflow: hidden;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
+  html, body {
+    height: 100%;
+    margin: 0;
+    background: transparent;
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
 
-.card {
-  width: 450px;
-  background: rgba(28,28,28,0.85);
-  border-radius: 12px;
-  padding: 10px 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  color: #e9eef8;
-}
+  .card {
+    width: 450px;
+    background: rgba(28,28,28,0.85);
+    border-radius: 12px;
+    padding: 10px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    color: #e9eef8;
+  }
 
-.leaderboard-title {
-  font-size: 28px;
-  color: #bcd4ff;
-  font-weight: 600;
-  margin-bottom: 10px;
-}
+  .leaderboard-title {
+    font-size: 28px;
+    color: #bcd4ff;
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
 
-.leaderboard-container {
-  position: relative;
-  width: 100%;
-  height: 380px; /* fixed height for visible slice */
-  overflow: hidden;
-}
+  .entry {
+    width: 100%;
+    height: 36px; /* fixed row height */
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 12px;
+    font-size: 22px;
+    font-weight: 600;
+    color: #ffffff;
+    align-items: center;
+    border-radius: 6px;
+    box-sizing: border-box;
+    transition: background 0.3s, opacity 0.45s ease, transform 0.45s ease;
+    will-change: transform, opacity;
+    opacity: 1;
+  }
 
-.entry {
-  position: absolute;
-  left: 0;
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  padding: 6px 12px;
-  font-size: 22px;
-  font-weight: 600;
-  color: #ffffff;
-  align-items: center;
-  border-radius: 6px;
-  box-sizing: border-box;
-  background: transparent;
-  transition: transform 0.45s ease, opacity 0.45s ease;
-  opacity: 1;
-}
+  .rank {
+    width: 36px;
+    text-align: center;
+    padding-right: 10px;
+    color: #bcd4ff;
+  }
+  .rank.gold { color: #ffd700; }
+  .rank.silver { color: #c0c0c0; }
+  .rank.bronze { color: #cd7f32; }
 
-.rank {
-  width: 36px;
-  text-align: center;
-  padding-right: 10px;
-  color: #bcd4ff;
-}
-.rank.gold { color: #ffd700; }
-.rank.silver { color: #c0c0c0; }
-.rank.bronze { color: #cd7f32; }
+  .name {
+    width: 290px;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+  }
 
-.name {
-  width: 290px;
-  text-align: left;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  overflow: hidden;
-}
+  .elo {
+    width: 64px;
+    text-align: center;
+    padding-left: 10px;
+    flex-shrink: 0;
+  }
 
-.elo {
-  width: 64px;
-  text-align: center;
-  padding-left: 10px;
-  flex-shrink: 0;
-}
+  .highlight {
+    background: rgba(255, 255, 255, 0.15);
+  }
 
-.highlight {
-  background: rgba(255, 255, 255, 0.15);
-}
-
-.loading, .error {
-  font-size: 16px;
-  color: #aab6d9;
-}
+  .loading, .error {
+    font-size: 16px;
+    color: #aab6d9;
+  }
 </style>
 </head>
+
 <body>
 <div class="card">
-  <div class="leaderboard-title">NSS Golf Rankings: Season 10</div>
-  <div class="leaderboard-container" id="leaderboardList"></div>
+  <div class="leaderboard-title">NSS Golf Leaders: Season 10</div>
+  <div id="leaderboardList"></div>
 </div>
 
 <script>
 const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
 const REFRESH_MS = 15000;
-const ANIMATION_DURATION = 450;
+const ANIMATION_DURATION = 500;
+const ROW_HEIGHT = 36; // fixed row height
 const leaderboardEl = document.getElementById("leaderboardList");
-let initialLoad = true;
-const ROW_HEIGHT = 28; // px, adjust to match CSS
 
 function getPlayerId() {
   const params = new URLSearchParams(window.location.search);
   return params.get("player_id") || null;
 }
 
-function setError(msg) {
-  leaderboardEl.innerHTML = `<div class="error">Error: ${msg}</div>`;
-  console.error(msg);
+function setLoading() {
+  leaderboardEl.innerHTML = '<div class="loading">Loading leaderboard…</div>';
 }
 
-function displayLeaderboard(entries, resolvedPlayers) {
-  const highlightId = getPlayerId();
-  const totalDisplay = 15;
-  const highlightIndex = entries.findIndex(e => e.team[0] === highlightId);
+function softLogError(msg) {
+  console.warn("Non-fatal leaderboard update issue:", msg);
+}
 
-  let startIndex = 0;
-  if (highlightIndex >= 0) {
-    startIndex = Math.max(0, highlightIndex - Math.floor(totalDisplay / 2));
-    if (startIndex + totalDisplay > entries.length) {
-      startIndex = Math.max(0, entries.length - totalDisplay);
-    }
+/* -----------------------------
+   FLIP + Fade Animations
+   ----------------------------- */
+function animateReorder(oldPos) {
+  const rows = Array.from(leaderboardEl.children)
+    .filter(r => r.dataset.playerId);
+
+  rows.forEach(row => {
+    const id = row.dataset.playerId;
+    const oldTop = oldPos.get(id);
+    if (oldTop == null) return;
+
+    const newTop = row.offsetTop;
+    const delta = oldTop - newTop;
+    if (delta === 0) return;
+
+    row.style.transform = `translateY(${delta}px)`;
+    row.offsetHeight;
+
+    row.style.transition = `transform ${ANIMATION_DURATION}ms ease`;
+    row.style.transform = "";
+
+    row.addEventListener("transitionend", () => {
+      row.style.transition = "";
+    }, { once: true });
+  });
+}
+
+function displayLeaderboard(entries, resolvedPlayers = {}) {
+  const highlightId = getPlayerId();
+
+  if (!Array.isArray(entries)) {
+    softLogError("Invalid leaderboard format");
+    return;
   }
 
-  const visible = entries.slice(startIndex, startIndex + totalDisplay);
-  const newState = visible.map((player, i) => ({
-    rank: startIndex + i + 1,
-    id: player.team[0],
-    name: resolvedPlayers?.[player.team[0]]?.display_name || "Unknown",
-    elo: player.elo ?? "—"
-  }));
+  const newState = entries.slice(0, 16).map((player, i) => {
+    const id = player.team?.[0] ?? ("unknown_" + i);
+    const name = resolvedPlayers[id]?.display_name || "New Player";
+    return { rank: i + 1, id, name, elo: player.elo ?? "—" };
+  });
 
-  // Map existing rows by player ID
-  const existingRows = Array.from(leaderboardEl.children).filter(r => r.dataset.playerId);
-  const existingMap = {};
-  existingRows.forEach(r => existingMap[r.dataset.playerId] = r);
+  // capture old positions
+  const oldPos = new Map();
+  Array.from(leaderboardEl.children).forEach(row => {
+    if (row.dataset.playerId)
+      oldPos.set(row.dataset.playerId, row.offsetTop);
+  });
+
+  const existing = {};
+  Array.from(leaderboardEl.children).forEach(r => {
+    if (r.dataset.playerId) existing[r.dataset.playerId] = r;
+  });
 
   const removedRows = [];
 
-  // Position map for FLIP
-  const oldPos = new Map();
-  existingRows.forEach(row => oldPos.set(row.dataset.playerId, row.offsetTop));
-
-  // Create / update rows
-  newState.forEach((player, index) => {
-    let row = existingMap[player.id];
-    const targetTop = index * ROW_HEIGHT;
+  newState.forEach((p, index) => {
+    let row = existing[p.id];
 
     if (!row) {
       row = document.createElement("div");
       row.className = "entry";
-      row.dataset.playerId = player.id;
-      row.style.top = targetTop + "px";
-      row.style.opacity = initialLoad ? "1" : "0";
+      row.dataset.playerId = p.id;
+      row.style.opacity = "0"; // fade-in
+      row.style.top = `${index * ROW_HEIGHT}px`;
 
       row.innerHTML = `
         <span class="rank"></span>
         <span class="name"></span>
         <span class="elo"></span>
       `;
-      leaderboardEl.appendChild(row);
+      leaderboardEl.insertBefore(row, leaderboardEl.children[index] || null);
 
-      if (!initialLoad) {
-        requestAnimationFrame(() => {
-          row.style.transition = `opacity ${ANIMATION_DURATION}ms ease`;
-          row.style.opacity = "1";
-        });
-      }
+      requestAnimationFrame(() => {
+        row.style.transition = `opacity ${ANIMATION_DURATION}ms ease`;
+        row.style.opacity = "1";
+      });
     }
 
-    row.querySelector(".name").textContent = player.name;
-    row.querySelector(".elo").textContent = player.elo;
+    row.querySelector(".name").textContent = p.name;
+    row.querySelector(".elo").textContent = p.elo;
 
     const rankEl = row.querySelector(".rank");
-    rankEl.textContent = player.rank;
+    rankEl.textContent = p.rank;
     rankEl.className = "rank";
-    if (player.rank === 1) rankEl.classList.add("gold");
-    else if (player.rank === 2) rankEl.classList.add("silver");
-    else if (player.rank === 3) rankEl.classList.add("bronze");
+    if (p.rank === 1) rankEl.classList.add("gold");
+    else if (p.rank === 2) rankEl.classList.add("silver");
+    else if (p.rank === 3) rankEl.classList.add("bronze");
 
-    row.classList.toggle("highlight", highlightId === player.id);
+    row.classList.toggle("highlight", highlightId === p.id);
+
+    row.style.top = `${index * ROW_HEIGHT}px`;
 
     // FLIP movement
-    const oldTop = oldPos.get(player.id) ?? targetTop;
-    const deltaY = oldTop - targetTop;
+    const oldTop = oldPos.get(p.id) ?? index * ROW_HEIGHT;
+    const deltaY = oldTop - (index * ROW_HEIGHT);
     row.style.transform = `translateY(${deltaY}px)`;
     row.offsetHeight; // force reflow
     row.style.transition = `transform ${ANIMATION_DURATION}ms ease`;
     row.style.transform = "";
   });
 
-  // Remove rows that are no longer visible
-  existingRows.forEach(row => {
+  // fade out removed rows
+  Array.from(leaderboardEl.children).forEach(row => {
     if (!newState.find(p => p.id === row.dataset.playerId)) {
-      removedRows.push(row);
       row.style.transition = `opacity ${ANIMATION_DURATION}ms ease`;
       row.style.opacity = "0";
-      setTimeout(() => row.remove(), ANIMATION_DURATION);
+      removedRows.push(row);
     }
   });
 
-  initialLoad = false;
+  setTimeout(() => removedRows.forEach(r => r.remove()), ANIMATION_DURATION);
+
+  requestAnimationFrame(() => animateReorder(oldPos));
 }
 
 async function fetchLeaderboard() {
@@ -222,14 +241,16 @@ async function fetchLeaderboard() {
       body: JSON.stringify({
         leaderboard: "season_10",
         rating_type: "player_global_all",
-        client_id: "DISCORD|1069003073311211601"
+        client_id: "DISCORD|1069003073311211601",
+        limit: 16
       })
     });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
     displayLeaderboard(data.leaderboard || [], data.resolved?.players || {});
-  } catch (err) {
-    setError(err.message);
+  }
+  catch (err) {
+    softLogError(err.message);
   }
 }
 
