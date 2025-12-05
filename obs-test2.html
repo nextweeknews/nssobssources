@@ -40,7 +40,7 @@ html, body {
 .leaderboard-container {
   position: relative;
   width: 100%;
-  height: 420px; /* adjust for 15 rows */
+  height: 420px; /* 28px x 15 rows */
   overflow: hidden;
 }
 
@@ -107,9 +107,10 @@ html, body {
 const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
 const REFRESH_MS = 15000;
 const ANIMATION_DURATION = 450;
+const ROW_HEIGHT = 28; // matches working top-16 leaderboard
+const TOTAL_DISPLAY = 15;
 const leaderboardEl = document.getElementById("leaderboardList");
 let initialLoad = true;
-const ROW_HEIGHT = 28; // px, adjust to match CSS
 
 function getPlayerId() {
   const params = new URLSearchParams(window.location.search);
@@ -121,41 +122,20 @@ function setError(msg) {
   console.error(msg);
 }
 
-function animateReorder(oldPos) {
-  const rows = Array.from(leaderboardEl.children).filter(r => r.dataset.playerId);
-  rows.forEach(row => {
-    const id = row.dataset.playerId;
-    const oldTop = oldPos.get(id);
-    if (oldTop == null) return;
-
-    const newTop = row.offsetTop;
-    const delta = oldTop - newTop;
-    if (delta === 0) return;
-
-    row.style.transform = `translateY(${delta}px)`;
-    row.offsetHeight;
-    row.style.transition = `transform ${ANIMATION_DURATION}ms ease`;
-    row.style.transform = "";
-
-    row.addEventListener("transitionend", () => row.style.transition = "", { once: true });
-  });
-}
-
-function displayLeaderboard(entries, resolvedPlayers = {}) {
+function displayLeaderboard(entries, resolvedPlayers) {
   const highlightId = getPlayerId();
-  const totalDisplay = 15;
 
-  // Determine slice around highlighted player
+  // determine slice
   const highlightIndex = entries.findIndex(e => e.team[0] === highlightId);
   let startIndex = 0;
   if (highlightIndex >= 0) {
-    startIndex = Math.max(0, highlightIndex - Math.floor(totalDisplay / 2));
-    if (startIndex + totalDisplay > entries.length) {
-      startIndex = Math.max(0, entries.length - totalDisplay);
+    startIndex = Math.max(0, highlightIndex - Math.floor(TOTAL_DISPLAY / 2));
+    if (startIndex + TOTAL_DISPLAY > entries.length) {
+      startIndex = Math.max(0, entries.length - TOTAL_DISPLAY);
     }
   }
+  const visible = entries.slice(startIndex, startIndex + TOTAL_DISPLAY);
 
-  const visible = entries.slice(startIndex, startIndex + totalDisplay);
   const newState = visible.map((player, i) => ({
     rank: startIndex + i + 1,
     id: player.team[0],
@@ -169,8 +149,10 @@ function displayLeaderboard(entries, resolvedPlayers = {}) {
   existingRows.forEach(r => existingMap[r.dataset.playerId] = r);
 
   const removedRows = [];
+
+  // capture old positions for FLIP
   const oldPos = new Map();
-  existingRows.forEach(row => oldPos.set(row.dataset.playerId, row.offsetTop));
+  existingRows.forEach(r => oldPos.set(r.dataset.playerId, r.offsetTop));
 
   newState.forEach((player, index) => {
     let row = existingMap[player.id];
@@ -210,16 +192,16 @@ function displayLeaderboard(entries, resolvedPlayers = {}) {
 
     row.classList.toggle("highlight", highlightId === player.id);
 
-    // FLIP animation
+    // FLIP movement
     const oldTop = oldPos.get(player.id) ?? targetTop;
     const deltaY = oldTop - targetTop;
     row.style.transform = `translateY(${deltaY}px)`;
-    row.offsetHeight;
+    row.offsetHeight; // force reflow
     row.style.transition = `transform ${ANIMATION_DURATION}ms ease`;
     row.style.transform = "";
   });
 
-  // Remove rows no longer in slice
+  // Remove rows no longer visible
   existingRows.forEach(row => {
     if (!newState.find(p => p.id === row.dataset.playerId)) {
       removedRows.push(row);
