@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <title>NSS OBS Overlays</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+
 <style>
   body {
     font-family: Inter, system-ui, sans-serif;
@@ -11,6 +12,13 @@
     background: #0c0c0c;
     color: #e8ecf5;
   }
+
+  h2 {
+    font-weight: 600;
+    margin-bottom: 16px;
+  }
+
+  /* Lookup Card */
   .card {
     background: #1b1b1b;
     border-radius: 12px;
@@ -19,52 +27,7 @@
     max-width: 400px;
     box-shadow: 0 6px 20px rgba(0,0,0,0.45);
   }
-  /* Match info boxes with card styling */
-  .info-box {
-  max-width: 400px;
-  margin-top: 20px;
-}
-  .info-section {
-  background: #1b1b1b;
-  border-radius: 12px;
-  padding: 12px 16px; /* reduced internal padding */
-  margin-top: 12px; /* smaller spacing between cards */
-  box-shadow: 0 4px 14px rgba(0,0,0,0.35);
-}
-  .info-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 12px; /* reduced height */
-  cursor: pointer;
-  background: transparent;
-  transition: background 0.2s ease;
-  border-radius: 8px; /* keep soft corners */
-}
-  .info-header h3 {
-    margin: 0;
-    font-size: 18px;
-    color: #fff;
-  }
-  .chevron {
-  transition: transform 0.25s ease, color 0.2s ease;
-  font-size: 14px;
-  color: #777;
-  font-weight: bold;
-}
-  .info-section.open .chevron {
-    transform: rotate(90deg);
-    color: #fff;
-  }
-  .info-content {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.3s ease;
-    color: #ddd;
-  }
-  .info-content a {
-    color: #4ea3ff;
-  }
+
   input {
     padding: 10px;
     width: 260px;
@@ -73,6 +36,7 @@
     outline: none;
     margin-right: 10px;
   }
+
   button {
     padding: 10px 16px;
     border-radius: 8px;
@@ -81,6 +45,82 @@
     color: #fff;
     cursor: pointer;
     font-weight: 600;
+  }
+  button:hover { background: #2f5fe0; }
+
+  /* Overlay buttons */
+  .overlay-link {
+    display: block;
+    width: 90%;
+    margin: 12px auto 0 auto;
+    text-align: center;
+    padding: 12px 14px;
+    border-radius: 8px;
+    background: #4a4a4a;
+    color: #fff;
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .overlay-link:hover {
+    background: #5d5d5d;
+  }
+
+  /* Info box sections styled like cards */
+  .info-section {
+    background: #1b1b1b;
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin-top: 12px;
+    max-width: 400px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+  }
+
+  .info-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 6px;
+    cursor: pointer;
+    border-radius: 8px;
+  }
+
+  .info-header:hover h3 {
+    color: #6fa8ff;
+  }
+
+  .info-header h3 {
+    margin: 0;
+    font-size: 17px;
+    color: #fff;
+  }
+
+  .chevron {
+    transition: transform 0.25s ease, color 0.2s ease;
+    font-size: 16px;
+    color: #888;
+    font-weight: bold;
+  }
+
+  .info-section.open .chevron {
+    transform: rotate(90deg);
+    color: #fff;
+  }
+
+  .info-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+    color: #ddd;
+    padding-left: 2px;
+  }
+
+  .info-content a {
+    color: #4ea3ff;
+  }
+
+  ol, ul {
+    margin-top: 10px;
+    margin-bottom: 10px;
   }
 </style>
 </head>
@@ -102,74 +142,124 @@
   <a id="leaderboardLink" class="overlay-link" href="#" target="_blank">Season 10 Top 16</a>
 </div>
 
-<div class="info-box">
-
-  <div class="info-section">
-    <div class="info-header">
-      <h3>How to Find Your Player ID</h3>
-      <div class="chevron">▶</div>
-    </div>
-    <div class="info-content">
-      <ol>
-        <li>
-          Open the <a href="https://teamupdiscord.com/leaderboard-api/client/DISCORD%7C1069003073311211601/leaderboard/Season_10/rating_type/player_global_all/format/global" target="_blank">Season 10 Leaderboard</a>
-        </li>
-        <li>Find and click your player name</li>
-        <li>In the URL, copy the string of numbers after <code>/player/...</code></li>
-        <li>Paste them into the search box</li>
-      </ol>
-    </div>
+<!-- INFO CARD 1 -->
+<div class="info-section">
+  <div class="info-header">
+    <h3>How to Find Your Player ID</h3>
+    <div class="chevron">▶</div>
   </div>
-
-  <div class="info-section">
-    <div class="info-header">
-      <h3>How to Add Overlays to OBS</h3>
-      <div class="chevron">▶</div>
-    </div>
-    <div class="info-content">
-      <ol>
-        <li>Open an overlay and copy its <strong>full URL</strong></li>
-        <li>In OBS, select <strong>Sources → + → Browser</strong></li>
-        <li>Select <strong>"Create New"</strong></li>
-        <li>Paste URL and remove default CSS</li>
-      </ol>
-    </div>
+  <div class="info-content">
+    <ol>
+      <li>Open the <a href="https://teamupdiscord.com/leaderboard-api/client/DISCORD%7C1069003073311211601/leaderboard/Season_10/rating_type/player_global_all/format/global" target="_blank">Season 10 Leaderboard</a></li>
+      <li>Find and click your player name</li>
+      <li>Copy the number after <code>/player/</code></li>
+      <li>Paste into the search box above</li>
+    </ol>
   </div>
+</div>
 
-  <div class="info-section">
-    <div class="info-header">
-      <h3>Recommended Resolutions</h3>
-      <div class="chevron">▶</div>
-    </div>
-    <div class="info-content">
-      <ul>
-        <li>Simple Elo: <code>600x240</code></li>
-        <li>Last Match: <code>480x400</code></li>
-        <li>Rank Position: <code>450x600</code></li>
-        <li>Leaderboard: <code>500x650</code></li>
-      </ul>
-    </div>
+<!-- INFO CARD 2 -->
+<div class="info-section">
+  <div class="info-header">
+    <h3>How to Add Overlays to OBS</h3>
+    <div class="chevron">▶</div>
   </div>
+  <div class="info-content">
+    <ol>
+      <li>Open your overlay & copy its full URL</li>
+      <li>OBS → Sources → + → Browser</li>
+      <li>Select “Create New”</li>
+      <li>Paste URL → Remove default CSS</li>
+    </ol>
+  </div>
+</div>
 
+<!-- INFO CARD 3 -->
+<div class="info-section">
+  <div class="info-header">
+    <h3>Recommended Resolutions</h3>
+    <div class="chevron">▶</div>
+  </div>
+  <div class="info-content">
+    <ul>
+      <li>Simple Elo: 600×240</li>
+      <li>Last Match: 480×400</li>
+      <li>Rank Position: 450×600</li>
+      <li>Leaderboard: 500×650</li>
+    </ul>
+  </div>
 </div>
 
 <script>
-  document.querySelectorAll(".info-section").forEach(section => {
-    const header = section.querySelector(".info-header");
-    const content = section.querySelector(".info-content");
+const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_player_rating";
+const nameEl = document.getElementById("name");
+const ratingEl = document.getElementById("rating");
+const resultBox = document.getElementById("result");
+const eloLink = document.getElementById("eloLink");
+const leaderboardLink = document.getElementById("leaderboardLink");
+const matchLink = document.getElementById("matchLink");
+const rankLink = document.getElementById("rankLink");
 
-    header.addEventListener("click", () => {
-      const isOpen = section.classList.contains("open");
-      if (isOpen) {
-        section.classList.remove("open");
-        content.style.maxHeight = null;
-      } else {
-        section.classList.add("open");
-        content.style.maxHeight = content.scrollHeight + "px";
-      }
+async function lookupPlayer(playerId) {
+  resultBox.style.display = "block";
+  nameEl.textContent = "Loading...";
+  ratingEl.textContent = "—";
+
+  try {
+    const resp = await fetch(WORKER_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ player_id: playerId })
     });
+
+    if (!resp.ok) {
+      const text = await resp.text();
+      throw new Error(`HTTP ${resp.status}: ${text}`);
+    }
+
+    const data = await resp.json();
+    const player = data.player || data;
+
+    nameEl.textContent = player.display_name || "Unknown";
+    ratingEl.textContent = player.rating ?? "N/A";
+
+    eloLink.href = `obs-elo.html?player_id=${encodeURIComponent(playerId)}`;
+    matchLink.href = `obs-match.html?player_id=${encodeURIComponent(playerId)}`;
+    rankLink.href = `obs-rank.html?player_id=${encodeURIComponent(playerId)}`;
+    leaderboardLink.href = `obs-leaderboard.html?player_id=${encodeURIComponent(playerId)}`;
+
+  } catch (err) {
+    nameEl.textContent = "Error";
+    ratingEl.textContent = err.message;
+  }
+}
+
+document.getElementById("lookupBtn").addEventListener("click", () => {
+  const pid = document.getElementById("playerIdInput").value.trim();
+  if (pid) lookupPlayer(pid);
+});
+
+// Expandable cards
+document.querySelectorAll(".info-section").forEach(section => {
+  const header = section.querySelector(".info-header");
+  const content = section.querySelector(".info-content");
+
+  header.addEventListener("click", () => {
+    const isOpen = section.classList.contains("open");
+    if (isOpen) {
+      section.classList.remove("open");
+      content.style.maxHeight = null;
+    } else {
+      section.classList.add("open");
+      content.style.maxHeight = content.scrollHeight + "px";
+    }
   });
+});
 </script>
+
+</body>
+</html>
+
 
 </body>
 </html>
