@@ -25,25 +25,6 @@
     border: none;
     outline: none;
     margin-right: 10px;
-    padding-right: 36px; /* space for icons */
-  }
-
-  /* Green check style */
-  input.valid {
-    border: 2px solid #3aff62;
-    background-image: url('data:image/svg+xml;utf8,<svg fill="%233aff62" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M13.485 1.929l.707.707-8.071 8.071-4.243-4.243.707-.707 3.536 3.536z"/></svg>');
-    background-repeat: no-repeat;
-    background-size: 20px;
-    background-position: right 10px center;
-  }
-
-  /* Red X style */
-  input.invalid {
-    border: 2px solid #ff5d5d;
-    background-image: url('data:image/svg+xml;utf8,<svg fill="%23ff5d5d" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M1.293 1.293l13.414 13.414-.707.707L.586 2l.707-.707zm13.414 0L.293 14.707l.707.707L15.414 2l-.707-.707z"/></svg>');
-    background-repeat: no-repeat;
-    background-size: 20px;
-    background-position: right 10px center;
   }
 
   button {
@@ -165,9 +146,9 @@
   </div>
   <div class="info-content">
     <ol>
-      <li>Open leaderboard</li>
-      <li>Select your player name</li>
-      <li>Copy the numbers after <code>/player/</code></li>
+      <li>Open the leaderboard</li>
+      <li>Click your player name</li>
+      <li>Copy the numbers after <code>player/</code> in the URL</li>
       <li>Paste above!</li>
     </ol>
   </div>
@@ -182,8 +163,7 @@
     <ol>
       <li>Copy full overlay URL</li>
       <li>OBS → Sources → + → Browser</li>
-      <li>Select “Create New”</li>
-      <li>Paste URL, set dimensions</li>
+      <li>Paste URL and set dimensions</li>
     </ol>
   </div>
 </div>
@@ -210,13 +190,11 @@
   </div>
   <div class="info-content">
     <ul>
-      <li>If overlay freezes:</li>
-      <li>Disable OBS Browser Source Hardware Acceleration</li>
-      <li>Restart OBS afterwards</li>
+      <li>If overlays lag/freeze → disable Browser Source Hardware Acceleration in OBS</li>
+      <li>Restart OBS</li>
     </ul>
   </div>
 </div>
-
 
 <script>
 const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_player_rating";
@@ -228,22 +206,35 @@ const leaderboardLink = document.getElementById("leaderboardLink");
 const matchLink = document.getElementById("matchLink");
 const rankLink = document.getElementById("rankLink");
 
-// Live validation icon logic
-function validateInput() {
-  const input = document.getElementById("playerIdInput");
-  const value = input.value.trim();
+// 👇 New: strict extraction logic
+function extractPlayerId(input) {
+  const clean = input.trim();
 
-  const isValid = /^\d{19}$/.test(value);
-
-  input.classList.remove("valid", "invalid");
-  if (value.length > 0) {
-    input.classList.add(isValid ? "valid" : "invalid");
+  // Accept exact 19 digits
+  if (/^\d{19}$/.test(clean)) {
+    return clean;
   }
-}
-document.getElementById("playerIdInput").addEventListener("input", validateInput);
 
-async function lookupPlayer(playerId) {
+  // Extract ONLY after "player/"
+  const match = clean.toLowerCase().match(/player\/(\d{19})/);
+  if (match) {
+    return match[1];
+  }
+
+  return null;
+}
+
+async function lookupPlayer(rawInput) {
+  const playerId = extractPlayerId(rawInput);
+
   resultBox.style.display = "block";
+
+  if (!playerId) {
+    nameEl.textContent = "Error";
+    ratingEl.textContent = "Invalid Player ID";
+    return;
+  }
+
   nameEl.textContent = "Loading...";
   ratingEl.textContent = "—";
 
@@ -265,10 +256,10 @@ async function lookupPlayer(playerId) {
     nameEl.textContent = player.display_name || "Unknown";
     ratingEl.textContent = player.rating ?? "N/A";
 
-    eloLink.href = `obs-elo.html?player_id=${encodeURIComponent(playerId)}`;
-    matchLink.href = `obs-match.html?player_id=${encodeURIComponent(playerId)}`;
-    rankLink.href = `obs-rank.html?player_id=${encodeURIComponent(playerId)}`;
-    leaderboardLink.href = `obs-leaderboard.html?player_id=${encodeURIComponent(playerId)}`;
+    eloLink.href = `obs-elo.html?player_id=${playerId}`;
+    matchLink.href = `obs-match.html?player_id=${playerId}`;
+    rankLink.href = `obs-rank.html?player_id=${playerId}`;
+    leaderboardLink.href = `obs-leaderboard.html?player_id=${playerId}`;
 
   } catch (err) {
     nameEl.textContent = "Error";
@@ -277,8 +268,7 @@ async function lookupPlayer(playerId) {
 }
 
 document.getElementById("lookupBtn").addEventListener("click", () => {
-  const pid = document.getElementById("playerIdInput").value.trim();
-  if (pid) lookupPlayer(pid);
+  lookupPlayer(document.getElementById("playerIdInput").value);
 });
 
 document.querySelectorAll(".info-section").forEach(section => {
