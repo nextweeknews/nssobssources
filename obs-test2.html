@@ -1,234 +1,216 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Previous Match Results</title>
-  <style>
-    html, body {
-      height: 100%;
-      margin: 0;
-      background: transparent;
-      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-      overflow: hidden;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Elo Overlay</title>
 
-    .card {
-      width: 480px;
-      background: rgba(28,28,28,0.85);
-      border-radius: 12px;
-      padding: 10px;
-      color: #e9eef8;
-      text-align: center;
-    }
+<style>
+html, body {
+  height:100%;
+  margin:0;
+  background: transparent;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  overflow: hidden;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
 
-    .title {
-      font-size: 28px;
-      color: #bcd4ff;
-      font-weight: 600;
-      margin-bottom: 10px;
-    }
+.card {
+  width:640px;
+  height:240px;
+  background: rgba(28,28,28,0.85);
+  border-radius:24px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  text-align:center;
+  color: #e9eef8;
+}
 
-    .entry {
-      height: 36px;               /* FIXED ROW HEIGHT */
-      line-height: 36px;          /* VERTICAL ALIGNMENT */
-      display: flex;
-      justify-content: space-between;
-      padding: 0 12px;            /* NO VERTICAL PADDING */
-      font-size: 22px;
-      font-weight: 600;
-      color: #ffffff;
-      border-radius: 6px;
-      transition: background 0.3s;
-      align-items: center;
-      box-sizing: border-box;
-    }
+.label {
+  font-size:56px;
+  color:#bcd4ff;
+  font-weight:600;
+  margin-bottom: 8px;
+}
 
-    .entry span.place { 
-      width: 30px; 
-      text-align: center; 
-      color: #bcd4ff; 
-      line-height: 36px;
-    }
-    .entry span.place.gold { color: #ffd700; }
-    .entry span.place.silver { color: #c0c0c0; }
-    .entry span.place.bronze { color: #cd7f32; }
+.rating-container {
+  position: relative;
+  height: 120px;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
 
-    .entry span.name {
-      width: 290px;
-      text-align: left;
-      margin-left: 10px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      line-height: 36px;
-    }
+.rating {
+  font-size:120px;
+  font-weight:700;
+  color:#ffffff;
+  position: relative;
+  z-index:1;
+  transition: opacity 0.5s ease; /* fade transition for rating number */
+}
 
-    .entry span.elo { 
-      width: 65px; 
-      text-align: center;
-      line-height: 36px;
-    }
+.delta {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%) translateX(40px);
+  font-size:56px;
+  font-weight:600;
+  opacity:0;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+  display: flex;
+  align-items: center;
+}
 
-    .entry span.delta {
-      width: 65px;
-      text-align: center;
-      display: flex;
-      justify-content: center;
-      align-items: center; /* ensure arrow and number vertically align */
-      line-height: 36px;
-    }
+.delta-arrow {
+  font-size: 0.6em;
+  margin-right: 4px;
+  line-height: 1;
+  display: inline-block;
+}
 
-    .delta-arrow {
-      font-size: 0.6em;
-      margin-right: 2px;
-      display: inline-block;
-      line-height: 1;
-    }
-
-    .entry.highlight { background: rgba(255, 255, 255, 0.15); }
-    .delta-positive { color: #4ade80; }
-    .delta-negative { color: #f87171; }
-
-    .loading, .error {
-      font-size: 16px;
-      color: #aab6d9;
-    }
-
-    #resultsList {
-      opacity: 1;
-      transition: opacity 0.3s ease;
-    }
-  </style>
+.delta-positive { color: #4ade80; }
+.delta-negative { color: #f87171; }
+</style>
 </head>
+
 <body>
-  <div class="card">
-    <div class="title">Previous Match Results</div>
-    <div id="resultsList"></div>
+<div class="card">
+  <div class="label">ELO</div>
+  <div class="rating-container">
+    <div id="rating" class="rating">—</div>
+    <div id="delta" class="delta"></div>
   </div>
+</div>
 
 <script>
-  const API_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_rating_history";
-  const CLIENT_ID = "DISCORD|1069003073311211601";
-  const REFRESH_MS = 15000;
+const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_player_rating";
+const DEFAULT_PLAYER_ID = "702730732220579950";
+const REFRESH_MS = 15000;
 
-  const resultsEl = document.getElementById("resultsList");
-  const urlParams = new URLSearchParams(window.location.search);
-  const PLAYER_ID = urlParams.get('player_id');
+const ratingEl = document.getElementById("rating");
+const deltaEl = document.getElementById("delta");
+let lastRating = null;
+let deltaTimeout = null;
 
-  if (!PLAYER_ID) {
-    resultsEl.innerHTML = '<div class="error">Missing player_id in URL</div>';
-    throw new Error("Missing player_id in URL query");
+function updateDeltaPosition() {
+  const rect = ratingEl.getBoundingClientRect();
+  const containerRect = ratingEl.parentElement.getBoundingClientRect();
+  const leftPos = rect.right - containerRect.left + 16;
+  deltaEl.style.left = leftPos + "px";
+}
+
+function setRating(value) {
+  if (lastRating === null) {
+    // Initial load: set rating without animation
+    ratingEl.textContent = value ?? "—";
+    lastRating = value;
+    return;
   }
 
-  let lastMatchHash = "";
-  let initialLoad = true;
+  if (value === lastRating) return;
 
-  function setError(msg) {
-    resultsEl.innerHTML = `<div class="error">Error: ${msg}</div>`;
-    console.error(msg);
-  }
+  // Animate fade-out, update, fade-in
+  ratingEl.style.opacity = "0";
+  setTimeout(() => {
+    ratingEl.textContent = value;
+    ratingEl.style.opacity = "1";
+  }, 500);
 
-  function hashMatch(match) {
-    if (!match || !match.ratingResults) return "";
-    return match.ratingResults[0].newRatings
-      .map(p => `${p.id}:${p.place}:${p.elo}:${p.delta}`)
-      .join("|");
-  }
+  // Show delta as before
+  showDelta(lastRating, value);
 
-  function displayResults(match, resolvedPlayers) {
-    const newRatings = match.ratingResults[0].newRatings;
-    resultsEl.innerHTML = '';
+  lastRating = value;
+}
 
-    newRatings.forEach(player => {
-      const name = resolvedPlayers[player.id]?.display_name || "Unknown";
+function showDelta(oldValue, newValue) {
+  const diff = newValue - oldValue;
+  if (diff === 0 || oldValue === null) return;
 
-      let arrowSpan = '';
-      let deltaText = Math.abs(player.delta);
-      let deltaClass = '';
-      if (player.delta > 0) {
-        arrowSpan = '<span class="delta-arrow">▲</span>';
-        deltaClass = 'delta-positive';
-      } else if (player.delta < 0) {
-        arrowSpan = '<span class="delta-arrow">▼</span>';
-        deltaClass = 'delta-negative';
-      }
+  const arrow = diff > 0 ? '▲' : '▼';
+  const deltaClass = diff > 0 ? 'delta-positive' : 'delta-negative';
+  deltaEl.textContent = '';
 
-      let placeClass = '';
-      if (player.place === 1) placeClass = 'gold';
-      else if (player.place === 2) placeClass = 'silver';
-      else if (player.place === 3) placeClass = 'bronze';
+  const arrowSpan = document.createElement('span');
+  arrowSpan.className = 'delta-arrow';
+  arrowSpan.textContent = arrow;
 
-      const row = document.createElement("div");
-      row.className = "entry";
-      if (String(player.id) === String(PLAYER_ID)) row.classList.add("highlight");
+  const numberSpan = document.createElement('span');
+  numberSpan.textContent = Math.abs(diff);
 
-      row.innerHTML = `
-        <span class="place ${placeClass}">${player.place}</span>
-        <span class="name">${name}</span>
-        <span class="elo">${player.elo}</span>
-        <span class="delta ${deltaClass}">${arrowSpan}${deltaText}</span>
-      `;
+  deltaEl.classList.remove('delta-positive','delta-negative');
+  deltaEl.classList.add(deltaClass);
 
-      resultsEl.appendChild(row);
+  deltaEl.appendChild(arrowSpan);
+  deltaEl.appendChild(numberSpan);
+
+  updateDeltaPosition();
+
+  deltaEl.style.transition = "none";
+  deltaEl.style.transform = "translateY(-50%) translateX(20px)";
+  deltaEl.style.opacity = "0";
+
+  deltaEl.offsetWidth;
+
+  deltaEl.style.transition = "opacity 0.5s ease, transform 0.5s ease";
+  deltaEl.style.transform = "translateY(-50%) translateX(0)";
+  deltaEl.style.opacity = "1";
+
+  if (deltaTimeout) clearTimeout(deltaTimeout);
+  deltaTimeout = setTimeout(() => {
+    deltaEl.style.transform = "translateY(-50%) translateX(20px)";
+    deltaEl.style.opacity = "0";
+  }, 10000);
+}
+
+function setLoading() { if (lastRating === null) ratingEl.textContent = "—"; }
+function setError(msg) { ratingEl.textContent = "—"; console.error(msg); }
+function buildBody(playerId) { return JSON.stringify({ player_id: playerId }); }
+
+async function fetchRating(playerId) {
+  setLoading();
+  try {
+    const resp = await fetch(WORKER_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: buildBody(playerId)
     });
-  }
 
-  async function fetchMatchResults() {
-    try {
-      const resp = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ player_id: PLAYER_ID, client_id: CLIENT_ID, limit: 10 })
-      });
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const data = await resp.json();
-      const matches = data.matches || [];
-      const resolvedPlayers = data.resolved?.players || {};
-
-      const recentMatch = matches
-        .sort((a,b) => b.ts - a.ts)
-        .find(match =>
-          match.ratingResults.some(rg =>
-            rg.newRatings.some(p => String(p.id) === String(PLAYER_ID))
-          )
-        );
-
-      if (!recentMatch) {
-        resultsEl.innerHTML = '<div class="loading">No recent match found for this player.</div>';
-        return;
-      }
-
-      const currentHash = hashMatch(recentMatch);
-
-      if (initialLoad) {
-        initialLoad = false;
-        lastMatchHash = currentHash;
-        displayResults(recentMatch, resolvedPlayers);
-        return;
-      }
-
-      if (currentHash !== lastMatchHash) {
-        lastMatchHash = currentHash;
-        resultsEl.style.opacity = 0;
-        setTimeout(() => {
-          displayResults(recentMatch, resolvedPlayers);
-          requestAnimationFrame(() => resultsEl.style.opacity = 1);
-        }, 300);
-      }
-
-    } catch (err) {
-      setError(err.message);
+    if (!resp.ok) {
+      throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
     }
-  }
 
-  fetchMatchResults();
-  setInterval(fetchMatchResults, REFRESH_MS);
+    const data = await resp.json();
+    const player = data.player || data;
+    if (typeof player.rating === "number") setRating(player.rating);
+  } catch (err) {
+    setError(err.message);
+  }
+}
+
+function getPlayerId() {
+  const params = new URLSearchParams(location.search);
+  return params.get("player_id") || DEFAULT_PLAYER_ID;
+}
+
+let intervalHandle = null;
+function startAutoRefresh() {
+  const pid = getPlayerId();
+  fetchRating(pid);
+  if (intervalHandle) clearInterval(intervalHandle);
+  intervalHandle = setInterval(() => fetchRating(pid), REFRESH_MS);
+}
+
+window.addEventListener("resize", updateDeltaPosition);
+window.addEventListener("load", startAutoRefresh);
 </script>
+
 </body>
 </html>
+
