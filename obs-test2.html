@@ -38,15 +38,22 @@ html, body {
   margin-bottom: 10px;
 }
 
-/* Fade wrapper */
+/* Fade wrapper now shrinks to content, like File B */
 .fade-wrapper {
-  width: 100%;
+  display: inline-block;
   transition: opacity 350ms ease;
   opacity: 1;
 }
 
+/* Leaderboard list also shrinks to content, matching File B  */
+#leaderboardList {
+  display: inline-block;
+}
+
+/* Row layout (matches File B's width behavior exactly) */
 .entry {
-  width: 100%;
+  width: auto;
+  min-width: 100%;        /* keeps consistent alignment */
   height: 36px;
   display: flex;
   justify-content: space-between;
@@ -98,7 +105,6 @@ html, body {
 <div class="card">
   <div class="leaderboard-title">NSS Golf Rankings: Season 10</div>
 
-  <!-- wrapper around rankings list only -->
   <div class="fade-wrapper" id="fadeWrapper">
     <div id="leaderboardList"></div>
   </div>
@@ -108,6 +114,7 @@ html, body {
 const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
 const REFRESH_MS = 15000;
 const TOTAL_DISPLAY = 15;
+
 const fadeWrapper = document.getElementById("fadeWrapper");
 const leaderboardEl = document.getElementById("leaderboardList");
 
@@ -161,7 +168,6 @@ function renderList(state, highlightId) {
 function displayLeaderboard(entries, resolvedPlayers) {
   const highlightId = getPlayerId();
 
-  // Determine the 15-row slice based on highlight ID
   const highlightIndex = entries.findIndex(e => e.team[0] === highlightId);
   let startIndex = 0;
 
@@ -179,12 +185,9 @@ function displayLeaderboard(entries, resolvedPlayers) {
     elo: player.elo ?? "—"
   }));
 
-  // Only fade when actual change is detected
   const changed = !statesEqual(lastRenderedState, newState);
-
   if (!changed) return;
 
-  // Fade out → update → fade in
   fadeWrapper.style.opacity = "0";
 
   setTimeout(() => {
