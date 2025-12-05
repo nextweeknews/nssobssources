@@ -208,13 +208,16 @@ const matchLink = document.getElementById("matchLink");
 const rankLink = document.getElementById("rankLink");
 
 function extractPlayerId(input) {
-  const clean = input.trim();
+  const decoded = decodeURIComponent(input.trim());
+
+
+  const clean = decoded.replace(/\\/g, "/");
 
   if (/^\d{19}$/.test(clean)) {
     return clean;
   }
 
-  const match = clean.toLowerCase().match(/player\/(\d{19})/);
+  const match = clean.match(/player\/(\d{19})/i);
   if (match) {
     return match[1];
   }
