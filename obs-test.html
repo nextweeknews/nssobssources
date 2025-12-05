@@ -168,6 +168,8 @@ try {
   try {
     data = await resp.json();
     console.log("FULL RAW JSON:", data);
+    console.log("RESOLVED:", JSON.stringify(data.resolved, null, 2));
+
   } catch (jsonError) {
     console.error("JSON parse error:", jsonError);
     const text = await resp.text();
