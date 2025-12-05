@@ -37,7 +37,16 @@ html, body {
   margin-bottom: 10px;
 }
 
+.leaderboard-container {
+  position: relative;
+  width: 100%;
+  height: 380px; /* fixed height for visible slice */
+  overflow: hidden;
+}
+
 .entry {
+  position: absolute;
+  left: 0;
   width: 100%;
   display: flex;
   justify-content: space-between;
@@ -48,8 +57,8 @@ html, body {
   align-items: center;
   border-radius: 6px;
   box-sizing: border-box;
-  transition: background 0.3s, opacity 0.45s ease, transform 0.45s ease;
-  will-change: transform, opacity;
+  background: transparent;
+  transition: transform 0.45s ease, opacity 0.45s ease;
   opacity: 1;
 }
 
@@ -91,15 +100,16 @@ html, body {
 <body>
 <div class="card">
   <div class="leaderboard-title">NSS Golf Rankings: Season 10</div>
-  <div id="leaderboardList"></div>
+  <div class="leaderboard-container" id="leaderboardList"></div>
 </div>
 
 <script>
 const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
 const REFRESH_MS = 15000;
-const ANIMATION_DURATION = 500;
+const ANIMATION_DURATION = 450;
 const leaderboardEl = document.getElementById("leaderboardList");
 let initialLoad = true;
+const ROW_HEIGHT = 28; // px, adjust to match CSS
 
 function getPlayerId() {
   const params = new URLSearchParams(window.location.search);
@@ -132,25 +142,27 @@ function displayLeaderboard(entries, resolvedPlayers) {
     elo: player.elo ?? "—"
   }));
 
-  // Capture old positions
-  const oldPos = new Map();
-  Array.from(leaderboardEl.children).forEach(row => {
-    if (row.dataset.playerId) oldPos.set(row.dataset.playerId, row.getBoundingClientRect().top);
-  });
-
+  // Map existing rows by player ID
   const existingRows = Array.from(leaderboardEl.children).filter(r => r.dataset.playerId);
   const existingMap = {};
   existingRows.forEach(r => existingMap[r.dataset.playerId] = r);
 
   const removedRows = [];
 
-  // Build or update rows in exact new order
+  // Position map for FLIP
+  const oldPos = new Map();
+  existingRows.forEach(row => oldPos.set(row.dataset.playerId, row.offsetTop));
+
+  // Create / update rows
   newState.forEach((player, index) => {
     let row = existingMap[player.id];
+    const targetTop = index * ROW_HEIGHT;
+
     if (!row) {
       row = document.createElement("div");
       row.className = "entry";
       row.dataset.playerId = player.id;
+      row.style.top = targetTop + "px";
       row.style.opacity = initialLoad ? "1" : "0";
 
       row.innerHTML = `
@@ -158,11 +170,13 @@ function displayLeaderboard(entries, resolvedPlayers) {
         <span class="name"></span>
         <span class="elo"></span>
       `;
-      leaderboardEl.insertBefore(row, leaderboardEl.children[index] || null);
-    } else {
-      // Reinsert row in correct order
-      if (leaderboardEl.children[index] !== row) {
-        leaderboardEl.insertBefore(row, leaderboardEl.children[index] || null);
+      leaderboardEl.appendChild(row);
+
+      if (!initialLoad) {
+        requestAnimationFrame(() => {
+          row.style.transition = `opacity ${ANIMATION_DURATION}ms ease`;
+          row.style.opacity = "1";
+        });
       }
     }
 
@@ -177,47 +191,24 @@ function displayLeaderboard(entries, resolvedPlayers) {
     else if (player.rank === 3) rankEl.classList.add("bronze");
 
     row.classList.toggle("highlight", highlightId === player.id);
+
+    // FLIP movement
+    const oldTop = oldPos.get(player.id) ?? targetTop;
+    const deltaY = oldTop - targetTop;
+    row.style.transform = `translateY(${deltaY}px)`;
+    row.offsetHeight; // force reflow
+    row.style.transition = `transform ${ANIMATION_DURATION}ms ease`;
+    row.style.transform = "";
   });
 
-  // Identify removed rows
+  // Remove rows that are no longer visible
   existingRows.forEach(row => {
-    if (!newState.find(p => p.id === row.dataset.playerId)) removedRows.push(row);
-  });
-
-  // Apply FLIP animation
-  requestAnimationFrame(() => {
-    // Animate existing and new rows
-    Array.from(leaderboardEl.children).forEach(row => {
-      const id = row.dataset.playerId;
-      if (!id) return;
-
-      const first = oldPos.get(id);
-      const last = row.getBoundingClientRect().top;
-      if (first != null) {
-        const deltaY = first - last;
-        if (deltaY !== 0) {
-          row.style.transform = `translateY(${deltaY}px)`;
-          row.offsetHeight; // force reflow
-          row.style.transition = `transform ${ANIMATION_DURATION}ms ease`;
-          row.style.transform = "";
-          row.addEventListener("transitionend", () => row.style.transition = "", { once: true });
-        }
-      }
-
-      // Fade-in for new rows
-      if (!initialLoad && parseFloat(row.style.opacity) === 0) {
-        row.style.transition = `opacity ${ANIMATION_DURATION}ms ease`;
-        row.style.opacity = "1";
-      }
-    });
-
-    // Fade-out removed rows
-    removedRows.forEach(r => {
-      r.style.transition = `opacity ${ANIMATION_DURATION}ms ease`;
-      r.style.opacity = "0";
-    });
-
-    setTimeout(() => removedRows.forEach(r => r.remove()), ANIMATION_DURATION);
+    if (!newState.find(p => p.id === row.dataset.playerId)) {
+      removedRows.push(row);
+      row.style.transition = `opacity ${ANIMATION_DURATION}ms ease`;
+      row.style.opacity = "0";
+      setTimeout(() => row.remove(), ANIMATION_DURATION);
+    }
   });
 
   initialLoad = false;
@@ -242,7 +233,6 @@ async function fetchLeaderboard() {
   }
 }
 
-// Start refresh loop
 window.addEventListener("load", () => {
   fetchLeaderboard();
   setInterval(fetchLeaderboard, REFRESH_MS);
