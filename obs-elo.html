@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Elo Overlay</title>
+<title>Elo Overlay (OBS Optimized)</title>
 
 <style>
 html, body {
@@ -64,15 +64,13 @@ html, body {
 .delta {
   position: absolute;
   top: 50%;
-  transform: translateY(-50%);
-  left: calc(50% + 140px);
   font-size:56px;
   font-weight:600;
   opacity:0;
-  transition: opacity 0.5s ease, transform 0.5s ease;
   display: flex;
   align-items: center;
   pointer-events: none;
+  transition: opacity 0.5s ease, transform 0.5s ease;
 }
 
 .delta-arrow {
@@ -94,7 +92,10 @@ html, body {
     <div id="rating" class="rating">
       <span id="ratingNumber" class="rating-number">—</span>
     </div>
-    <div id="delta" class="delta"></div>
+    <div id="delta" class="delta">
+      <span class="delta-arrow"></span>
+      <span class="delta-number"></span>
+    </div>
   </div>
 </div>
 
@@ -105,57 +106,65 @@ const REFRESH_MS = 15000;
 
 const ratingNumberEl = document.getElementById("ratingNumber");
 const deltaEl = document.getElementById("delta");
+const arrowEl = deltaEl.querySelector(".delta-arrow");
+const numberEl = deltaEl.querySelector(".delta-number");
+
 let lastRating = null;
 let deltaTimeout = null;
 
+// Position delta relative to the updated number
+function updateDeltaPosition() {
+  const width = ratingNumberEl.offsetWidth;
+  deltaEl.style.left = (width + 16) + "px"; // fixed 20px offset from number
+}
+
+// Update rating with fade, then update delta
 function setRating(value) {
   if (lastRating === null) {
     ratingNumberEl.textContent = value ?? "—";
+    ratingNumberEl.style.opacity = "1";
     lastRating = value;
     return;
   }
   if (value === lastRating) return;
 
+  // Fade out old number
   ratingNumberEl.style.opacity = "0";
+
   setTimeout(() => {
+    // Update number after fade
     ratingNumberEl.textContent = value;
     ratingNumberEl.style.opacity = "1";
-  }, 500);
 
-  showDelta(lastRating, value);
-  lastRating = value;
+    // Update delta position after number is visible
+    updateDeltaPosition();
+    showDelta(lastRating, value);
+
+    lastRating = value;
+  }, 500); // match opacity transition
 }
 
+// Show delta with arrow and number
 function showDelta(oldValue, newValue) {
   const diff = newValue - oldValue;
   if (diff === 0 || oldValue === null) return;
 
-  const arrow = diff > 0 ? '▲' : '▼';
-  const deltaClass = diff > 0 ? 'delta-positive' : 'delta-negative';
-  deltaEl.textContent = '';
-
-  const arrowSpan = document.createElement('span');
-  arrowSpan.className = 'delta-arrow';
-  arrowSpan.textContent = arrow;
-
-  const numberSpan = document.createElement('span');
-  numberSpan.textContent = Math.abs(diff);
-
+  arrowEl.textContent = diff > 0 ? '▲' : '▼';
+  numberEl.textContent = Math.abs(diff);
   deltaEl.classList.remove('delta-positive','delta-negative');
-  deltaEl.classList.add(deltaClass);
+  deltaEl.classList.add(diff > 0 ? 'delta-positive' : 'delta-negative');
 
-  deltaEl.appendChild(arrowSpan);
-  deltaEl.appendChild(numberSpan);
-
+  // Animate delta from offset to final position
   deltaEl.style.transition = "none";
   deltaEl.style.transform = "translateY(-50%) translateX(20px)";
   deltaEl.style.opacity = "0";
-  deltaEl.offsetWidth;
+  deltaEl.offsetWidth; // force reflow
 
   deltaEl.style.transition = "opacity 0.5s ease, transform 0.5s ease";
   deltaEl.style.transform = "translateY(-50%) translateX(0)";
   deltaEl.style.opacity = "1";
 
+  // Auto-hide delta after 10s
   if (deltaTimeout) clearTimeout(deltaTimeout);
   deltaTimeout = setTimeout(() => {
     deltaEl.style.transform = "translateY(-50%) translateX(20px)";
@@ -163,10 +172,18 @@ function showDelta(oldValue, newValue) {
   }, 10000);
 }
 
-function setLoading() { if (lastRating === null) ratingNumberEl.textContent = "—"; }
-function setError(msg) { ratingNumberEl.textContent = "—"; console.error(msg); }
-function buildBody(playerId) { return JSON.stringify({ player_id: playerId }); }
+function setLoading() {
+  if (lastRating === null) ratingNumberEl.textContent = "—";
+}
+function setError(msg) {
+  ratingNumberEl.textContent = "—";
+  console.error(msg);
+}
+function buildBody(playerId) {
+  return JSON.stringify({ player_id: playerId });
+}
 
+// Fetch rating from API
 async function fetchRating(playerId) {
   setLoading();
   try {
@@ -182,6 +199,7 @@ async function fetchRating(playerId) {
   } catch (err) { setError(err.message); }
 }
 
+// Get player ID from URL or default
 function getPlayerId() {
   const params = new URLSearchParams(location.search);
   return params.get("player_id") || DEFAULT_PLAYER_ID;
@@ -196,6 +214,7 @@ function startAutoRefresh() {
 }
 
 window.addEventListener("load", startAutoRefresh);
+window.addEventListener("resize", updateDeltaPosition);
 </script>
 </body>
 </html>
