@@ -47,25 +47,33 @@ html, body {
   align-items:center;
 }
 
+/* container holds rating number; only inner span fades */
 .rating {
   font-size:120px;
   font-weight:700;
   color:#ffffff;
   position: relative;
   z-index:1;
-  transition: opacity 0.5s ease; /* fade transition for rating number */
+  display:flex;
+  align-items:center;
+}
+
+.rating-number {
+  transition: opacity 0.5s ease;
 }
 
 .delta {
   position: absolute;
   top: 50%;
-  transform: translateY(-50%) translateX(40px);
+  transform: translateY(-50%);
+  left: calc(50% + 140px); /* initial fixed offset from container center */
   font-size:56px;
   font-weight:600;
   opacity:0;
   transition: opacity 0.5s ease, transform 0.5s ease;
   display: flex;
   align-items: center;
+  pointer-events: none;
 }
 
 .delta-arrow {
@@ -84,7 +92,9 @@ html, body {
 <div class="card">
   <div class="label">ELO</div>
   <div class="rating-container">
-    <div id="rating" class="rating">—</div>
+    <div id="rating" class="rating">
+      <span id="ratingNumber" class="rating-number">—</span>
+    </div>
     <div id="delta" class="delta"></div>
   </div>
 </div>
@@ -94,38 +104,28 @@ const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_player
 const DEFAULT_PLAYER_ID = "702730732220579950";
 const REFRESH_MS = 15000;
 
-const ratingEl = document.getElementById("rating");
+const ratingNumberEl = document.getElementById("ratingNumber");
 const deltaEl = document.getElementById("delta");
 let lastRating = null;
 let deltaTimeout = null;
 
-function updateDeltaPosition() {
-  const rect = ratingEl.getBoundingClientRect();
-  const containerRect = ratingEl.parentElement.getBoundingClientRect();
-  const leftPos = rect.right - containerRect.left + 16;
-  deltaEl.style.left = leftPos + "px";
-}
-
 function setRating(value) {
   if (lastRating === null) {
-    // Initial load: set rating without animation
-    ratingEl.textContent = value ?? "—";
+    // initial load
+    ratingNumberEl.textContent = value ?? "—";
     lastRating = value;
     return;
   }
-
   if (value === lastRating) return;
 
-  // Animate fade-out, update, fade-in
-  ratingEl.style.opacity = "0";
+  // fade-out, update, fade-in number only
+  ratingNumberEl.style.opacity = "0";
   setTimeout(() => {
-    ratingEl.textContent = value;
-    ratingEl.style.opacity = "1";
+    ratingNumberEl.textContent = value;
+    ratingNumberEl.style.opacity = "1";
   }, 500);
 
-  // Show delta as before
   showDelta(lastRating, value);
-
   lastRating = value;
 }
 
@@ -150,12 +150,10 @@ function showDelta(oldValue, newValue) {
   deltaEl.appendChild(arrowSpan);
   deltaEl.appendChild(numberSpan);
 
-  updateDeltaPosition();
-
+  // ensure delta is positioned absolutely; doesn't move
   deltaEl.style.transition = "none";
   deltaEl.style.transform = "translateY(-50%) translateX(20px)";
   deltaEl.style.opacity = "0";
-
   deltaEl.offsetWidth;
 
   deltaEl.style.transition = "opacity 0.5s ease, transform 0.5s ease";
@@ -169,8 +167,8 @@ function showDelta(oldValue, newValue) {
   }, 10000);
 }
 
-function setLoading() { if (lastRating === null) ratingEl.textContent = "—"; }
-function setError(msg) { ratingEl.textContent = "—"; console.error(msg); }
+function setLoading() { if (lastRating === null) ratingNumberEl.textContent = "—"; }
+function setError(msg) { ratingNumberEl.textContent = "—"; console.error(msg); }
 function buildBody(playerId) { return JSON.stringify({ player_id: playerId }); }
 
 async function fetchRating(playerId) {
@@ -181,17 +179,11 @@ async function fetchRating(playerId) {
       headers: { "Content-Type": "application/json" },
       body: buildBody(playerId)
     });
-
-    if (!resp.ok) {
-      throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
-    }
-
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
     const data = await resp.json();
     const player = data.player || data;
     if (typeof player.rating === "number") setRating(player.rating);
-  } catch (err) {
-    setError(err.message);
-  }
+  } catch (err) { setError(err.message); }
 }
 
 function getPlayerId() {
@@ -207,10 +199,7 @@ function startAutoRefresh() {
   intervalHandle = setInterval(() => fetchRating(pid), REFRESH_MS);
 }
 
-window.addEventListener("resize", updateDeltaPosition);
 window.addEventListener("load", startAutoRefresh);
 </script>
-
 </body>
 </html>
-
