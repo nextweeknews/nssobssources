@@ -40,7 +40,7 @@
 
   .entry {
     width: 100%;
-    height: 36px; /* fixed row height */
+    height: 36px;
     display: flex;
     justify-content: space-between;
     padding: 6px 12px;
@@ -101,7 +101,6 @@
 const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
 const REFRESH_MS = 15000;
 const ANIMATION_DURATION = 500;
-const ROW_HEIGHT = 36; // fixed row height
 const leaderboardEl = document.getElementById("leaderboardList");
 
 function getPlayerId() {
@@ -129,7 +128,7 @@ function animateReorder(oldPos) {
     const oldTop = oldPos.get(id);
     if (oldTop == null) return;
 
-    const newTop = row.offsetTop;
+    const newTop = row.getBoundingClientRect().top;
     const delta = oldTop - newTop;
     if (delta === 0) return;
 
@@ -163,7 +162,7 @@ function displayLeaderboard(entries, resolvedPlayers = {}) {
   const oldPos = new Map();
   Array.from(leaderboardEl.children).forEach(row => {
     if (row.dataset.playerId)
-      oldPos.set(row.dataset.playerId, row.offsetTop);
+      oldPos.set(row.dataset.playerId, row.getBoundingClientRect().top);
   });
 
   const existing = {};
@@ -181,8 +180,6 @@ function displayLeaderboard(entries, resolvedPlayers = {}) {
       row.className = "entry";
       row.dataset.playerId = p.id;
       row.style.opacity = "0"; // fade-in
-      row.style.top = `${index * ROW_HEIGHT}px`;
-
       row.innerHTML = `
         <span class="rank"></span>
         <span class="name"></span>
@@ -208,15 +205,8 @@ function displayLeaderboard(entries, resolvedPlayers = {}) {
 
     row.classList.toggle("highlight", highlightId === p.id);
 
-    row.style.top = `${index * ROW_HEIGHT}px`;
-
-    // FLIP movement
-    const oldTop = oldPos.get(p.id) ?? index * ROW_HEIGHT;
-    const deltaY = oldTop - (index * ROW_HEIGHT);
-    row.style.transform = `translateY(${deltaY}px)`;
-    row.offsetHeight; // force reflow
-    row.style.transition = `transform ${ANIMATION_DURATION}ms ease`;
-    row.style.transform = "";
+    if (leaderboardEl.children[index] !== row)
+      leaderboardEl.insertBefore(row, leaderboardEl.children[index] || null);
   });
 
   // fade out removed rows
@@ -245,9 +235,12 @@ async function fetchLeaderboard() {
         limit: 16
       })
     });
+
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
-    displayLeaderboard(data.leaderboard || [], data.resolved?.players || {});
+    if (!data.leaderboard) throw new Error("Empty leaderboard");
+
+    displayLeaderboard(data.leaderboard, data.resolved?.players || {});
   }
   catch (err) {
     softLogError(err.message);
