@@ -50,9 +50,8 @@
     align-items: center;
     border-radius: 6px;
     box-sizing: border-box;
-    transition: background 0.3s, opacity 0.45s ease, transform 0.45s ease;
-    will-change: transform, opacity;
     opacity: 1;
+    transition: opacity 0.45s ease;
   }
 
   .rank {
@@ -100,7 +99,7 @@
 <script>
 const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
 const REFRESH_MS = 15000;
-const ANIMATION_DURATION = 500;
+const ANIMATION_DURATION = 450;
 const leaderboardEl = document.getElementById("leaderboardList");
 
 function getPlayerId() {
@@ -108,78 +107,33 @@ function getPlayerId() {
   return params.get("player_id") || null;
 }
 
-function setLoading() {
-  leaderboardEl.innerHTML = '<div class="loading">Loading leaderboard…</div>';
-}
-
 function softLogError(msg) {
   console.warn("Non-fatal leaderboard update issue:", msg);
 }
 
-/* -----------------------------
-   FLIP + Fade Animations
-   ----------------------------- */
-function animateReorder(oldPos) {
-  const rows = Array.from(leaderboardEl.children)
-    .filter(r => r.dataset.playerId);
-
-  rows.forEach(row => {
-    const id = row.dataset.playerId;
-    const oldTop = oldPos.get(id);
-    if (oldTop == null) return;
-
-    const newTop = row.getBoundingClientRect().top;
-    const delta = oldTop - newTop;
-    if (delta === 0) return;
-
-    row.style.transform = `translateY(${delta}px)`;
-    row.offsetHeight;
-
-    row.style.transition = `transform ${ANIMATION_DURATION}ms ease`;
-    row.style.transform = "";
-
-    row.addEventListener("transitionend", () => {
-      row.style.transition = "";
-    }, { once: true });
-  });
-}
-
 function displayLeaderboard(entries, resolvedPlayers = {}) {
   const highlightId = getPlayerId();
-
-  if (!Array.isArray(entries)) {
-    softLogError("Invalid leaderboard format");
-    return;
-  }
-
   const newState = entries.slice(0, 16).map((player, i) => {
     const id = player.team?.[0] ?? ("unknown_" + i);
     const name = resolvedPlayers[id]?.display_name || "New Player";
     return { rank: i + 1, id, name, elo: player.elo ?? "—" };
   });
 
-  // capture old positions
-  const oldPos = new Map();
-  Array.from(leaderboardEl.children).forEach(row => {
-    if (row.dataset.playerId)
-      oldPos.set(row.dataset.playerId, row.getBoundingClientRect().top);
-  });
-
-  const existing = {};
-  Array.from(leaderboardEl.children).forEach(r => {
-    if (r.dataset.playerId) existing[r.dataset.playerId] = r;
-  });
+  const existingRows = Array.from(leaderboardEl.children).filter(r => r.dataset.playerId);
+  const existingMap = {};
+  existingRows.forEach(r => existingMap[r.dataset.playerId] = r);
 
   const removedRows = [];
 
-  newState.forEach((p, index) => {
-    let row = existing[p.id];
+  newState.forEach((player, index) => {
+    let row = existingMap[player.id];
 
     if (!row) {
+      // New row: create and fade in
       row = document.createElement("div");
       row.className = "entry";
-      row.dataset.playerId = p.id;
-      row.style.opacity = "0"; // fade-in
+      row.dataset.playerId = player.id;
+      row.style.opacity = "0";
       row.innerHTML = `
         <span class="rank"></span>
         <span class="name"></span>
@@ -188,39 +142,73 @@ function displayLeaderboard(entries, resolvedPlayers = {}) {
       leaderboardEl.insertBefore(row, leaderboardEl.children[index] || null);
 
       requestAnimationFrame(() => {
-        row.style.transition = `opacity ${ANIMATION_DURATION}ms ease`;
+        row.querySelector(".rank").textContent = player.rank;
+        row.querySelector(".name").textContent = player.name;
+        row.querySelector(".elo").textContent = player.elo;
+
+        const rankEl = row.querySelector(".rank");
+        rankEl.className = "rank";
+        if (player.rank === 1) rankEl.classList.add("gold");
+        else if (player.rank === 2) rankEl.classList.add("silver");
+        else if (player.rank === 3) rankEl.classList.add("bronze");
+
+        row.classList.toggle("highlight", highlightId === player.id);
         row.style.opacity = "1";
       });
+    } else {
+      // Existing row: fade only if content changed
+      const rankEl = row.querySelector(".rank");
+      const nameEl = row.querySelector(".name");
+      const eloEl = row.querySelector(".elo");
+
+      const oldContent = {
+        rank: rankEl.textContent,
+        name: nameEl.textContent,
+        elo: eloEl.textContent
+      };
+
+      const newContent = {
+        rank: player.rank.toString(),
+        name: player.name,
+        elo: player.elo
+      };
+
+      const changed = oldContent.rank !== newContent.rank ||
+                      oldContent.name !== newContent.name ||
+                      oldContent.elo !== newContent.elo;
+
+      if (changed) {
+        row.style.opacity = "0";
+        requestAnimationFrame(() => {
+          rankEl.textContent = newContent.rank;
+          nameEl.textContent = newContent.name;
+          eloEl.textContent = newContent.elo;
+
+          rankEl.className = "rank";
+          if (player.rank === 1) rankEl.classList.add("gold");
+          else if (player.rank === 2) rankEl.classList.add("silver");
+          else if (player.rank === 3) rankEl.classList.add("bronze");
+
+          row.classList.toggle("highlight", highlightId === player.id);
+
+          row.style.opacity = "1";
+        });
+      }
     }
 
-    row.querySelector(".name").textContent = p.name;
-    row.querySelector(".elo").textContent = p.elo;
-
-    const rankEl = row.querySelector(".rank");
-    rankEl.textContent = p.rank;
-    rankEl.className = "rank";
-    if (p.rank === 1) rankEl.classList.add("gold");
-    else if (p.rank === 2) rankEl.classList.add("silver");
-    else if (p.rank === 3) rankEl.classList.add("bronze");
-
-    row.classList.toggle("highlight", highlightId === p.id);
-
+    // Ensure correct order
     if (leaderboardEl.children[index] !== row)
       leaderboardEl.insertBefore(row, leaderboardEl.children[index] || null);
   });
 
-  // fade out removed rows
-  Array.from(leaderboardEl.children).forEach(row => {
+  // Fade out and remove rows no longer in the leaderboard
+  existingRows.forEach(row => {
     if (!newState.find(p => p.id === row.dataset.playerId)) {
-      row.style.transition = `opacity ${ANIMATION_DURATION}ms ease`;
       row.style.opacity = "0";
       removedRows.push(row);
+      setTimeout(() => row.remove(), ANIMATION_DURATION);
     }
   });
-
-  setTimeout(() => removedRows.forEach(r => r.remove()), ANIMATION_DURATION);
-
-  requestAnimationFrame(() => animateReorder(oldPos));
 }
 
 async function fetchLeaderboard() {
