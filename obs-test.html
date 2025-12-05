@@ -152,6 +152,35 @@ function animateDelta(el, arrow, number, oldVal, newVal, reverse=false) {
 }
 
 async function fetchData() {
+
+  let data = null;
+try {
+  const resp = await fetch(WORKER_URL, {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      leaderboard:"season_10",
+      rating_type:"player_global_all",
+      client_id:"DISCORD|1069003073311211601"
+    })
+  });
+
+  try {
+    data = await resp.json();
+    console.log("FULL RAW JSON:", data);
+  } catch (jsonError) {
+    console.error("JSON parse error:", jsonError);
+    const text = await resp.text();
+    console.error("Response text instead:", text);
+    return;
+  }
+
+} catch (err) {
+  console.error("Fetch FAILED:", err);
+  return;
+}
+
+  
   const pid = getPlayerId();
 
   try {
