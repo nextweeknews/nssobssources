@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Elo Overlay - OBS Instant</title>
+
+<style>
+html, body {
+  height:100%;
+  margin:0;
+  background: transparent;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  overflow: hidden;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
+.card {
+  width:640px;
+  height:240px;
+  background: rgba(28,28,28,0.85);
+  border-radius:24px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  text-align:center;
+  color: #e9eef8;
+}
+
+.label {
+  font-size:56px;
+  color:#bcd4ff;
+  font-weight:600;
+  margin-bottom: 8px;
+}
+
+.rating-container {
+  position: relative;
+  height: 120px;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
+.rating {
+  font-size:120px;
+  font-weight:700;
+  color:#ffffff;
+  display:flex;
+  align-items:center;
+}
+
+.delta {
+  position: absolute;
+  top: 50%;
+  display: flex;
+  align-items: center;
+  font-size:56px;
+  font-weight:600;
+  pointer-events: none;
+}
+
+.delta-arrow {
+  font-size: 0.6em;
+  margin-right: 4px;
+}
+
+.delta-positive { color: #4ade80; }
+.delta-negative { color: #f87171; }
+</style>
+</head>
+
+<body>
+<div class="card">
+  <div class="label">ELO</div>
+  <div class="rating-container">
+    <div id="rating" class="rating">
+      <span id="ratingNumber">—</span>
+    </div>
+    <div id="delta" class="delta">
+      <span class="delta-arrow"></span>
+      <span class="delta-number"></span>
+    </div>
+  </div>
+</div>
+
+<script>
+const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_player_rating";
+const DEFAULT_PLAYER_ID = "702730732220579950";
+const REFRESH_MS = 15000;
+
+const ratingNumberEl = document.getElementById("ratingNumber");
+const deltaEl = document.getElementById("delta");
+const arrowEl = deltaEl.querySelector(".delta-arrow");
+const numberEl = deltaEl.querySelector(".delta-number");
+
+let lastRating = null;
+
+// Position delta next to the rating number
+function updateDeltaPosition() {
+  deltaEl.style.left = (ratingNumberEl.offsetWidth + 20) + "px"; // 20px offset
+}
+
+// Update rating and delta instantly
+function setRating(value) {
+  if (lastRating === null) {
+    ratingNumberEl.textContent = value ?? "—";
+    lastRating = value;
+    return;
+  }
+
+  if (value === lastRating) return;
+
+  // Update rating number
+  ratingNumberEl.textContent = value;
+
+  // Show delta
+  const diff = value - lastRating;
+  if (diff !== 0) {
+    arrowEl.textContent = diff > 0 ? '▲' : '▼';
+    numberEl.textContent = Math.abs(diff);
+    deltaEl.classList.remove('delta-positive','delta-negative');
+    deltaEl.classList.add(diff > 0 ? 'delta-positive' : 'delta-negative');
+    updateDeltaPosition();
+  }
+
+  lastRating = value;
+}
+
+function setError(msg) {
+  ratingNumberEl.textContent = "—";
+  console.error(msg);
+}
+
+function buildBody(playerId) {
+  return JSON.stringify({ player_id: playerId });
+}
+
+// Fetch rating from API
+async function fetchRating(playerId) {
+  try {
+    const resp = await fetch(WORKER_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: buildBody(playerId)
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
+    const data = await resp.json();
+    const player = data.player || data;
+    if (typeof player.rating === "number") setRating(player.rating);
+  } catch (err) { setError(err.message); }
+}
+
+// Get player ID from URL or default
+function getPlayerId() {
+  const params = new URLSearchParams(location.search);
+  return params.get("player_id") || DEFAULT_PLAYER_ID;
+}
+
+// Start auto-refresh
+function startAutoRefresh() {
+  const pid = getPlayerId();
+  fetchRating(pid);
+  setInterval(() => fetchRating(pid), REFRESH_MS);
+}
+
+// Update delta position on resize
+window.addEventListener("resize", updateDeltaPosition);
+window.addEventListener("load", startAutoRefresh);
+</script>
+</body>
+</html>
