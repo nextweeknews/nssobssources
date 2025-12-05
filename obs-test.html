@@ -11,8 +11,8 @@ html, body {
   margin:0;
   background: transparent;
   font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-  -webkit-font-smoothing:antialiased;
-  -moz-osx-font-smoothing:grayscale;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   overflow:hidden;
   display:flex;
   justify-content:center;
@@ -107,31 +107,30 @@ html, body {
 </div>
 
 <script>
-// CONFIG
 const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
 const REFRESH_MS = 15000;
 
-// ELEMENTS
 const eloEl = document.getElementById("eloNumber");
 const rankEl = document.getElementById("rankNumber");
 const tierEl = document.getElementById("tierLabel");
+
 const eloDeltaEl = document.getElementById("eloDelta");
 const rankDeltaEl = document.getElementById("rankDelta");
+
 const arrowElo = eloDeltaEl.querySelector(".delta-arrow");
 const numberElo = eloDeltaEl.querySelector(".delta-number");
+
 const arrowRank = rankDeltaEl.querySelector(".delta-arrow");
 const numberRank = rankDeltaEl.querySelector(".delta-number");
 
 let lastElo = null;
 let lastRank = null;
 
-// GET PLAYER ID — must be 19 digits
 function getPlayerId() {
   const pid = new URLSearchParams(location.search).get("player_id");
-  return /^\d{19}$/.test(pid) ? pid : "702730732220579950";
+  return (/^\d{19}$/.test(pid) ? pid : "702730732220579950");
 }
 
-// DELTA ANIMATIONS
 function animateDelta(el, arrow, number, oldVal, newVal, reverse=false) {
   const diff = newVal - oldVal;
   if (diff === 0 || oldVal === null) return;
@@ -148,21 +147,21 @@ function animateDelta(el, arrow, number, oldVal, newVal, reverse=false) {
     el.style.opacity = "1";
     el.style.transform = "translateY(0)";
   });
+
   setTimeout(() => el.style.opacity = "0", 8000);
 }
 
-// DATA FETCH
 async function fetchData() {
   const pid = getPlayerId();
 
   try {
     const resp = await fetch(WORKER_URL, {
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({
-        leaderboard:"season_10",
-        rating_type:"player_global_all",
-        client_id:"DISCORD|1069003073311211601"
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        leaderboard: "season_10",
+        rating_type: "player_global_all",
+        client_id: "DISCORD|1069003073311211601"
       })
     });
 
@@ -173,12 +172,12 @@ async function fetchData() {
     if (idx < 0) return;
 
     const player = entries[idx];
-    const newElo = player.elo || 0;
+    const newElo = player.elo ?? 0;
     const newRank = idx + 1;
 
-// ---- ELO & RANK UI ----
     if (lastElo !== null && newElo !== lastElo)
       animateDelta(eloDeltaEl, arrowElo, numberElo, lastElo, newElo);
+    
     if (lastRank !== null && newRank !== lastRank)
       animateDelta(rankDeltaEl, arrowRank, numberRank, lastRank, newRank, true);
 
@@ -188,23 +187,35 @@ async function fetchData() {
     lastElo = newElo;
     lastRank = newRank;
 
-// ---- TIER CALC ----
-    const tiers = data.player_global_all_tiers || [];
+    // ---- Tier calc with Rank #1 override ----
+    const tierData = data?.resolved?.tiers ?? data;
+
+    const tiers = tierData?.player_global_all_tiers ?? [];
+    const rankTiers = tierData?.player_global_all_rank_tiers ?? [];
+
     let playerTier = null;
-    for (const t of tiers) {
-      if (newElo >= t.required_elo) playerTier = t;
+
+    if (newRank === 1 && rankTiers.length > 0) {
+      playerTier = {
+        name: rankTiers[0].name,
+        color: rankTiers[0].color
+      };
+    } else {
+      for (const t of tiers) {
+        if (newElo >= t.required_elo) playerTier = t;
+      }
     }
 
     if (playerTier) {
       tierEl.textContent = playerTier.name;
-      tierEl.style.color = playerTier.color;
+      tierEl.style.color = playerTier.color || "#e9eef8";
     } else {
       tierEl.textContent = "Unranked";
       tierEl.style.color = "#e9eef8";
     }
 
-  } catch(e) {
-    console.error("Leaderboard error:", e);
+  } catch (err) {
+    console.error("Leaderboard fetch error:", err);
   }
 }
 
@@ -214,4 +225,3 @@ setInterval(fetchData, REFRESH_MS);
 
 </body>
 </html>
-
