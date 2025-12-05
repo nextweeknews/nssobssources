@@ -53,39 +53,67 @@
     background: #5d5d5d;
   }
   .info-box {
-  background: #141414;
-  padding: 20px;
-  margin-top: 30px;
-  border-radius: 12px;
-  max-width: 520px;
-  line-height: 1.55;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.35);
-}
-
-.info-box h3 {
-  margin-top: 0;
-  font-size: 1.25rem;
-  color: #ffffff;
-}
-
-.info-box ol {
-  padding-left: 20px;
-  margin: 12px 0;
-}
-
-.info-box li {
-  margin-bottom: 10px;
-}
-
-.info-link {
-  color: #3a72ff;
-  text-decoration: none;
-  font-weight: 600;
-}
-
-.info-link:hover {
-  text-decoration: underline;
-}
+    width: 100%;
+    max-width: 700px;
+    margin: 20px auto;
+    background: #1e1f26;
+    border-radius: 10px;
+    padding: 0;
+    overflow: hidden;
+    font-family: sans-serif;
+  }
+  .info-section {
+    border-bottom: 1px solid #333;
+  }
+  .info-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 18px;
+    cursor: pointer;
+    background: #2a2c34;
+    transition: background 0.2s ease;
+  }
+  .info-header:hover {
+    background: #353740;
+  }
+  .info-header h3 {
+    margin: 0;
+    font-size: 18px;
+    color: #fff;
+    user-select: none;
+  }
+  .chevron {
+    transition: transform 0.25s ease, color 0.2s ease;
+    font-size: 18px;
+    color: #bbb;
+  }
+  .info-header:hover .chevron {
+    color: #fff;
+  }
+  .info-section.open .chevron {
+    transform: rotate(90deg);
+    color: #fff;
+  }
+  .info-content {
+    padding: 0 18px 14px 18px;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+    color: #ddd;
+  }
+  .info-content a {
+    color: #4ea3ff;
+  }
+  .info-content code {
+    background: #333;
+    padding: 2px 4px;
+    border-radius: 4px;
+  }
+  ul, ol {
+    margin-top: 10px;
+    margin-bottom: 10px;
+  }
 
 </style>
 </head>
@@ -157,42 +185,86 @@ document.getElementById("lookupBtn").addEventListener("click", () => {
 </script>
   
 <div class="info-box">
-  <h3>How to Find Your Player ID:</h3>
 
-  <ol>
-    <li>
-      Open the   
-      <a class="info-link" 
-         href="https://teamupdiscord.com/leaderboard-api/client/DISCORD%7C1069003073311211601/leaderboard/Season_10/rating_type/player_global_all/format/global"
-         target="_blank">
-         Season 10 Leaderboard
-      </a>
-    </li>
-    <li>Click on your player name to open your player page</li>
-    <li>Look in the URL for <code>/player/########</code> and copy the numbers</li>
-    <li>Paste those numbers into the search box above!</li>
-  </ol>
-  
-  <h3>How to add overlays to OBS:</h3>
-  
-  <ol>
-    <li>Open your desired overlay, and copy the URL in full</li>
-    <li>In OBS, click "+" in Sources, then select "Browser"</li>
-    <li>Select "Create New" and paste the full URL</li>
-    <li>Delete any default Custom CSS</li>
-  </ol>
+  <!-- SECTION 1 -->
+  <div class="info-section">
+    <div class="info-header">
+      <h3>How to Find Your Player ID</h3>
+      <div class="chevron">▶</div>
+    </div>
 
-  <h3>Recommended Resolutions:</h3>
-  <p>This is for the initial setup. You can scale and move the overlays as desired once they're in your Scene.</p>
+    <div class="info-content">
+      <ol>
+        <li>
+          Open the   
+          <a class="info-link" 
+            href="https://teamupdiscord.com/leaderboard-api/client/DISCORD%7C1069003073311211601/leaderboard/Season_10/rating_type/player_global_all/format/global"
+            target="_blank">
+            Season 10 Leaderboard
+          </a>
+        </li>
+        <li>Click on your player name to open your player page</li>
+        <li>Look in the URL for <code>/player/########</code> and copy the numbers</li>
+        <li>Paste those numbers into the search box above!</li>
+      </ol>
+    </div>
+  </div>
 
-  <ul>
-    <li>Simple Elo: 600x240</li>
-    <li>Last Match Results: 480x400</li>
-    <li>Rank Position: 450x600</li>
-    <li>Leaderboard: 500x650</li>
-  </ul>
-  
+  <!-- SECTION 2 -->
+  <div class="info-section">
+    <div class="info-header">
+      <h3>How to Add Overlays to OBS</h3>
+      <div class="chevron">▶</div>
+    </div>
+
+    <div class="info-content">
+      <ol>
+        <li>Open your desired overlay, and copy the URL in full</li>
+        <li>In OBS, click "+" in Sources, then select "Browser"</li>
+        <li>Select "Create New" and paste the full URL</li>
+        <li>Delete any default Custom CSS</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- SECTION 3 -->
+  <div class="info-section">
+    <div class="info-header">
+      <h3>Recommended Resolutions</h3>
+      <div class="chevron">▶</div>
+    </div>
+
+    <div class="info-content">
+      <p>This is for the initial setup. You can scale and move the overlays as desired once they're in your Scene.</p>
+      <ul>
+        <li>Simple Elo: 600x240</li>
+        <li>Last Match Results: 480x400</li>
+        <li>Rank Position: 450x600</li>
+        <li>Leaderboard: 500x650</li>
+      </ul>
+    </div>
+  </div>
+
 </div>
+
+<script>
+  document.querySelectorAll(".info-section").forEach(section => {
+    const header = section.querySelector(".info-header");
+    const content = section.querySelector(".info-content");
+
+    header.addEventListener("click", () => {
+      const isOpen = section.classList.contains("open");
+
+      if (isOpen) {
+        section.classList.remove("open");
+        content.style.maxHeight = null;
+      } else {
+        section.classList.add("open");
+        content.style.maxHeight = content.scrollHeight + "px";
+      }
+    });
+  });
+</script>
 
 </body>
 </html>
