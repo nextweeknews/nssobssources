@@ -21,43 +21,47 @@ html, body {
 
 .card {
   width:720px;
-  height:300px;
+  height:240px;
   background: rgba(28,28,28,0.95);
   border-radius:24px;
   display:flex;
-  flex-direction:column;
-  justify-content:center;
+  flex-direction:row;
+  justify-content:space-evenly;
   align-items:center;
   text-align:center;
   color:#e9eef8;
-}
-
-.label {
-  font-size:44px;
-  color:#bcd4ff;
-  font-weight:600;
-  margin-bottom:6px;
+  padding:0 20px;
 }
 
 .section {
-  margin:10px 0;
+  width:45%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+
+.label {
+  font-size:36px;
+  color:#bcd4ff;
+  font-weight:600;
+  margin-bottom:4px;
 }
 
 .metric {
-  font-size:96px;
+  font-size:88px;
   font-weight:700;
   color:#ffffff;
   position:relative;
 }
 
 .delta {
-  font-size:44px;
+  font-size:36px;
   font-weight:600;
   opacity:0;
   pointer-events:none;
   display:inline-flex;
   align-items:center;
-  margin-left:12px;
+  margin-left:10px;
   transition:opacity 0.4s ease, transform 0.4s ease;
 }
 
@@ -69,7 +73,6 @@ html, body {
 
 <body>
 <div class="card">
-
   <div class="section">
     <div class="label">ELO</div>
     <span id="eloNumber" class="metric">—</span>
@@ -81,7 +84,6 @@ html, body {
     <span id="rankNumber" class="metric">—</span>
     <span id="rankDelta" class="delta"><span class="delta-arrow"></span><span class="delta-number"></span></span>
   </div>
-
 </div>
 
 <script>
@@ -158,7 +160,7 @@ async function fetchData() {
       animateDelta(rankDeltaEl, arrowRank, numberRank, lastRank, newRank, true);
 
     eloEl.textContent = newElo;
-    rankEl.textContent = "#" + newRank;
+    rankEl.textContent = newRank; // ← removed "#"
 
     lastElo = newElo;
     lastRank = newRank;
