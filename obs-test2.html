@@ -151,7 +151,7 @@
            target="_blank">Season 10 Leaderboard</a>
       </li>
       <li>Click your player name</li>
-      <li>Copy the <strong>full URL</strong> of your player page (or the numbers following <code>player/</code> in the URL)</li>
+      <li>Copy the <strong>full URL</strong> of your player page (or just the numbers following <code>player/</code>)</li>
       <li>Paste above!</li>
     </ol>
   </div>
@@ -210,21 +210,31 @@ const leaderboardLink = document.getElementById("leaderboardLink");
 const matchLink = document.getElementById("matchLink");
 const rankLink = document.getElementById("rankLink");
 
+// Very simple + robust extraction:
+// 1) Prefer the 19-digit chunk that appears AFTER "player/"
+// 2) Otherwise, if there is exactly ONE 19-digit chunk anywhere, use that
 function extractPlayerId(input) {
   if (!input) return null;
+  const raw = String(input).trim();
 
-  // Normalize Unicode, strip invisible garbage
-  let clean = input.normalize("NFKD")
-    .replace(/\s+/g, "")  // remove ALL whitespace incl NBSP
-    .replace(/[／]/g, "/") // fullwidth slash -> ascii slash
-    .trim();
+  // If it's exactly 19 digits, trust it
+  const exactIdMatch = raw.match(/^\d{19}$/);
+  if (exactIdMatch) return exactIdMatch[0];
 
-  // Case 1: Exact 19 ASCII digits always wins
-  if (/^\d{19}$/.test(clean)) return clean;
+  // If there's a "player/" segment, try to grab 19 digits after it
+  const lower = raw.toLowerCase();
+  const idx = lower.indexOf("player/");
+  if (idx !== -1) {
+    const after = raw.slice(idx); // from "player/..."
+    const afterMatch = after.match(/\d{19}/);
+    if (afterMatch) return afterMatch[0];
+  }
 
-  // Case 2: Extract from "...player/#########..."
-  const match = clean.match(/player\/(\d{19})/i);
-  if (match) return match[1];
+  // Fallback: look for all 19-digit sequences in the whole string
+  const allMatches = raw.match(/\d{19}/g);
+  if (allMatches && allMatches.length === 1) {
+    return allMatches[0];
+  }
 
   return null;
 }
@@ -249,7 +259,10 @@ async function lookupPlayer(rawInput) {
       body: JSON.stringify({ player_id: playerId })
     });
 
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    if (!resp.ok) {
+      const text = await resp.text();
+      throw new Error(`HTTP ${resp.status}: ${text}`);
+    }
 
     const data = await resp.json();
     const player = data.player || data;
@@ -257,10 +270,10 @@ async function lookupPlayer(rawInput) {
     nameEl.textContent = player.display_name || "Unknown";
     ratingEl.textContent = player.rating ?? "N/A";
 
-    eloLink.href = `obs-elo.html?player_id=${playerId}`;
-    matchLink.href = `obs-match.html?player_id=${playerId}`;
-    rankLink.href = `obs-rank.html?player_id=${playerId}`;
-    leaderboardLink.href = `obs-leaderboard.html?player_id=${playerId}`;
+    eloLink.href = `obs-elo.html?player_id=${encodeURIComponent(playerId)}`;
+    matchLink.href = `obs-match.html?player_id=${encodeURIComponent(playerId)}`;
+    rankLink.href = `obs-rank.html?player_id=${encodeURIComponent(playerId)}`;
+    leaderboardLink.href = `obs-leaderboard.html?player_id=${encodeURIComponent(playerId)}`;
 
   } catch (err) {
     nameEl.textContent = "Error";
@@ -268,12 +281,14 @@ async function lookupPlayer(rawInput) {
   }
 }
 
-document.getElementById("lookupBtn").addEventListener("click", () =>
-  lookupPlayer(document.getElementById("playerIdInput").value)
-);
+document.getElementById("lookupBtn").addEventListener("click", () => {
+  lookupPlayer(document.getElementById("playerIdInput").value);
+});
 
 document.getElementById("playerIdInput").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") lookupPlayer(e.target.value);
+  if (e.key === "Enter") {
+    lookupPlayer(e.target.value);
+  }
 });
 
 document.querySelectorAll(".info-section").forEach(section => {
@@ -295,4 +310,3 @@ document.querySelectorAll(".info-section").forEach(section => {
 
 </body>
 </html>
-
