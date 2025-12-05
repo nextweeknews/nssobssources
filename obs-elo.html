@@ -101,7 +101,7 @@ let deltaTimeout = null;
 function updateDeltaPosition() {
   const rect = ratingEl.getBoundingClientRect();
   const containerRect = ratingEl.parentElement.getBoundingClientRect();
-  const leftPos = rect.right - containerRect.left + 16;
+  const leftPos = rect.right - containerRect.left + 20;
   deltaEl.style.left = leftPos + "px";
 }
 
