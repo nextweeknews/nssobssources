@@ -146,10 +146,10 @@
   </div>
   <div class="info-content">
     <ol>
-      <li>Open the <a href="https://teamupdiscord.com/leaderboard/client/DISCORD%7C1069003073311211601/leaderboard/Season_10/rating_type/player_global_all/format/global" target="_blank">Season 10 Leaderboard</a></li>
-      <li>Find and click your player name</li>
-      <li>Copy the number after <code>player/</code> in the URL</li>
-      <li>Paste it into the box above.</li>
+      <li>Open the Season 10 Leaderboard</li>
+      <li>Click your name to open profile</li>
+      <li>Copy the number after <code>player/</code></li>
+      <li>Paste into the box above</li>
     </ol>
   </div>
 </div>
@@ -161,10 +161,10 @@
   </div>
   <div class="info-content">
     <ol>
-      <li>Open your overlay & copy its <strong>full URL</strong></li>
-      <li>In OBS, go to <strong>Sources → + → Browser</strong></li>
-      <li>Select <strong>“Create New”</strong></li>
-      <li>Paste the full URL and set dimensions</li>
+      <li>Copy full overlay URL</li>
+      <li>OBS → Sources → + → Browser</li>
+      <li>Select “Create New”</li>
+      <li>Paste URL and adjust size</li>
     </ol>
   </div>
 </div>
@@ -180,7 +180,7 @@
       <li>Last Match: <code>480×400</code></li>
       <li>Rank Position: <code>450×600</code></li>
       <li>Leaderboard: <code>450×650</code></li>
-      <li>You can resize freely in OBS!</li>
+      <li>Then resize freely in OBS!</li>
     </ul>
   </div>
 </div>
@@ -192,10 +192,10 @@
   </div>
   <div class="info-content">
     <ul>
-      <li>If overlays freeze, lag, or don’t update:</li>
+      <li>If overlays freeze or lag:</li>
       <li>OBS Settings → Advanced → Sources</li>
-      <li>Try disabling <strong>Browser Source Hardware Acceleration</strong></li>
-      <li>Restart OBS after changing settings.</li>
+      <li>Disable Browser Source Hardware Acceleration</li>
+      <li>Restart OBS</li>
     </ul>
   </div>
 </div>
@@ -210,26 +210,18 @@ const leaderboardLink = document.getElementById("leaderboardLink");
 const matchLink = document.getElementById("matchLink");
 const rankLink = document.getElementById("rankLink");
 
-// Robust extraction of the 19-digit player ID
+// 💯 Final robust ID extraction logic
 function extractPlayerId(input) {
   const clean = input.trim();
   const lower = clean.toLowerCase();
 
-  // 1) Prefer the ID that follows "player/"
-  const playerIdx = lower.indexOf("player/");
-  if (playerIdx !== -1) {
-    const after = clean.slice(playerIdx + "player/".length);
-    const m = after.match(/\d{19}/);
-    if (m) return m[0];
-  }
+  // Look specifically for "player/<19digits>"
+  const match = lower.match(/player\/(\d{19})/);
+  if (match) return match[1];
 
-  // 2) Fallback: single 19-digit sequence in entire input
-  const allMatches = clean.match(/\d{19}/g);
-  if (allMatches && allMatches.length === 1) {
-    return allMatches[0];
-  }
+  // Accept exact 19-digit only input
+  if (/^\d{19}$/.test(clean)) return clean;
 
-  // Otherwise, invalid
   return null;
 }
 
@@ -244,6 +236,7 @@ async function lookupPlayer(rawInput) {
     return;
   }
 
+  // UI update
   nameEl.textContent = "Loading...";
   ratingEl.textContent = "—";
 
@@ -265,11 +258,11 @@ async function lookupPlayer(rawInput) {
     nameEl.textContent = player.display_name || "Unknown";
     ratingEl.textContent = player.rating ?? "N/A";
 
-    // Use the sanitized playerId for the overlay links
-    eloLink.href = `obs-elo.html?player_id=${encodeURIComponent(playerId)}`;
-    matchLink.href = `obs-match.html?player_id=${encodeURIComponent(playerId)}`;
-    rankLink.href = `obs-rank.html?player_id=${encodeURIComponent(playerId)}`;
-    leaderboardLink.href = `obs-leaderboard.html?player_id=${encodeURIComponent(playerId)}`;
+    // Proper corrected links
+    eloLink.href = `obs-elo.html?player_id=${playerId}`;
+    matchLink.href = `obs-match.html?player_id=${playerId}`;
+    rankLink.href = `obs-rank.html?player_id=${playerId}`;
+    leaderboardLink.href = `obs-leaderboard.html?player_id=${playerId}`;
 
   } catch (err) {
     nameEl.textContent = "Error";
@@ -277,18 +270,19 @@ async function lookupPlayer(rawInput) {
   }
 }
 
+// Button click
 document.getElementById("lookupBtn").addEventListener("click", () => {
-  const raw = document.getElementById("playerIdInput").value;
-  lookupPlayer(raw);
+  lookupPlayer(document.getElementById("playerIdInput").value);
 });
 
-// (Optional) allow Enter key to trigger lookup
+// Press Enter to search
 document.getElementById("playerIdInput").addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
     lookupPlayer(e.target.value);
   }
 });
 
+// Expandable info sections
 document.querySelectorAll(".info-section").forEach(section => {
   const header = section.querySelector(".info-header");
   const content = section.querySelector(".info-content");
