@@ -92,13 +92,19 @@ html, body {
     <div class="section" style="width:40%">
       <div class="label">Rank</div>
       <span id="rankNumber" class="metric">—</span>
-      <span id="rankDelta" class="delta"><span class="delta-arrow"></span><span class="delta-number"></span></span>
+      <span id="rankDelta" class="delta">
+        <span class="delta-arrow"></span>
+        <span class="delta-number"></span>
+      </span>
     </div>
 
     <div class="section" style="width:60%">
       <div class="label">ELO</div>
       <span id="eloNumber" class="metric">—</span>
-      <span id="eloDelta" class="delta"><span class="delta-arrow"></span><span class="delta-number"></span></span>
+      <span id="eloDelta" class="delta">
+        <span class="delta-arrow"></span>
+        <span class="delta-number"></span>
+      </span>
     </div>
   </div>
 
@@ -126,20 +132,24 @@ const numberRank = rankDeltaEl.querySelector(".delta-number");
 let lastElo = null;
 let lastRank = null;
 
+// Player ID must be exactly 19 digits
 function getPlayerId() {
   const pid = new URLSearchParams(location.search).get("player_id");
-  return (/^\d{19}$/.test(pid) ? pid : "702730732220579950");
+  return /^\d{19}$/.test(pid) ? pid : "702730732220579950";
 }
 
-function animateDelta(el, arrow, number, oldVal, newVal, reverse=false) {
+function animateDelta(el, arrow, number, oldVal, newVal, reverse = false) {
   const diff = newVal - oldVal;
   if (diff === 0 || oldVal === null) return;
 
-  arrow.textContent = diff > 0 ? (reverse ? '▼' : '▲') : (reverse ? '▲' : '▼');
+  // reverse=true means "up is bad" (rank numbers)
+  arrow.textContent = diff > 0 ? (reverse ? "▼" : "▲") : (reverse ? "▲" : "▼");
   number.textContent = Math.abs(diff);
 
-  el.classList.remove("delta-positive","delta-negative");
-  el.classList.add(diff > 0 ^ reverse ? "delta-positive" : "delta-negative");
+  el.classList.remove("delta-positive", "delta-negative");
+  // XOR so that "better" always uses positive color
+  const isPositive = !!(diff > 0 ^ reverse);
+  el.classList.add(isPositive ? "delta-positive" : "delta-negative");
 
   el.style.opacity = "0";
   el.style.transform = "translateY(10px)";
@@ -148,41 +158,18 @@ function animateDelta(el, arrow, number, oldVal, newVal, reverse=false) {
     el.style.transform = "translateY(0)";
   });
 
-  setTimeout(() => el.style.opacity = "0", 8000);
+  setTimeout(() => {
+    el.style.opacity = "0";
+  }, 8000);
+}
+
+// Strip "Season 10 " or "Season <n> " from the tier name
+function formatTierName(name) {
+  if (!name) return "";
+  return name.replace(/^Season\s+\d+\s+/i, "");
 }
 
 async function fetchData() {
-
-  let data = null;
-try {
-  const resp = await fetch(WORKER_URL, {
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({
-      leaderboard:"season_10",
-      rating_type:"player_global_all",
-      client_id:"DISCORD|1069003073311211601"
-    })
-  });
-
-  try {
-    data = await resp.json();
-    console.log("FULL RAW JSON:", data);
-    console.log("RESOLVED:", JSON.stringify(data.resolved, null, 2));
-
-  } catch (jsonError) {
-    console.error("JSON parse error:", jsonError);
-    const text = await resp.text();
-    console.error("Response text instead:", text);
-    return;
-  }
-
-} catch (err) {
-  console.error("Fetch FAILED:", err);
-  return;
-}
-
-  
   const pid = getPlayerId();
 
   try {
@@ -196,21 +183,33 @@ try {
       })
     });
 
-    const data = await resp.json();
-    const entries = data.leaderboard || [];
-    const idx = entries.findIndex(p => p.team[0] === pid);
+    if (!resp.ok) {
+      console.error("Leaderboard HTTP error", resp.status);
+      return;
+    }
 
-    if (idx < 0) return;
+    const data = await resp.json();
+
+    const entries = data.leaderboard || [];
+    const idx = entries.findIndex(p => p.team && p.team[0] === pid);
+
+    if (idx < 0) {
+      console.warn("Player not found in leaderboard for ID:", pid);
+      return;
+    }
 
     const player = entries[idx];
-    const newElo = player.elo ?? 0;
+    const newElo = typeof player.elo === "number" ? player.elo : 0;
     const newRank = idx + 1;
 
-    if (lastElo !== null && newElo !== lastElo)
+    // Update deltas
+    if (lastElo !== null && newElo !== lastElo) {
       animateDelta(eloDeltaEl, arrowElo, numberElo, lastElo, newElo);
-    
-    if (lastRank !== null && newRank !== lastRank)
+    }
+
+    if (lastRank !== null && newRank !== lastRank) {
       animateDelta(rankDeltaEl, arrowRank, numberRank, lastRank, newRank, true);
+    }
 
     eloEl.textContent = newElo;
     rankEl.textContent = newRank;
@@ -218,27 +217,37 @@ try {
     lastElo = newElo;
     lastRank = newRank;
 
-    // ---- Tier calc with Rank #1 override ----
-    const tierData = data?.resolved?.tiers ?? data;
-
-    const tiers = tierData?.player_global_all_tiers ?? [];
-    const rankTiers = tierData?.player_global_all_rank_tiers ?? [];
+    // ---- Tier calculation (using top-level fields) ----
+    const tiers = Array.isArray(data.player_global_all_tiers)
+      ? data.player_global_all_tiers
+      : [];
+    const rankTiers = Array.isArray(data.player_global_all_rank_tiers)
+      ? data.player_global_all_rank_tiers
+      : [];
 
     let playerTier = null;
 
+    // Rank #1 override, if rank_tiers exist
     if (newRank === 1 && rankTiers.length > 0) {
       playerTier = {
         name: rankTiers[0].name,
         color: rankTiers[0].color
       };
     } else {
-      for (const t of tiers) {
-        if (newElo >= t.required_elo) playerTier = t;
+      // Find highest tier where elo >= required_elo
+      for (let i = 0; i < tiers.length; i++) {
+        if (newElo >= tiers[i].required_elo) {
+          playerTier = tiers[i];
+        } else {
+          // because tiers are sorted ascending by required_elo,
+          // once we fail this check, all following tiers are too high
+          break;
+        }
       }
     }
 
     if (playerTier) {
-      tierEl.textContent = playerTier.name;
+      tierEl.textContent = formatTierName(playerTier.name);
       tierEl.style.color = playerTier.color || "#e9eef8";
     } else {
       tierEl.textContent = "Unranked";
