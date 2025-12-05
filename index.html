@@ -19,6 +19,52 @@
     max-width: 400px;
     box-shadow: 0 6px 20px rgba(0,0,0,0.45);
   }
+  /* Match info boxes with card styling */
+  .info-box {
+  max-width: 400px;
+  margin-top: 20px;
+}
+  .info-section {
+  background: #1b1b1b;
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 20px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.45);
+
+    border-bottom: 1px solid #333;
+    margin-bottom: 10px;
+  }
+  .info-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    cursor: pointer;
+    user-select: none;
+  }
+  .info-header h3 {
+    margin: 0;
+    font-size: 18px;
+    color: #fff;
+  }
+  .chevron {
+    transition: transform 0.25s ease;
+    font-size: 18px;
+    color: #bbb;
+  }
+  .info-section.open .chevron {
+    transform: rotate(90deg);
+    color: #fff;
+  }
+  .info-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+    color: #ddd;
+  }
+  .info-content a {
+    color: #4ea3ff;
+  }
   input {
     padding: 10px;
     width: 260px;
@@ -36,85 +82,6 @@
     cursor: pointer;
     font-weight: 600;
   }
-  button:hover { background: #2f5fe0; }
-.overlay-link {
-  display: block;
-  width: 90%;
-  margin: 12px auto 0 auto;
-  text-align: center;
-  padding: 12px 14px;
-  border-radius: 8px;
-  background: #4a4a4a;
-  color: #fff;
-  text-decoration: none;
-  font-weight: 600;
-}
-  .overlay-link:hover {
-    background: #5d5d5d;
-  }
-  .info-box {
-    width: 100%;
-    max-width: 700px;
-    margin: 20px auto;
-    background: #1e1f26;
-    border-radius: 10px;
-    padding: 0;
-    overflow: hidden;
-    font-family: sans-serif;
-  }
-  .info-section {
-    border-bottom: 1px solid #333;
-  }
-  .info-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 14px 18px;
-    cursor: pointer;
-    background: #2a2c34;
-    transition: background 0.2s ease;
-  }
-  .info-header:hover {
-    background: #353740;
-  }
-  .info-header h3 {
-    margin: 0;
-    font-size: 18px;
-    color: #fff;
-    user-select: none;
-  }
-  .chevron {
-    transition: transform 0.25s ease, color 0.2s ease;
-    font-size: 18px;
-    color: #bbb;
-  }
-  .info-header:hover .chevron {
-    color: #fff;
-  }
-  .info-section.open .chevron {
-    transform: rotate(90deg);
-    color: #fff;
-  }
-  .info-content {
-    padding: 0 18px 14px 18px;
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.3s ease;
-    color: #ddd;
-  }
-  .info-content a {
-    color: #4ea3ff;
-  }
-  .info-content code {
-    background: #333;
-    padding: 2px 4px;
-    border-radius: 4px;
-  }
-  ul, ol {
-    margin-top: 10px;
-    margin-bottom: 10px;
-  }
-
 </style>
 </head>
 <body>
@@ -135,110 +102,49 @@
   <a id="leaderboardLink" class="overlay-link" href="#" target="_blank">Season 10 Top 16</a>
 </div>
 
-<script>
-const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_player_rating";
-const nameEl = document.getElementById("name");
-const ratingEl = document.getElementById("rating");
-const resultBox = document.getElementById("result");
-const eloLink = document.getElementById("eloLink");
-const leaderboardLink = document.getElementById("leaderboardLink");
-const matchLink = document.getElementById("matchLink");
-
-async function lookupPlayer(playerId) {
-  resultBox.style.display = "block";
-  nameEl.textContent = "Loading...";
-  ratingEl.textContent = "—";
-
-  try {
-    const resp = await fetch(WORKER_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ player_id: playerId })
-    });
-
-    if (!resp.ok) {
-      const text = await resp.text();
-      throw new Error(`HTTP ${resp.status}: ${text}`);
-    }
-
-    const data = await resp.json();
-    const player = data.player || data;
-
-    nameEl.textContent = player.display_name || "Unknown";
-    ratingEl.textContent = player.rating ?? "N/A";
-
-    eloLink.href = `obs-elo.html?player_id=${encodeURIComponent(playerId)}`;
-    matchLink.href = `obs-match.html?player_id=${encodeURIComponent(playerId)}`;
-    rankLink.href = `obs-rank.html?player_id=${encodeURIComponent(playerId)}`;
-    leaderboardLink.href = `obs-leaderboard.html?player_id=${encodeURIComponent(playerId)}`;
-
-  } catch (err) {
-    nameEl.textContent = "Error";
-    ratingEl.textContent = err.message;
-  }
-}
-
-document.getElementById("lookupBtn").addEventListener("click", () => {
-  const pid = document.getElementById("playerIdInput").value.trim();
-  if (pid) lookupPlayer(pid);
-});
-</script>
-  
 <div class="info-box">
 
-  <!-- SECTION 1 -->
   <div class="info-section">
     <div class="info-header">
       <h3>How to Find Your Player ID</h3>
       <div class="chevron">▶</div>
     </div>
-
     <div class="info-content">
       <ol>
         <li>
-          Open the   
-          <a class="info-link" 
-            href="https://teamupdiscord.com/leaderboard-api/client/DISCORD%7C1069003073311211601/leaderboard/Season_10/rating_type/player_global_all/format/global"
-            target="_blank">
-            Season 10 Leaderboard
-          </a>
+          Open the <a href="https://teamupdiscord.com/leaderboard-api/client/DISCORD%7C1069003073311211601/leaderboard/Season_10/rating_type/player_global_all/format/global" target="_blank">Season 10 Leaderboard</a>
         </li>
-        <li>Click on your player name to open your player page</li>
-        <li>Look in the URL for <code>/player/########</code> and copy the numbers</li>
-        <li>Paste those numbers into the search box above!</li>
+        <li>Click your player name</li>
+        <li>Copy the numbers after <code>/player/</code></li>
+        <li>Paste them into the search box</li>
       </ol>
     </div>
   </div>
 
-  <!-- SECTION 2 -->
   <div class="info-section">
     <div class="info-header">
       <h3>How to Add Overlays to OBS</h3>
       <div class="chevron">▶</div>
     </div>
-
     <div class="info-content">
       <ol>
-        <li>Open your desired overlay, and copy the URL in full</li>
-        <li>In OBS, click "+" in Sources, then select "Browser"</li>
-        <li>Select "Create New" and paste the full URL</li>
-        <li>Delete any default Custom CSS</li>
+        <li>Open an overlay and copy its full URL</li>
+        <li>In OBS → Sources → + → Browser</li>
+        <li>Select "Create New"</li>
+        <li>Paste URL and remove default CSS</li>
       </ol>
     </div>
   </div>
 
-  <!-- SECTION 3 -->
   <div class="info-section">
     <div class="info-header">
       <h3>Recommended Resolutions</h3>
       <div class="chevron">▶</div>
     </div>
-
     <div class="info-content">
-      <p>This is for the initial setup. You can scale and move the overlays as desired once they're in your Scene.</p>
       <ul>
         <li>Simple Elo: 600x240</li>
-        <li>Last Match Results: 480x400</li>
+        <li>Last Match: 480x400</li>
         <li>Rank Position: 450x600</li>
         <li>Leaderboard: 500x650</li>
       </ul>
@@ -254,7 +160,6 @@ document.getElementById("lookupBtn").addEventListener("click", () => {
 
     header.addEventListener("click", () => {
       const isOpen = section.classList.contains("open");
-
       if (isOpen) {
         section.classList.remove("open");
         content.style.maxHeight = null;
