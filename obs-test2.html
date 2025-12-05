@@ -47,7 +47,6 @@ html, body {
   align-items:center;
 }
 
-/* container holds rating number; only inner span fades */
 .rating {
   font-size:120px;
   font-weight:700;
@@ -66,7 +65,6 @@ html, body {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  left: calc(50% + 140px); /* initial fixed offset from container center */
   font-size:56px;
   font-weight:600;
   opacity:0;
@@ -109,19 +107,26 @@ const deltaEl = document.getElementById("delta");
 let lastRating = null;
 let deltaTimeout = null;
 
+function updateDeltaPosition() {
+  const rect = ratingNumberEl.getBoundingClientRect();
+  const containerRect = ratingNumberEl.parentElement.getBoundingClientRect();
+  deltaEl.style.left = (rect.right - containerRect.left + 20) + "px"; // 20px distance
+}
+
 function setRating(value) {
   if (lastRating === null) {
-    // initial load
     ratingNumberEl.textContent = value ?? "—";
     lastRating = value;
     return;
   }
+
   if (value === lastRating) return;
 
-  // fade-out, update, fade-in number only
+  // fade out, update number, update delta, fade in
   ratingNumberEl.style.opacity = "0";
   setTimeout(() => {
     ratingNumberEl.textContent = value;
+    updateDeltaPosition(); // position delta based on updated number
     ratingNumberEl.style.opacity = "1";
   }, 500);
 
@@ -150,7 +155,7 @@ function showDelta(oldValue, newValue) {
   deltaEl.appendChild(arrowSpan);
   deltaEl.appendChild(numberSpan);
 
-  // ensure delta is positioned absolutely; doesn't move
+  // initial position offset for animation
   deltaEl.style.transition = "none";
   deltaEl.style.transform = "translateY(-50%) translateX(20px)";
   deltaEl.style.opacity = "0";
@@ -200,6 +205,7 @@ function startAutoRefresh() {
 }
 
 window.addEventListener("load", startAutoRefresh);
+window.addEventListener("resize", updateDeltaPosition);
 </script>
 </body>
 </html>
