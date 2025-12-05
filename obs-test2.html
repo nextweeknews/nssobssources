@@ -6,120 +6,87 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
-  body {
-    font-family: Inter, system-ui, sans-serif;
-    padding: 30px;
-    background: #0c0c0c;
-    color: #e8ecf5;
-  }
+body {
+  font-family: Inter, system-ui, sans-serif;
+  padding: 30px;
+  background: #0c0c0c;
+  color: #e8ecf5;
+}
+h2 { font-weight: 600; margin-bottom: 16px; }
+input {
+  padding: 10px;
+  width: 260px;
+  border-radius: 8px;
+  border: none;
+  outline: none;
+  margin-right: 10px;
+}
+button {
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: none;
+  background: #3a72ff;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 600;
+}
+button:hover { background: #2f5fe0; }
 
-  h2 {
-    font-weight: 600;
-    margin-bottom: 16px;
-  }
+.card, .info-section {
+  background: #1b1b1b;
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 20px;
+  width: 400px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.45);
+}
+.overlay-link {
+  display: block;
+  width: 90%;
+  margin: 12px auto 0 auto;
+  text-align: center;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #4a4a4a;
+  color: #fff;
+  text-decoration: none;
+  font-weight: 600;
+}
+.overlay-link:hover { background: #5d5d5d; }
 
-  input {
-    padding: 10px;
-    width: 260px;
-    border-radius: 8px;
-    border: none;
-    outline: none;
-    margin-right: 10px;
-  }
-
-  button {
-    padding: 10px 16px;
-    border-radius: 8px;
-    border: none;
-    background: #3a72ff;
-    color: #fff;
-    cursor: pointer;
-    font-weight: 600;
-  }
-  button:hover { background: #2f5fe0; }
-
-  .card {
-    background: #1b1b1b;
-    border-radius: 12px;
-    padding: 20px;
-    margin-top: 20px;
-    width: 400px;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.45);
-  }
-
-  .overlay-link {
-    display: block;
-    width: 90%;
-    margin: 12px auto 0 auto;
-    text-align: center;
-    padding: 12px 14px;
-    border-radius: 8px;
-    background: #4a4a4a;
-    color: #fff;
-    text-decoration: none;
-    font-weight: 600;
-  }
-  .overlay-link:hover {
-    background: #5d5d5d;
-  }
-
-  .info-section {
-    background: #1b1b1b;
-    border-radius: 12px;
-    padding: 12px 16px;
-    margin-top: 12px;
-    width: 400px;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.35);
-  }
-
-  .info-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 6px;
-    cursor: pointer;
-    border-radius: 8px;
-  }
-  .info-header:hover h3 {
-    color: #6fa8ff;
-  }
-
-  .info-header h3 {
-    margin: 0;
-    font-size: 17px;
-    color: #fff;
-  }
-
-  .chevron {
-    transition: transform 0.25s ease, color 0.2s ease;
-    font-size: 16px;
-    color: #888;
-    font-weight: bold;
-  }
-
-  .info-section.open .chevron {
-    transform: rotate(90deg);
-    color: #fff;
-  }
-
-  .info-content {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.3s ease;
-    color: #ddd;
-    padding-left: 2px;
-  }
-
-  .info-content a {
-    color: #4ea3ff;
-  }
-
-  ol, ul {
-    margin-top: 10px;
-    margin-bottom: 10px;
-  }
+.info-section {
+  padding: 12px 16px;
+  margin-top: 12px;
+}
+.info-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 6px;
+  cursor: pointer;
+  border-radius: 8px;
+}
+.info-header:hover h3 { color: #6fa8ff; }
+.info-header h3 { font-size: 17px; margin: 0; }
+.chevron {
+  transition: transform 0.25s ease;
+  font-size: 16px;
+  color: #888;
+  font-weight: bold;
+}
+.info-section.open .chevron {
+  transform: rotate(90deg);
+  color: #fff;
+}
+.info-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+  color: #ddd;
+}
 </style>
 </head>
+
 <body>
 
 <h2>Ranked NSS Golf - OBS Overlays</h2>
@@ -146,12 +113,9 @@
   </div>
   <div class="info-content">
     <ol>
-      <li>Open the
-        <a href="https://teamupdiscord.com/leaderboard/client/DISCORD%7C1069003073311211601/leaderboard/Season_10/rating_type/player_global_all/format/global"
-           target="_blank">Season 10 Leaderboard</a>
-      </li>
+      <li>Open the leaderboard link</li>
       <li>Click your player name</li>
-      <li>Copy the <strong>full URL</strong> of your player page (or just the numbers following <code>player/</code>)</li>
+      <li>Copy the numbers after <code>player/</code></li>
       <li>Paste above!</li>
     </ol>
   </div>
@@ -164,9 +128,9 @@
   </div>
   <div class="info-content">
     <ol>
-      <li>Copy the <strong>full URL</strong> of your overlay</li>
+      <li>Copy the full overlay URL</li>
       <li>In OBS: <strong>Sources → + → Browser</strong></li>
-      <li>Paste the URL and remove default CSS</li>
+      <li>Paste and set dimensions</li>
     </ol>
   </div>
 </div>
@@ -178,7 +142,7 @@
   </div>
   <div class="info-content">
     <ul>
-      <li>Simple Elo: <code>600×240</code></li>
+      <li>Elo: <code>600×240</code></li>
       <li>Last Match: <code>480×400</code></li>
       <li>Rank Position: <code>450×600</code></li>
       <li>Leaderboard: <code>450×650</code></li>
@@ -186,71 +150,42 @@
   </div>
 </div>
 
-<div class="info-section">
-  <div class="info-header">
-    <h3>Troubleshooting</h3>
-    <div class="chevron">▶</div>
-  </div>
-  <div class="info-content">
-    <ul>
-      <li>If overlays seem laggy or broken, disable <strong>Browser Source Hardware Acceleration</strong> in OBS Settings</li>
-      <li>Restart OBS afterward</li>
-    </ul>
-  </div>
-</div>
-
 <script>
 const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_player_rating";
-
 const nameEl = document.getElementById("name");
 const ratingEl = document.getElementById("rating");
 const resultBox = document.getElementById("result");
-const eloLink = document.getElementById("eloLink");
-const leaderboardLink = document.getElementById("leaderboardLink");
-const matchLink = document.getElementById("matchLink");
-const rankLink = document.getElementById("rankLink");
+const links = {
+  elo: document.getElementById("eloLink"),
+  match: document.getElementById("matchLink"),
+  rank: document.getElementById("rankLink"),
+  board: document.getElementById("leaderboardLink")
+};
 
-// Very simple + robust extraction:
-// 1) Prefer the 19-digit chunk that appears AFTER "player/"
-// 2) Otherwise, if there is exactly ONE 19-digit chunk anywhere, use that
 function extractPlayerId(input) {
-  if (!input) return null;
-  const raw = String(input).trim();
-
-  // If it's exactly 19 digits, trust it
-  const exactIdMatch = raw.match(/^\d{19}$/);
-  if (exactIdMatch) return exactIdMatch[0];
-
-  // If there's a "player/" segment, try to grab 19 digits after it
-  const lower = raw.toLowerCase();
-  const idx = lower.indexOf("player/");
-  if (idx !== -1) {
-    const after = raw.slice(idx); // from "player/..."
-    const afterMatch = after.match(/\d{19}/);
-    if (afterMatch) return afterMatch[0];
-  }
-
-  // Fallback: look for all 19-digit sequences in the whole string
-  const allMatches = raw.match(/\d{19}/g);
-  if (allMatches && allMatches.length === 1) {
-    return allMatches[0];
-  }
-
-  return null;
+  const decoded = decodeURIComponent(input.trim());
+  const digits = decoded.replace(/\D/g, ""); // keep only numbers
+  return (digits.length === 19 ? digits : null);
 }
 
-async function lookupPlayer(rawInput) {
-  const playerId = extractPlayerId(rawInput);
+async function lookupPlayer(input) {
+  const playerId = extractPlayerId(input);
   resultBox.style.display = "block";
 
   if (!playerId) {
-    nameEl.textContent = "Error";
-    ratingEl.textContent = "Invalid Player ID";
+    nameEl.textContent = "Invalid Input";
+    ratingEl.textContent = "Please enter a valid Player ID";
     return;
   }
 
   nameEl.textContent = "Loading...";
   ratingEl.textContent = "—";
+
+  // Generate overlay URLs even if Elo missing
+  links.elo.href = `obs-elo.html?player_id=${playerId}`;
+  links.match.href = `obs-match.html?player_id=${playerId}`;
+  links.rank.href = `obs-rank.html?player_id=${playerId}`;
+  links.board.href = `obs-leaderboard.html?player_id=${playerId}`;
 
   try {
     const resp = await fetch(WORKER_URL, {
@@ -259,51 +194,29 @@ async function lookupPlayer(rawInput) {
       body: JSON.stringify({ player_id: playerId })
     });
 
-    if (!resp.ok) {
-      const text = await resp.text();
-      throw new Error(`HTTP ${resp.status}: ${text}`);
-    }
+    const json = await resp.json();
+    const player = json.player || {};
 
-    const data = await resp.json();
-    const player = data.player || data;
+    nameEl.textContent = player.display_name || "Unknown Player";
+    ratingEl.textContent = player.rating ?? "No Elo Yet — play a ranked match first!";
 
-    nameEl.textContent = player.display_name || "Unknown";
-    ratingEl.textContent = player.rating ?? "N/A";
-
-    eloLink.href = `obs-elo.html?player_id=${encodeURIComponent(playerId)}`;
-    matchLink.href = `obs-match.html?player_id=${encodeURIComponent(playerId)}`;
-    rankLink.href = `obs-rank.html?player_id=${encodeURIComponent(playerId)}`;
-    leaderboardLink.href = `obs-leaderboard.html?player_id=${encodeURIComponent(playerId)}`;
-
-  } catch (err) {
-    nameEl.textContent = "Error";
-    ratingEl.textContent = err.message;
+  } catch {
+    nameEl.textContent = "Player Found";
+    ratingEl.textContent = "No Elo Yet — play a ranked match first!";
   }
 }
 
-document.getElementById("lookupBtn").addEventListener("click", () => {
-  lookupPlayer(document.getElementById("playerIdInput").value);
-});
+document.getElementById("lookupBtn")
+  .addEventListener("click", () => lookupPlayer(playerIdInput.value));
 
-document.getElementById("playerIdInput").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    lookupPlayer(e.target.value);
-  }
-});
-
-document.querySelectorAll(".info-section").forEach(section => {
-  const header = section.querySelector(".info-header");
-  const content = section.querySelector(".info-content");
-
+document.querySelectorAll(".info-header").forEach(header => {
   header.addEventListener("click", () => {
-    const isOpen = section.classList.contains("open");
-    if (isOpen) {
-      section.classList.remove("open");
-      content.style.maxHeight = null;
-    } else {
-      section.classList.add("open");
-      content.style.maxHeight = content.scrollHeight + "px";
-    }
+    const section = header.parentElement;
+    section.classList.toggle("open");
+    const content = section.querySelector(".info-content");
+    content.style.maxHeight = section.classList.contains("open")
+      ? `${content.scrollHeight}px`
+      : null;
   });
 });
 </script>
