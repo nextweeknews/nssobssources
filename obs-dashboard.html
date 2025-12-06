@@ -37,7 +37,7 @@ html, body {
   color:#e9eef8;
 }
 
-/* Tier */
+/* Tier Row */
 #tierRow {
   display:flex;
   align-items:center;
@@ -52,6 +52,7 @@ html, body {
   color:#bcd4ff;
 }
 
+/* Tier Badge */
 #tierContainer {
   display:flex;
   align-items:center;
@@ -69,7 +70,7 @@ html, body {
   transition: color 0.4s ease, text-shadow 0.4s ease;
 }
 
-/* 3-column stats row */
+/* Stats Row */
 .row {
   width:100%;
   display:flex;
@@ -103,7 +104,7 @@ html, body {
   margin:0 10px;
 }
 
-/* Delta Animations */
+/* Deltas */
 .delta {
   font-size:30px;
   font-weight:600;
@@ -202,9 +203,9 @@ function getTier(elo,rank,data){
   if(!cfg) return null;
   if(rank===1 && cfg.player_global_all_rank_tiers?.length)
     return cfg.player_global_all_rank_tiers[0];
-  let b=null;
-  for(const t of cfg.player_global_all_tiers) if(elo>=t.required_elo) b=t;
-  return b;
+  let best=null;
+  for(const t of cfg.player_global_all_tiers) if(elo>=t.required_elo) best=t;
+  return best;
 }
 
 async function fetchData(){
@@ -246,12 +247,15 @@ async function fetchData(){
     const c=tier.color;
     const r=parseInt(c.slice(1,3),16), g=parseInt(c.slice(3,5),16), b=parseInt(c.slice(5,7),16);
     tierTextEl.textContent=formatTierName(tier.name);
-    tierTextEl.style.color=c;
-    tierTextEl.style.textShadow=`0 0 6px ${c}, 0 0 14px ${c}`;
+
+    // 🆕 Always white text, colored glow
+    tierTextEl.style.color="#ffffff";
+    tierTextEl.style.textShadow=`0 0 10px ${c}, 0 0 18px ${c}`;
+
     tierContainer.style.background=`rgba(${r},${g},${b},0.22)`;
   } else {
     tierTextEl.textContent="Unranked";
-    tierTextEl.style.color="#bbb";
+    tierTextEl.style.color="#ccc";
     tierTextEl.style.textShadow="none";
     tierContainer.style.background="rgba(255,255,255,0.08)";
   }
