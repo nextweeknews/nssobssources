@@ -118,6 +118,10 @@
     margin-top: 10px;
     margin-bottom: 10px;
   }
+
+  .error-text {
+    color: #ff6b6b;
+  }
 </style>
 </head>
 <body>
@@ -208,16 +212,18 @@ const matchLink = document.getElementById("matchLink");
 const rankLink = document.getElementById("rankLink");
 
 function extractPlayerId(input) {
-  const decoded = decodeURIComponent(input.trim());
+  if (!input) return null;
 
+  const clean = decodeURIComponent(input.trim())
+    .replace(/[<>]/g, "")
+    .replace(/\\/g, "/");
 
-  const clean = decoded.replace(/\\/g, "/");
-
-  if (/^\d{19}$/.test(clean)) {
-    return clean;
+  let match = clean.match(/player\/(\d{16,20})/i);
+  if (match) {
+    return match[1];
   }
 
-  const match = clean.match(/player\/(\d{19})/i);
+  match = clean.match(/(\d{16,20})/);
   if (match) {
     return match[1];
   }
@@ -231,13 +237,18 @@ async function lookupPlayer(rawInput) {
   resultBox.style.display = "block";
 
   if (!playerId) {
-    nameEl.textContent = "Error";
-    ratingEl.textContent = "Invalid Player ID";
+    console.warn("Failed to extract player ID from input:", rawInput);
+    nameEl.textContent = "Invalid Input";
+    ratingEl.textContent = "Could not determine player ID from what you entered.";
+    ratingEl.classList.add("error-text");
     return;
   }
 
+  console.log("Using Player ID:", playerId);
+
   nameEl.textContent = "Loading...";
   ratingEl.textContent = "—";
+  ratingEl.classList.remove("error-text");
 
   try {
     const resp = await fetch(WORKER_URL, {
@@ -248,19 +259,19 @@ async function lookupPlayer(rawInput) {
 
     if (!resp.ok) {
       const text = await resp.text();
+      console.error("API error:", resp.status, text);
       throw new Error(`HTTP ${resp.status}: ${text}`);
     }
 
     const data = await resp.json();
 
     console.log("FULL DATA:", data);
-console.log("RESOLVED PATHS:", {
-  resolved: data.resolved,
-  tiers: data?.resolved?.tiers,
-  player_global_all_tiers: data.player_global_all_tiers
-});
+    console.log("RESOLVED PATHS:", {
+      resolved: data.resolved,
+      tiers: data?.resolved?.tiers,
+      player_global_all_tiers: data.player_global_all_tiers
+    });
 
-    
     const player = data.player || data;
 
     nameEl.textContent = player.display_name || "Unknown";
@@ -272,13 +283,21 @@ console.log("RESOLVED PATHS:", {
     leaderboardLink.href = `obs-leaderboard.html?player_id=${playerId}`;
 
   } catch (err) {
+    console.error("Lookup error:", err);
     nameEl.textContent = "Error";
-    ratingEl.textContent = err.message;
+    ratingEl.textContent = err.message || "Unknown error";
+    ratingEl.classList.add("error-text");
   }
 }
 
 document.getElementById("lookupBtn").addEventListener("click", () => {
   lookupPlayer(document.getElementById("playerIdInput").value);
+});
+
+document.getElementById("playerIdInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    lookupPlayer(e.target.value);
+  }
 });
 
 document.querySelectorAll(".info-section").forEach(section => {
