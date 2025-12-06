@@ -235,6 +235,7 @@ const tierContainer=document.getElementById("tierContainer");
 let lastRank=null,lastElo=null,lastWins=null,lastTierName=null;
 
 function getOrdinalSuffix(n){
+  if (n >= 100) return "";
   const j=n%10,k=n%100;
   if(k>=11&&k<=13)return"th";
   if(j===1)return"st";
