@@ -30,7 +30,7 @@ html, body {
   flex-direction:column;
   align-items:center;
   justify-content:flex-start;
-  padding-top:14px; /* Only vertical padding remains */
+  padding-top:14px;
   padding-bottom:14px;
   color:#e9eef8;
 }
@@ -73,7 +73,6 @@ html, body {
   align-items:center;
 }
 
-/* STRICT WIDTH REGIONS */
 .section {
   display:flex;
   flex-direction:column;
@@ -82,6 +81,7 @@ html, body {
   text-align:center;
 }
 
+/* STRICT 30/40/30 */
 .section.rank  { width:30%; }
 .section.elo   { width:40%; }
 .section.wins  { width:30%; }
@@ -101,22 +101,19 @@ html, body {
   white-space:nowrap;
 }
 
-/* Dividers now flush to exact 30/40/30 boundaries */
+/* Dividers centered perfectly on section boundaries */
 .section:after {
   content:"";
   position:absolute;
   top:50%;
   transform:translateY(-50%);
+  right:-1.5px; /* 3px / 2 to center on boundary */
   width:3px;
   height:105px;
   background:rgba(255,255,255,0.16);
   border-radius:2px;
 }
-
-/* Divider positions installed on boundaries */
-.section.rank:after  { right:0; }
-.section.elo:after   { right:0; }
-.section.wins:after  { display:none; }
+.section:last-child:after { display:none; }
 
 /* Deltas */
 .delta {
@@ -199,7 +196,7 @@ function animateDelta(el,oldVal,newVal,reverse=false){
 }
 
 function formatTierName(n){
-  return (n?.replace(/^Season\s+\d+\s+/i,"") ?? "").toUpperCase();
+  return (n?.replace(/^Season\\s+\\d+\\s+/i,"") ?? "").toUpperCase();
 }
 
 function getTier(elo,rank,data){
