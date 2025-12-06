@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Previous Match Results - Full Scene</title>
+  <title>Previous Match Results - Auto Height</title>
   <style>
     html, body {
       margin: 0;
@@ -11,414 +11,211 @@
       width: 100%;
       height: 100%;
       background: transparent;
-      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto;
+      display: flex;
+      justify-content: center;
+      align-items: center;
       -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
       overflow: hidden;
-      display: flex;
-      justify-content: center;
-      align-items: center;
     }
 
-    /* Outer canvas-sized container (1920x1080 in OBS) */
-    .scene-wrapper {
-      width: 100%;
-      height: 100%;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background: transparent;
-    }
-
-    /* Main card: 1720x880 centered */
     .card {
       width: 1720px;
-      height: 880px;
+      background: rgba(15, 23, 42, 0.92);
+      border-radius: 24px;
+      padding: 48px 50px;
       box-sizing: border-box;
-      background: rgba(15, 23, 42, 0.92); /* deep slate, mostly opaque */
-      border-radius: 20px;
-      padding: 36px 40px;
-      color: #e9eef8;
       display: flex;
       flex-direction: column;
-      box-shadow:
-        0 32px 80px rgba(0,0,0,0.65),
-        0 0 0 1px rgba(148, 163, 184, 0.2);
-    }
-
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-      margin-bottom: 24px;
+      align-items: stretch;
+      color: #e9eef8;
+      transition: height 0.4s ease;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.65);
     }
 
     .title {
-      font-size: 40px;
-      line-height: 1.1;
+      font-size: 56px;
       color: #c7d7ff;
       font-weight: 700;
-      letter-spacing: 0.03em;
       text-transform: uppercase;
+      letter-spacing: 0.035em;
+      margin-bottom: 24px;
+      text-align: center;
     }
 
-    .subtitle {
-      font-size: 18px;
-      color: #9ca3c7;
-      margin-top: 6px;
-    }
-
-    .meta {
-      text-align: right;
-      font-size: 16px;
-      color: #9ca3c7;
-    }
-
-    .meta span.label {
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      font-size: 13px;
-      color: #64748b;
-      display: block;
-      margin-bottom: 4px;
-    }
-
-    .meta span.value {
-      font-weight: 600;
-      color: #e5e7eb;
-    }
-
-    /* Table header row */
     .header-row {
       display: grid;
-      grid-template-columns: 80px 1fr 120px 120px;
+      grid-template-columns: 120px 1fr 160px 160px;
       align-items: center;
-      padding: 10px 20px;
-      margin-bottom: 6px;
-      font-size: 18px;
-      font-weight: 600;
+      height: 60px;
+      padding: 0 24px;
+      background: rgba(148, 163, 184, 0.12);
+      font-size: 24px;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: #94a3b8;
+      color: #9ca3c7;
       border-radius: 12px;
-      background: radial-gradient(circle at top left, rgba(148, 163, 255, 0.24), transparent 60%);
-      box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.3);
+      margin-bottom: 14px;
     }
 
-    .header-row span {
-      text-align: left;
-    }
-
-    .header-row span.place-col {
-      text-align: center;
-    }
-
-    .header-row span.elo-col,
-    .header-row span.delta-col {
-      text-align: center;
-    }
-
-    /* Results list container */
     #resultsList {
-      flex: 1;
-      margin-top: 6px;
-      border-radius: 14px;
-      background: radial-gradient(circle at top, rgba(15, 118, 255, 0.12), rgba(15, 23, 42, 0.7));
-      box-shadow:
-        inset 0 0 0 1px rgba(148, 163, 184, 0.1),
-        0 18px 40px rgba(15, 23, 42, 0.9);
-      padding: 6px 4px 8px;
-      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
       opacity: 1;
       transition: opacity 0.3s ease;
     }
 
-    .results-inner {
-      height: 100%;
-      overflow: hidden; /* no scroll; 10 rows will fit nicely */
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      padding: 4px 4px 4px 4px;
-    }
-
-    /* Player row */
     .entry {
       display: grid;
-      grid-template-columns: 80px 1fr 120px 120px;
+      grid-template-columns: 120px 1fr 160px 160px;
       align-items: center;
-      padding: 10px 20px;
-      font-size: 24px;
+      height: 90px;
+      padding: 0 24px;
+      background: rgba(255,255,255,0.07);
+      border-radius: 14px;
+      font-size: 32px;
       font-weight: 600;
-      color: #f9fafb;
-      border-radius: 12px;
+      color: #fff;
       box-sizing: border-box;
-      background: rgba(15, 23, 42, 0.7);
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
-      transition:
-        background 0.25s ease,
-        transform 0.25s ease,
-        box-shadow 0.25s ease;
-    }
-
-    .entry span {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
     }
 
     .entry span.place {
       text-align: center;
+      font-size: 42px;
       font-weight: 700;
-      font-size: 26px;
-      color: #c7d2fe;
     }
+    .gold { color: #ffd700; }
+    .silver { color: #c0c0c0; }
+    .bronze { color: #cd7f32; }
 
-    .entry span.place.gold   { color: #facc15; text-shadow: 0 0 12px rgba(250, 204, 21, 0.8); }
-    .entry span.place.silver { color: #e5e7eb; text-shadow: 0 0 10px rgba(148, 163, 184, 0.9); }
-    .entry span.place.bronze { color: #f97316; text-shadow: 0 0 10px rgba(248, 113, 113, 0.75); }
-
-    .entry span.name {
-      font-size: 24px;
-      text-align: left;
-      padding-right: 10px;
-    }
-
-    .entry span.elo {
-      text-align: center;
-      font-variant-numeric: tabular-nums;
-      font-size: 24px;
-      color: #e5e7eb;
-    }
-
-    .entry span.delta {
-      text-align: center;
-      display: inline-flex;
-      justify-content: center;
-      align-items: center;
-      font-variant-numeric: tabular-nums;
-      font-size: 24px;
-      gap: 6px;
-    }
-
-    .delta-arrow {
-      font-size: 0.7em;
-      position: relative;
-      top: -1px;
+    .entry.highlight {
+      background: rgba(52, 211, 153, 0.3);
+      box-shadow: 0 0 16px rgba(16, 185, 129, 0.55);
     }
 
     .delta-positive { color: #4ade80; }
-    .delta-negative { color: #f97373; }
-    .delta-neutral  { color: #e5e7eb; opacity: 0.7; }
-
-    /* Highlight the tracked player */
-    .entry.highlight {
-      background: radial-gradient(circle at left, rgba(52, 211, 153, 0.26), rgba(15, 23, 42, 0.95));
-      box-shadow:
-        0 0 0 1px rgba(52, 211, 153, 0.5),
-        0 18px 40px rgba(16, 185, 129, 0.55);
-      transform: translateX(4px);
-    }
-
-    /* Subtle hover (mainly for local testing) */
-    .entry:hover {
-      background: rgba(15, 23, 42, 0.95);
-      transform: translateY(-1px);
-    }
-
+    .delta-negative { color: #f87171; }
     .loading, .error {
-      font-size: 20px;
-      color: #cbd5f5;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100%;
+      font-size: 36px;
       text-align: center;
-    }
-
-    .error {
-      color: #fecaca;
     }
   </style>
 </head>
+
 <body>
-  <div class="scene-wrapper">
-    <div class="card">
-      <div class="card-header">
-        <div>
-          <div class="title">Previous Match Results</div>
-          <div class="subtitle">Latest completed game for this player</div>
-        </div>
-        <div class="meta">
-          <span class="label">Player ID</span>
-          <span class="value" id="playerIdLabel">—</span>
-        </div>
-      </div>
+  <div class="card" id="card">
+    <div class="title">Previous Match Results</div>
 
-      <div class="header-row">
-        <span class="place-col">Place</span>
-        <span>Player</span>
-        <span class="elo-col">ELO</span>
-        <span class="delta-col">Δ</span>
-      </div>
+    <div class="header-row">
+      <span>Place</span>
+      <span>Player</span>
+      <span>ELO</span>
+      <span>Δ</span>
+    </div>
 
-      <div id="resultsList">
-        <div class="results-inner" id="resultsInner">
-          <div class="loading">Loading previous match…</div>
-        </div>
-      </div>
+    <div id="resultsList">
+      <div class="loading">Loading…</div>
     </div>
   </div>
 
 <script>
-  const API_URL   = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_rating_history";
+  const API_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_rating_history";
   const CLIENT_ID = "DISCORD|1069003073311211601";
   const REFRESH_MS = 15000;
 
-  const resultsListEl   = document.getElementById("resultsList");
-  const resultsInnerEl  = document.getElementById("resultsInner");
-  const urlParams       = new URLSearchParams(window.location.search);
-  const PLAYER_ID       = urlParams.get("player_id");
-  const playerIdLabelEl = document.getElementById("playerIdLabel");
-
-  if (PLAYER_ID) {
-    playerIdLabelEl.textContent = PLAYER_ID;
-  } else {
-    playerIdLabelEl.textContent = "Missing";
-  }
+  const cardEl = document.getElementById("card");
+  const resultsListEl = document.getElementById("resultsList");
+  const PLAYER_ID = new URLSearchParams(window.location.search).get("player_id");
 
   if (!PLAYER_ID) {
-    resultsInnerEl.innerHTML = '<div class="error">Missing player_id in URL</div>';
-    throw new Error("Missing player_id in URL query");
+    resultsListEl.innerHTML = '<div class="error">Missing player_id</div>';
+    throw new Error("player_id required");
   }
 
   let lastMatchHash = "";
   let initialLoad = true;
 
-  function setError(msg) {
-    resultsInnerEl.innerHTML = `<div class="error">Error: ${msg}</div>`;
-    console.error(msg);
+  function resizeCardForPlayers(nPlayers) {
+    const rowHeight = 90;
+    const rowGap = 10;
+    const titleAndHeaderHeight = 56 + 24 + 60 + 14 + 48 + 50; // scaled UI fixed
+    const calcHeight = titleAndHeaderHeight + (rowHeight * nPlayers) + (rowGap * (nPlayers - 1));
+    cardEl.style.height = `${calcHeight}px`;
   }
 
   function hashMatch(match) {
-    if (!match || !match.ratingResults) return "";
     return match.ratingResults[0].newRatings
       .map(p => `${p.id}:${p.place}:${p.elo}:${p.delta}`)
       .join("|");
   }
 
-  function displayResults(match, resolvedPlayers) {
-    const newRatings = match.ratingResults[0].newRatings;
-    resultsInnerEl.innerHTML = "";
+  function displayResults(match, players) {
+    const rows = match.ratingResults[0].newRatings.slice(0, 8);
+    resultsListEl.innerHTML = "";
 
-    newRatings.forEach(player => {
-      const name = resolvedPlayers[player.id]?.display_name || "Unknown";
-
-      const eloValue = (player.elo === null || player.elo === undefined)
-        ? "—"
-        : player.elo;
-
-      const deltaValue =
-        (player.delta === null || player.delta === undefined || isNaN(player.delta))
-          ? "—"
-          : Math.abs(player.delta);
-
-      let arrowSpan = "";
-      let deltaClass = "delta-neutral";
-
-      if (typeof player.delta === "number") {
-        if (player.delta > 0) {
-          arrowSpan = '<span class="delta-arrow">▲</span>';
-          deltaClass = "delta-positive";
-        } else if (player.delta < 0) {
-          arrowSpan = '<span class="delta-arrow">▼</span>';
-          deltaClass = "delta-negative";
-        }
-      }
-
-      let placeClass = "";
-      if (player.place === 1)      placeClass = "gold";
-      else if (player.place === 2) placeClass = "silver";
-      else if (player.place === 3) placeClass = "bronze";
-
+    rows.forEach(p => {
       const row = document.createElement("div");
       row.className = "entry";
-      if (String(player.id) === String(PLAYER_ID)) {
-        row.classList.add("highlight");
-      }
+
+      if (String(p.id) === String(PLAYER_ID)) row.classList.add("highlight");
+
+      const name = players[p.id]?.display_name || "Unknown";
+      const deltaClass = p.delta > 0 ? "delta-positive" : p.delta < 0 ? "delta-negative" : "";
+      const arrow = p.delta > 0 ? "▲" : p.delta < 0 ? "▼" : "";
+      const placeClass = p.place === 1 ? "gold" : p.place === 2 ? "silver" : p.place === 3 ? "bronze" : "";
 
       row.innerHTML = `
-        <span class="place ${placeClass}">${player.place}</span>
+        <span class="place ${placeClass}">${p.place}</span>
         <span class="name">${name}</span>
-        <span class="elo">${eloValue}</span>
-        <span class="delta ${deltaClass}">${arrowSpan}${deltaValue}</span>
+        <span class="elo">${p.elo ?? "—"}</span>
+        <span class="delta ${deltaClass}">${arrow} ${Math.abs(p.delta ?? "—")}</span>
       `;
 
-      resultsInnerEl.appendChild(row);
+      resultsListEl.appendChild(row);
     });
+
+    resizeCardForPlayers(rows.length);
   }
 
-  async function fetchMatchResults() {
+  async function fetchData() {
     try {
       const resp = await fetch(API_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          player_id: PLAYER_ID,
-          client_id: CLIENT_ID,
-          limit: 10
-        })
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ player_id: PLAYER_ID, client_id: CLIENT_ID, limit: 10 })
       });
 
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      if (!resp.ok) throw new Error("API Error");
       const data = await resp.json();
-      const matches = data.matches || [];
-      const resolvedPlayers = data.resolved?.players || {};
+      const resolved = data.resolved?.players || {};
 
-      const recentMatch = matches
-        .sort((a, b) => b.ts - a.ts)
-        .find(match =>
-          match.ratingResults &&
-          match.ratingResults.some(rg =>
-            rg.newRatings.some(p => String(p.id) === String(PLAYER_ID))
-          )
-        );
+      const match = (data.matches || [])
+        .sort((a,b) => b.ts - a.ts)
+        .find(m => m.ratingResults.some(r =>
+          r.newRatings.some(p => String(p.id) === String(PLAYER_ID))
+        ));
 
-      if (!recentMatch) {
-        resultsInnerEl.innerHTML =
-          '<div class="loading">No recent match found for this player.</div>';
-        return;
-      }
+      if (!match) return resultsListEl.innerHTML = "<div class='loading'>No match</div>";
 
-      const currentHash = hashMatch(recentMatch);
-
-      if (initialLoad) {
+      const newHash = hashMatch(match);
+      if (initialLoad || newHash !== lastMatchHash) {
         initialLoad = false;
-        lastMatchHash = currentHash;
-        displayResults(recentMatch, resolvedPlayers);
-        return;
-      }
-
-      if (currentHash !== lastMatchHash) {
-        lastMatchHash = currentHash;
-
+        lastMatchHash = newHash;
         resultsListEl.style.opacity = 0;
         setTimeout(() => {
-          displayResults(recentMatch, resolvedPlayers);
-          requestAnimationFrame(() => {
-            resultsListEl.style.opacity = 1;
-          });
+          displayResults(match, resolved);
+          requestAnimationFrame(() => resultsListEl.style.opacity = 1);
         }, 300);
       }
-
-    } catch (err) {
-      setError(err.message);
+    }
+    catch (err) {
+      resultsListEl.innerHTML = `<div class="error">${err.message}</div>`;
     }
   }
 
-  fetchMatchResults();
-  setInterval(fetchMatchResults, REFRESH_MS);
+  fetchData();
+  setInterval(fetchData, REFRESH_MS);
 </script>
 </body>
 </html>
