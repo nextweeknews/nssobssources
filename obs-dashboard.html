@@ -19,82 +19,84 @@ html, body {
   align-items:center;
 }
 
+:root {
+  --card-bg: rgba(28,28,28,0.95);
+}
+
 .card {
-  width:600px;
-  height:200px; /* reduced height */
-  background: rgba(28,28,28,0.95);
-  border-radius:24px;
+  width:700px;
+  height:230px;
+  background: var(--card-bg);
+  border-radius:28px;
   display:flex;
   flex-direction:column;
   justify-content:center;
   align-items:center;
   text-align:center;
   color:#e9eef8;
-  padding:6px 16px; /* reduced padding */
+  padding:8px 22px;
 }
 
+/* ⭐ Tier Badge — color highlight with cutout text */
 #tierContainer {
   display:flex;
   align-items:center;
-  gap:6px;
-  margin-bottom:6px; /* smaller spacing */
-}
-
-.tier-label {
-  font-size:16px;
-  font-weight:600;
-  color:#bcd4ff;
+  justify-content:center;
+  padding:6px 18px;
+  border-radius:16px;
+  margin-bottom:14px;
+  background:#888; /* updated dynamically */
+  height:42px;
 }
 
 #tierText {
-  font-size:24px;
-  font-weight:700;
+  font-size:28px;
+  font-weight:800;
   text-transform:uppercase;
+  color:var(--card-bg);
+  mix-blend-mode:multiply;
 }
 
 .row {
   width:100%;
   display:flex;
-  justify-content:space-between;
+  justify-content:center;
   align-items:center;
 }
 
-/* flexible ratio: Rank small, Elo spacious */
-.rank-section { width:35%; }
-.elo-section  { width:65%; }
+.rank-section { width:30%; }
+.elo-section  { width:68%; }
 
-/* Cleaner, larger */
 .label {
-  font-size:22px;
+  font-size:24px;
   font-weight:600;
   color:#bcd4ff;
-  margin-bottom:2px;
+  margin-bottom:4px;
 }
 
 .metric {
-  font-size:95px; /* increased size */
-  font-weight:700;
+  font-size:108px; /* Increased size */
+  font-weight:800;
   line-height:1;
   white-space:nowrap;
 }
 
-/* subtle divider */
 .divider {
-  width:2px;
-  height:70px;
-  background:rgba(255,255,255,0.08);
+  width:2.5px;
+  height:80px;
+  background:rgba(255,255,255,0.10);
   border-radius:2px;
-  margin:0 8px;
+  margin:0 10px;
 }
 
 .delta {
-  font-size:28px;
+  font-size:30px;
   font-weight:600;
   opacity:0;
   pointer-events:none;
   display:inline-flex;
   align-items:center;
-  margin-top:2px;
+  margin-top:3px;
   transition:opacity 0.4s ease, transform 0.4s ease;
 }
 
@@ -107,8 +109,8 @@ html, body {
 <body>
 <div class="card">
 
+  <!-- 🏆 Tier Badge (Tier name only) -->
   <div id="tierContainer">
-    <span class="tier-label">Tier:</span>
     <span id="tierText">—</span>
   </div>
 
@@ -137,22 +139,19 @@ html, body {
 </div>
 
 <script>
-// ⭐ JS unchanged — everything already working perfectly
-// Just reusing your functional version below ↓↓↓
-
 const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
 const REFRESH_MS = 15000;
 
 const eloEl = document.getElementById("eloNumber");
 const rankEl = document.getElementById("rankNumber");
 const tierTextEl = document.getElementById("tierText");
+const tierContainer = document.getElementById("tierContainer");
 
 const eloDeltaEl = document.getElementById("eloDelta");
 const rankDeltaEl = document.getElementById("rankDelta");
 
 const arrowElo = eloDeltaEl.querySelector(".delta-arrow");
 const numberElo = eloDeltaEl.querySelector(".delta-number");
-
 const arrowRank = rankDeltaEl.querySelector(".delta-arrow");
 const numberRank = rankDeltaEl.querySelector(".delta-number");
 
@@ -177,32 +176,32 @@ function animateDelta(el, arrow, number, oldVal, newVal, reverse = false) {
 
   el.style.opacity = "0";
   el.style.transform = "translateY(10px)";
-  requestAnimationFrame(()=>{
+  requestAnimationFrame(() => {
     el.style.opacity = "1";
     el.style.transform = "translateY(0)";
   });
 
-  setTimeout(()=>{ el.style.opacity="0"; },8000);
+  setTimeout(() => {
+    el.style.opacity="0";
+  }, 8000);
 }
 
 function formatTierName(name) {
-  if (!name) return "";
-  return name.replace(/^Season\s+\d+\s+/i,"");
+  return name?.replace(/^Season\s+\d+\s+/i,"") ?? "";
 }
 
 function getPlayerTier(elo, rank, data) {
-  const seasonConfig = data.resolved?.leaderboards?.["Season_10"];
-  if (!seasonConfig) return null;
-
-  const tiers = seasonConfig.player_global_all_tiers ?? [];
-  const rankTiers = seasonConfig.player_global_all_rank_tiers ?? [];
+  const config = data.resolved?.leaderboards?.["Season_10"];
+  if (!config) return null;
+  const tiers = config.player_global_all_tiers ?? [];
+  const rankTiers = config.player_global_all_rank_tiers ?? [];
 
   if (rank===1 && rankTiers.length>0)
-    return { name:rankTiers[0].name,color:rankTiers[0].color };
+    return rankTiers[0];
 
-  let tier=null;
-  for (const t of tiers) if (elo>=t.required_elo) tier=t;
-  return tier;
+  let best=null;
+  for (const t of tiers) if (elo>=t.required_elo) best=t;
+  return best;
 }
 
 async function fetchData() {
@@ -220,6 +219,7 @@ async function fetchData() {
 
     if (!resp.ok) return;
     const data = await resp.json();
+
     const entries = data.leaderboard ?? [];
     if (!entries.length) return;
 
@@ -227,9 +227,9 @@ async function fetchData() {
     const idx = sorted.findIndex(e=>e.team?.[0]===pid);
     if (idx<0) return;
 
-    const player=sorted[idx];
-    const elo=player.elo??0;
-    const rank=idx+1;
+    const player = sorted[idx];
+    const elo = player.elo ?? 0;
+    const rank = idx+1;
 
     if (lastElo!==null && elo!==lastElo)
       animateDelta(eloDeltaEl,arrowElo,numberElo,lastElo,elo);
@@ -241,13 +241,13 @@ async function fetchData() {
     lastElo=elo;
     lastRank=rank;
 
-    const tier=getPlayerTier(elo,rank,data);
+    const tier = getPlayerTier(elo,rank,data);
     if (tier) {
       tierTextEl.textContent=formatTierName(tier.name);
-      tierTextEl.style.color=tier.color;
+      tierContainer.style.background=tier.color;
     } else {
       tierTextEl.textContent="UNRANKED";
-      tierTextEl.style.color="#e9eef8";
+      tierContainer.style.background="#888";
     }
 
   } catch(err) { console.error(err); }
