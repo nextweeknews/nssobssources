@@ -29,7 +29,9 @@ html, body {
   display:flex;
   flex-direction:column;
   align-items:center;
-  padding:14px 22px;
+  justify-content:flex-start;
+  padding-top:14px; /* Only vertical padding remains */
+  padding-bottom:14px;
   color:#e9eef8;
 }
 
@@ -53,7 +55,6 @@ html, body {
   padding:8px 26px;
   border-radius:20px;
   background:rgba(255,255,255,0.08);
-  transition:background 0.3s ease;
 }
 
 #tierText {
@@ -66,23 +67,21 @@ html, body {
 /* Stats Row */
 .row {
   width:100%;
+  height:100%;
   display:flex;
   justify-content:space-between;
   align-items:center;
-  flex:1;
-  padding-bottom:12px;
 }
 
+/* STRICT WIDTH REGIONS */
 .section {
   display:flex;
   flex-direction:column;
   align-items:center;
   justify-content:center;
-  position:relative;
   text-align:center;
 }
 
-/* Strict 30/40/30 split */
 .section.rank  { width:30%; }
 .section.elo   { width:40%; }
 .section.wins  { width:30%; }
@@ -97,24 +96,27 @@ html, body {
 
 .metric {
   font-size:94px;
-  font-weight:700; /* slimmer footprints */
+  font-weight:700;
   line-height:1;
   white-space:nowrap;
 }
 
-/* Dividers sitting between sections, taller, centered on metrics */
+/* Dividers now flush to exact 30/40/30 boundaries */
 .section:after {
   content:"";
   position:absolute;
-  right:-12px;
   top:50%;
   transform:translateY(-50%);
   width:3px;
   height:105px;
-  background:rgba(255,255,255,0.14);
+  background:rgba(255,255,255,0.16);
   border-radius:2px;
 }
-.section:last-child:after { display:none; }
+
+/* Divider positions installed on boundaries */
+.section.rank:after  { right:0; }
+.section.elo:after   { right:0; }
+.section.wins:after  { display:none; }
 
 /* Deltas */
 .delta {
@@ -145,25 +147,19 @@ html, body {
     <div class="section rank">
       <div class="label">RANK</div>
       <span id="rankNumber" class="metric">—</span>
-      <span id="rankDelta" class="delta">
-        <span class="delta-arrow"></span><span class="delta-number"></span>
-      </span>
+      <span id="rankDelta" class="delta"><span class="delta-arrow"></span><span class="delta-number"></span></span>
     </div>
 
     <div class="section elo">
       <div class="label">ELO</div>
       <span id="eloNumber" class="metric">—</span>
-      <span id="eloDelta" class="delta">
-        <span class="delta-arrow"></span><span class="delta-number"></span>
-      </span>
+      <span id="eloDelta" class="delta"><span class="delta-arrow"></span><span class="delta-number"></span></span>
     </div>
 
     <div class="section wins">
       <div class="label">WINS</div>
       <span id="winsNumber" class="metric">—</span>
-      <span id="winsDelta" class="delta">
-        <span class="delta-arrow"></span><span class="delta-number"></span>
-      </span>
+      <span id="winsDelta" class="delta"><span class="delta-arrow"></span><span class="delta-number"></span></span>
     </div>
 
   </div>
@@ -212,7 +208,8 @@ function getTier(elo,rank,data){
   if(rank===1 && cfg.player_global_all_rank_tiers?.length)
     return cfg.player_global_all_rank_tiers[0];
   let best=null;
-  for(const t of cfg.player_global_all_tiers) if(elo>=t.required_elo) best=t;
+  for(const t of cfg.player_global_all_tiers)
+    if(elo>=t.required_elo) best=t;
   return best;
 }
 
@@ -228,9 +225,10 @@ async function fetchData(){
     })
   });
 
-  if(!resp.ok) return;
+  if(!resp.ok)return;
   const data=await resp.json();
-  const sorted=[...(data.leaderboard ?? [])].sort((a,b)=> (b.elo??0)-(a.elo??0));
+  const sorted=[...(data.leaderboard ?? [])]
+    .sort((a,b)=> (b.elo??0)-(a.elo??0));
   const idx=sorted.findIndex(e=>e.team?.[0]===pid);
   if(idx<0)return;
 
@@ -246,6 +244,7 @@ async function fetchData(){
   eloEl.textContent=elo;
   winsEl.textContent=wins;
   rankEl.textContent=rank;
+
   lastElo=elo; lastRank=rank; lastWins=wins;
 
   const tier=getTier(elo,rank,data);
