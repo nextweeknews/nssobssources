@@ -68,8 +68,8 @@ html, body {
   width:100%;
   display:flex;
   justify-content:space-between;
-  align-items:flex-end;
-  height:100%;
+  align-items:center;
+  flex:1;
   padding-bottom:12px;
 }
 
@@ -79,19 +79,13 @@ html, body {
   align-items:center;
   justify-content:center;
   position:relative;
+  text-align:center;
 }
 
-.section.rank {
-  width:30%;
-  padding-left:10px; /* improved centering */
-}
-.section.elo {
-  width:40%;
-}
-.section.wins {
-  width:30%;
-  padding-right:10px; /* improved centering */
-}
+/* Strict 30/40/30 split */
+.section.rank  { width:30%; }
+.section.elo   { width:40%; }
+.section.wins  { width:30%; }
 
 .label {
   font-size:30px;
@@ -108,7 +102,7 @@ html, body {
   white-space:nowrap;
 }
 
-/* Dividers aligned with metrics */
+/* Dividers sitting between sections, taller, centered on metrics */
 .section:after {
   content:"";
   position:absolute;
@@ -116,7 +110,7 @@ html, body {
   top:50%;
   transform:translateY(-50%);
   width:3px;
-  height:105px; /* taller */
+  height:105px;
   background:rgba(255,255,255,0.14);
   border-radius:2px;
 }
