@@ -203,9 +203,9 @@ function getOrdinalSuffix(n){
   return"th";
 }
 
-function getPlayerId(){
-  const pid=new URLSearchParams(location.search).get("player_id");
-  return /^\d{19}$/.test(pid)?pid:"702730732220579950";
+function getPlayerId() {
+  const pid = new URLSearchParams(location.search).get("player_id");
+  return /^\d{17,20}$/.test(pid) ? pid : "702730732220579950";
 }
 
 function animateDelta(el,oldVal,newVal,reverse=false){
