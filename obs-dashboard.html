@@ -97,30 +97,33 @@ html, body {
 
 .metric {
   font-size:94px;
-  font-weight:800; /* slimmer footprints */
+  font-weight:800;
   line-height:1;
   white-space:nowrap;
 }
 
-  #rankSuffix {
-  font-size: 36px; /* significantly smaller than 94px number */
-  font-weight: 600;
-  vertical-align: super;
-}
-
-/* Dividers sitting between sections, taller, centered on metrics */
+/* Divider */
 .section:after {
   content:"";
   position:absolute;
-  right:0px;
+  right:0;
   top:50%;
   transform:translateY(-50%);
-  width:4px;
+  width:2px;
   height:140px;
   background:rgba(255,255,255,0.14);
   border-radius:2px;
 }
 .section:last-child:after { display:none; }
+
+/* Rank suffix */
+#rankSuffix {
+  font-size:36px;
+  font-weight:600;
+  vertical-align:super;
+  margin-left:4px;
+  opacity:0.85;
+}
 
 /* Deltas */
 .delta {
@@ -150,7 +153,7 @@ html, body {
 
     <div class="section rank">
       <div class="label">RANK</div>
-      <span id="rankNumber" class="metric">—</span>
+      <span class="metric"><span id="rankNumber">—</span><sup id="rankSuffix"></sup></span>
       <span id="rankDelta" class="delta">
         <span class="delta-arrow"></span><span class="delta-number"></span>
       </span>
@@ -182,24 +185,23 @@ const REFRESH_MS=15000;
 const eloEl=document.getElementById("eloNumber");
 const winsEl=document.getElementById("winsNumber");
 const rankEl=document.getElementById("rankNumber");
+const rankSuffixEl=document.getElementById("rankSuffix");
 const tierTextEl=document.getElementById("tierText");
 const tierContainer=document.getElementById("tierContainer");
 const eloDeltaEl=document.getElementById("eloDelta");
 const winsDeltaEl=document.getElementById("winsDelta");
 const rankDeltaEl=document.getElementById("rankDelta");
-const rankSuffixEl = document.getElementById("rankSuffix");
-
-function getOrdinalSuffix(n) {
-  const j = n % 10,
-        k = n % 100;
-  if (k >= 11 && k <= 13) return "th"; // special cases: 11th, 12th, 13th
-  if (j === 1) return "st";
-  if (j === 2) return "nd";
-  if (j === 3) return "rd";
-  return "th";
-}
 
 let lastElo=null,lastRank=null,lastWins=null;
+
+function getOrdinalSuffix(n){
+  const j=n%10,k=n%100;
+  if(k>=11&&k<=13)return"th";
+  if(j===1)return"st";
+  if(j===2)return"nd";
+  if(j===3)return"rd";
+  return"th";
+}
 
 function getPlayerId(){
   const pid=new URLSearchParams(location.search).get("player_id");
@@ -242,14 +244,12 @@ async function fetchData(){
       leaderboard:"season_10",
       rating_type:"player_global_all",
       client_id:"DISCORD|1069003073311211601"
-    rankEl.textContent = rank;
-    rankSuffixEl.textContent = getOrdinalSuffix(rank);
     })
   });
 
-  if(!resp.ok) return;
+  if(!resp.ok)return;
   const data=await resp.json();
-  const sorted=[...(data.leaderboard ?? [])].sort((a,b)=> (b.elo??0)-(a.elo??0));
+  const sorted=[...(data.leaderboard ?? [])].sort((a,b)=>(b.elo??0)-(a.elo??0));
   const idx=sorted.findIndex(e=>e.team?.[0]===pid);
   if(idx<0)return;
 
@@ -265,7 +265,11 @@ async function fetchData(){
   eloEl.textContent=elo;
   winsEl.textContent=wins;
   rankEl.textContent=rank;
-  lastElo=elo; lastRank=rank; lastWins=wins;
+  rankSuffixEl.textContent=getOrdinalSuffix(rank);
+
+  lastElo=elo;
+  lastRank=rank;
+  lastWins=wins;
 
   const tier=getTier(elo,rank,data);
   if(tier){
