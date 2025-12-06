@@ -10,21 +10,30 @@ html, body {
   width: 100%;
   height: 100%;
   margin: 0;
-  background: transparent;
+  background: transparent; /* OBS sees clean transparency outside card */
   font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-  overflow: hidden; /* no scrolling ever */
+  overflow: hidden;
   display: flex;
   justify-content: center;
   align-items: center;
 }
 
-:root { --card-bg:rgba(28,28,28,0.95); }
+:root {
+  --card-bg: rgba(28, 28, 28, 0.95); /* ⭐ 95% opacity restored */
+}
 
 .card {
   width: 800px;
   height: 260px;
-  flex: none; /* prevent flexbox sizing */
+  background: var(--card-bg); /* baseline card fill preserved */
+  border-radius: 28px;
+  flex: none;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 14px 0px;
+  color: #e9eef8;
 }
 
 /* Tier Row */
