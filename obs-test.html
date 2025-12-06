@@ -43,6 +43,7 @@
       text-align: center;
     }
 
+    /* Header row */
     .header-row {
       display: grid;
       grid-template-columns: 120px 1fr 160px 160px;
@@ -57,7 +58,14 @@
       border-radius: 12px;
       margin-bottom: 14px;
     }
+    .header-row span {
+      text-align: center;
+    }
+    .header-row span:nth-child(2) {
+      text-align: left; /* Player only */
+    }
 
+    /* Player rows */
     #resultsList {
       display: flex;
       flex-direction: column;
@@ -80,8 +88,18 @@
       box-sizing: border-box;
     }
 
-    .entry span.place {
+    .entry span {
       text-align: center;
+    }
+
+    .entry span.name {
+      text-align: left; /* Only player name */
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .entry span.place {
       font-size: 42px;
       font-weight: 700;
     }
@@ -96,9 +114,11 @@
 
     .delta-positive { color: #4ade80; }
     .delta-negative { color: #f87171; }
+
     .loading, .error {
       font-size: 36px;
       text-align: center;
+      width: 100%;
     }
   </style>
 </head>
@@ -139,8 +159,8 @@
   function resizeCardForPlayers(nPlayers) {
     const rowHeight = 90;
     const rowGap = 10;
-    const titleAndHeaderHeight = 56 + 24 + 60 + 14 + 48 + 50; // scaled UI fixed
-    const calcHeight = titleAndHeaderHeight + (rowHeight * nPlayers) + (rowGap * (nPlayers - 1));
+    const headerHeight = 56 + 24 + 60 + 14 + 48 + 50;
+    const calcHeight = headerHeight + (rowHeight * nPlayers) + (rowGap * (nPlayers - 1));
     cardEl.style.height = `${calcHeight}px`;
   }
 
@@ -157,7 +177,6 @@
     rows.forEach(p => {
       const row = document.createElement("div");
       row.className = "entry";
-
       if (String(p.id) === String(PLAYER_ID)) row.classList.add("highlight");
 
       const name = players[p.id]?.display_name || "Unknown";
@@ -196,12 +215,14 @@
           r.newRatings.some(p => String(p.id) === String(PLAYER_ID))
         ));
 
-      if (!match) return resultsListEl.innerHTML = "<div class='loading'>No match</div>";
+      if (!match)
+        return resultsListEl.innerHTML = "<div class='loading'>No match</div>";
 
       const newHash = hashMatch(match);
       if (initialLoad || newHash !== lastMatchHash) {
         initialLoad = false;
         lastMatchHash = newHash;
+
         resultsListEl.style.opacity = 0;
         setTimeout(() => {
           displayResults(match, resolved);
