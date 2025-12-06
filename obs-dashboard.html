@@ -23,7 +23,7 @@ html, body {
 
 .card {
   width:750px;
-  height:260px; /* Slight increase for better spacing */
+  height:260px;
   background:var(--card-bg);
   border-radius:28px;
   display:flex;
@@ -43,7 +43,7 @@ html, body {
 }
 
 #tierLabel {
-  font-size:30px; /* Increased */
+  font-size:30px;
   font-weight:900;
   color:#bcd4ff;
   text-transform:uppercase;
@@ -57,9 +57,10 @@ html, body {
 }
 
 #tierText {
-  font-size:38px; /* Increased */
+  font-size:38px;
   font-weight:900;
   text-transform:uppercase;
+  color:white;
 }
 
 /* Stats Row */
@@ -67,24 +68,33 @@ html, body {
   width:100%;
   display:flex;
   justify-content:space-between;
-  align-items:flex-end; /* Shift down visually */
-  height:100%; /* Helps vertical positioning */
-  padding-bottom:12px; /* Moves numbers down */
+  align-items:flex-end;
+  height:100%;
+  padding-bottom:12px;
 }
 
 .section {
   display:flex;
   flex-direction:column;
   align-items:center;
+  justify-content:center;
   position:relative;
 }
 
-.section.rank { width:30%; }
-.section.elo { width:40%; }
-.section.wins { width:30%; }
+.section.rank {
+  width:30%;
+  padding-left:10px; /* improved centering */
+}
+.section.elo {
+  width:40%;
+}
+.section.wins {
+  width:30%;
+  padding-right:10px; /* improved centering */
+}
 
 .label {
-  font-size:30px; /* Increased significantly */
+  font-size:30px;
   font-weight:900;
   color:#bcd4ff;
   margin-bottom:10px;
@@ -92,22 +102,22 @@ html, body {
 }
 
 .metric {
-  font-size:94px; /* Slight bump for balance */
-  font-weight:900;
+  font-size:94px;
+  font-weight:700; /* slimmer footprints */
   line-height:1;
   white-space:nowrap;
 }
 
-/* Divider centered with metrics */
+/* Dividers aligned with metrics */
 .section:after {
   content:"";
   position:absolute;
-  right:-10px;
-  top:58%; /* Moved down to match numbers */
+  right:-12px;
+  top:50%;
   transform:translateY(-50%);
   width:3px;
-  height:82px; /* Taller for new spacing */
-  background:rgba(255,255,255,0.12);
+  height:105px; /* taller */
+  background:rgba(255,255,255,0.14);
   border-radius:2px;
 }
 .section:last-child:after { display:none; }
@@ -141,19 +151,25 @@ html, body {
     <div class="section rank">
       <div class="label">RANK</div>
       <span id="rankNumber" class="metric">—</span>
-      <span id="rankDelta" class="delta"><span class="delta-arrow"></span><span class="delta-number"></span></span>
+      <span id="rankDelta" class="delta">
+        <span class="delta-arrow"></span><span class="delta-number"></span>
+      </span>
     </div>
 
     <div class="section elo">
       <div class="label">ELO</div>
       <span id="eloNumber" class="metric">—</span>
-      <span id="eloDelta" class="delta"><span class="delta-arrow"></span><span class="delta-number"></span></span>
+      <span id="eloDelta" class="delta">
+        <span class="delta-arrow"></span><span class="delta-number"></span>
+      </span>
     </div>
 
     <div class="section wins">
       <div class="label">WINS</div>
       <span id="winsNumber" class="metric">—</span>
-      <span id="winsDelta" class="delta"><span class="delta-arrow"></span><span class="delta-number"></span></span>
+      <span id="winsDelta" class="delta">
+        <span class="delta-arrow"></span><span class="delta-number"></span>
+      </span>
     </div>
 
   </div>
