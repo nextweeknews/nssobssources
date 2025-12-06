@@ -94,6 +94,7 @@ html, body {
   text-transform:uppercase;
 }
 
+/* Metric + Delta Overlay System */
 .metric {
   font-size:94px;
   font-weight:800;
@@ -138,17 +139,24 @@ html, body {
 }
 .section:last-child:after { display:none; }
 
-/* Rank suffix */
+/* Rank suffix alignment fix */
+#rankNumberGroup {
+  display:inline-block;
+  position:relative;
+}
+
 #rankSuffix {
+  position:relative;
+  top:-0.2em;
+  margin-left:4px;
   font-size:36px;
   font-weight:800;
-  position:relative;
-  top:-8px;
 }
 
 /* Delta colors */
 .delta-positive { color:#4ade80; }
 .delta-negative { color:#f87171; }
+
 </style>
 </head>
 
@@ -166,7 +174,9 @@ html, body {
     <div class="section rank">
       <div class="label">RANK</div>
       <span class="metric metric-rank">
-        <span id="rankNumber" class="metric-value">—</span><sup id="rankSuffix"></sup>
+        <span id="rankNumberGroup" class="metric-value">
+          <span id="rankNumber">—</span><sup id="rankSuffix"></sup>
+        </span>
         <span id="rankDelta" class="delta">
           <span class="delta-arrow"></span><span class="delta-number"></span>
         </span>
@@ -203,6 +213,7 @@ const REFRESH_MS=15000;
 const eloEl=document.getElementById("eloNumber");
 const winsEl=document.getElementById("winsNumber");
 const rankEl=document.getElementById("rankNumber");
+const rankGroupEl=document.getElementById("rankNumberGroup");
 const rankSuffixEl=document.getElementById("rankSuffix");
 const tierTextEl=document.getElementById("tierText");
 const tierContainer=document.getElementById("tierContainer");
@@ -297,7 +308,7 @@ async function fetchData(){
     animateDelta(eloEl, eloDeltaEl, lastElo, elo);
 
   if(lastRank!==null && rank!==lastRank)
-    animateDelta(rankEl, rankDeltaEl, lastRank, rank, true);
+    animateDelta(rankGroupEl, rankDeltaEl, lastRank, rank, true);
 
   if(lastWins!==null && wins!==lastWins)
     animateDelta(winsEl, winsDeltaEl, lastWins, wins);
