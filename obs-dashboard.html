@@ -54,11 +54,14 @@ html, body {
   padding:6px 20px;
   border-radius:18px;
   background:rgba(255,255,255,0.08);
+  transition:background 0.3s ease;
 }
 
 #tierText {
   font-size:32px;
   font-weight:900;
+  color:#ffffff;
+  text-transform:uppercase;
 }
 
 /* Stats Row */
@@ -96,7 +99,7 @@ html, body {
   white-space:nowrap;
 }
 
-/* Improved Divider Position */
+/* Dividers centered to metrics */
 .section:after {
   content:"";
   position:absolute;
@@ -108,7 +111,6 @@ html, body {
   background:rgba(255,255,255,0.12);
   border-radius:2px;
 }
-
 .section:last-child:after { display:none; }
 
 /* Deltas */
@@ -120,7 +122,6 @@ html, body {
   transition:opacity 0.4s ease;
   margin-top:4px;
 }
-
 .delta-positive { color:#4ade80; }
 .delta-negative { color:#f87171; }
 .delta-arrow { margin-right:4px; }
@@ -132,26 +133,26 @@ html, body {
 
   <!-- Tier -->
   <div id="tierRow">
-    <div id="tierLabel">Tier</div>
+    <div id="tierLabel">TIER</div>
     <div id="tierContainer"><span id="tierText">—</span></div>
   </div>
 
   <div class="row">
 
     <div class="section rank">
-      <div class="label">Rank</div>
+      <div class="label">RANK</div>
       <span id="rankNumber" class="metric">—</span>
       <span id="rankDelta" class="delta"><span class="delta-arrow"></span><span class="delta-number"></span></span>
     </div>
 
     <div class="section elo">
-      <div class="label">Elo</div>
+      <div class="label">ELO</div>
       <span id="eloNumber" class="metric">—</span>
       <span id="eloDelta" class="delta"><span class="delta-arrow"></span><span class="delta-number"></span></span>
     </div>
 
     <div class="section wins">
-      <div class="label">Wins</div>
+      <div class="label">WINS</div>
       <span id="winsNumber" class="metric">—</span>
       <span id="winsDelta" class="delta"><span class="delta-arrow"></span><span class="delta-number"></span></span>
     </div>
@@ -182,7 +183,7 @@ function getPlayerId(){
 
 function animateDelta(el,oldVal,newVal,reverse=false){
   const diff=newVal-oldVal;
-  if(!oldVal || diff===0) return;
+  if(!oldVal||diff===0)return;
   const arrow=el.querySelector(".delta-arrow");
   const number=el.querySelector(".delta-number");
   arrow.textContent=diff>0?(reverse?"▼":"▲"):(reverse?"▲":"▼");
@@ -194,7 +195,7 @@ function animateDelta(el,oldVal,newVal,reverse=false){
 }
 
 function formatTierName(name){
-  return name?.replace(/^Season\s+\d+\s+/i,"") ?? "";
+  return (name?.replace(/^Season\s+\d+\s+/i,"") ?? "").toUpperCase();
 }
 
 function getTier(elo,rank,data){
@@ -223,7 +224,7 @@ async function fetchData(){
   const data=await resp.json();
   const sorted=[...(data.leaderboard ?? [])].sort((a,b)=> (b.elo??0)-(a.elo??0));
   const idx=sorted.findIndex(e=>e.team?.[0]===pid);
-  if(idx<0) return;
+  if(idx<0)return;
 
   const p=sorted[idx];
   const elo=p.elo ?? 0;
