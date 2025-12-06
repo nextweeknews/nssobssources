@@ -30,28 +30,41 @@ html, body {
   border-radius:28px;
   display:flex;
   flex-direction:column;
-  justify-content:center;
+  justify-content:flex-start;
   align-items:center;
+  padding:16px 22px;
   text-align:center;
   color:#e9eef8;
-  padding:8px 22px;
 }
 
-/* ⭐ Tier Badge — color highlight with cutout text */
+/* Tier Row */
+#tierRow {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  margin-bottom:18px;
+}
+
+#tierLabel {
+  font-size:26px;
+  font-weight:700;
+  color:#bcd4ff;
+}
+
+/* Tier Badge */
 #tierContainer {
   display:flex;
   align-items:center;
   justify-content:center;
-  padding:6px 18px;
-  border-radius:16px;
-  margin-bottom:14px;
-  background:#888; /* updated dynamically */
-  height:42px;
+  padding:6px 20px;
+  border-radius:18px;
+  background:#888;
 }
 
 #tierText {
-  font-size:28px;
-  font-weight:800;
+  font-size:32px;
+  font-weight:900;
   text-transform:uppercase;
   color:var(--card-bg);
   mix-blend-mode:multiply;
@@ -61,21 +74,21 @@ html, body {
   width:100%;
   display:flex;
   justify-content:center;
-  align-items:center;
+  align-items:flex-start;
 }
 
 .rank-section { width:30%; }
 .elo-section  { width:68%; }
 
 .label {
-  font-size:24px;
-  font-weight:600;
+  font-size:26px;
+  font-weight:700;
   color:#bcd4ff;
   margin-bottom:4px;
 }
 
 .metric {
-  font-size:108px; /* Increased size */
+  font-size:110px;
   font-weight:800;
   line-height:1;
   white-space:nowrap;
@@ -109,9 +122,12 @@ html, body {
 <body>
 <div class="card">
 
-  <!-- 🏆 Tier Badge (Tier name only) -->
-  <div id="tierContainer">
-    <span id="tierText">—</span>
+  <!-- ⭐ Tier inline label + badge -->
+  <div id="tierRow">
+    <div id="tierLabel">Tier</div>
+    <div id="tierContainer">
+      <span id="tierText">—</span>
+    </div>
   </div>
 
   <div class="row">
@@ -127,7 +143,7 @@ html, body {
     <div class="divider"></div>
 
     <div class="section elo-section">
-      <div class="label">ELO</div>
+      <div class="label">Elo</div>
       <span id="eloNumber" class="metric">—</span>
       <span id="eloDelta" class="delta">
         <span class="delta-arrow"></span>
@@ -166,7 +182,6 @@ function getPlayerId() {
 function animateDelta(el, arrow, number, oldVal, newVal, reverse = false) {
   const diff = newVal - oldVal;
   if (diff === 0 || oldVal === null) return;
-
   arrow.textContent = diff > 0 ? (reverse ? "▼" : "▲") : (reverse ? "▲" : "▼");
   number.textContent = Math.abs(diff);
 
@@ -176,14 +191,11 @@ function animateDelta(el, arrow, number, oldVal, newVal, reverse = false) {
 
   el.style.opacity = "0";
   el.style.transform = "translateY(10px)";
-  requestAnimationFrame(() => {
+  requestAnimationFrame(()=>{
     el.style.opacity = "1";
     el.style.transform = "translateY(0)";
   });
-
-  setTimeout(() => {
-    el.style.opacity="0";
-  }, 8000);
+  setTimeout(()=>{ el.style.opacity="0"; },8000);
 }
 
 function formatTierName(name) {
@@ -191,14 +203,12 @@ function formatTierName(name) {
 }
 
 function getPlayerTier(elo, rank, data) {
-  const config = data.resolved?.leaderboards?.["Season_10"];
-  if (!config) return null;
-  const tiers = config.player_global_all_tiers ?? [];
-  const rankTiers = config.player_global_all_rank_tiers ?? [];
+  const cfg = data.resolved?.leaderboards?.["Season_10"];
+  if (!cfg) return null;
+  const tiers = cfg.player_global_all_tiers ?? [];
+  const rankTiers = cfg.player_global_all_rank_tiers ?? [];
 
-  if (rank===1 && rankTiers.length>0)
-    return rankTiers[0];
-
+  if (rank===1 && rankTiers.length>0) return rankTiers[0];
   let best=null;
   for (const t of tiers) if (elo>=t.required_elo) best=t;
   return best;
@@ -206,51 +216,47 @@ function getPlayerTier(elo, rank, data) {
 
 async function fetchData() {
   const pid = getPlayerId();
-  try {
-    const resp = await fetch(WORKER_URL,{
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body:JSON.stringify({
-        leaderboard:"season_10",
-        rating_type:"player_global_all",
-        client_id:"DISCORD|1069003073311211601"
-      })
-    });
+  const resp = await fetch(WORKER_URL,{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body:JSON.stringify({
+      leaderboard:"season_10",
+      rating_type:"player_global_all",
+      client_id:"DISCORD|1069003073311211601"
+    })
+  });
+  if (!resp.ok) return;
+  const data = await resp.json();
 
-    if (!resp.ok) return;
-    const data = await resp.json();
+  const entries = data.leaderboard ?? [];
+  if (!entries.length) return;
 
-    const entries = data.leaderboard ?? [];
-    if (!entries.length) return;
+  const sorted=[...entries].sort((a,b)=>(b.elo??0)-(a.elo??0));
+  const idx = sorted.findIndex(e=>e.team?.[0]===pid);
+  if (idx<0) return;
 
-    const sorted=[...entries].sort((a,b)=>(b.elo??0)-(a.elo??0));
-    const idx = sorted.findIndex(e=>e.team?.[0]===pid);
-    if (idx<0) return;
+  const p = sorted[idx];
+  const elo = p.elo ?? 0;
+  const rank = idx+1;
 
-    const player = sorted[idx];
-    const elo = player.elo ?? 0;
-    const rank = idx+1;
+  if (lastElo!==null && elo!==lastElo)
+    animateDelta(eloDeltaEl,arrowElo,numberElo,lastElo,elo);
+  if (lastRank!==null && rank!==lastRank)
+    animateDelta(rankDeltaEl,arrowRank,numberRank,lastRank,rank,true);
 
-    if (lastElo!==null && elo!==lastElo)
-      animateDelta(eloDeltaEl,arrowElo,numberElo,lastElo,elo);
-    if (lastRank!==null && rank!==lastRank)
-      animateDelta(rankDeltaEl,arrowRank,numberRank,lastRank,rank,true);
+  eloEl.textContent = elo;
+  rankEl.textContent = rank;
+  lastElo = elo;
+  lastRank = rank;
 
-    eloEl.textContent=elo;
-    rankEl.textContent=rank;
-    lastElo=elo;
-    lastRank=rank;
-
-    const tier = getPlayerTier(elo,rank,data);
-    if (tier) {
-      tierTextEl.textContent=formatTierName(tier.name);
-      tierContainer.style.background=tier.color;
-    } else {
-      tierTextEl.textContent="UNRANKED";
-      tierContainer.style.background="#888";
-    }
-
-  } catch(err) { console.error(err); }
+  const tier = getPlayerTier(elo,rank,data);
+  if (tier) {
+    tierTextEl.textContent = formatTierName(tier.name);
+    tierContainer.style.background = tier.color;
+  } else {
+    tierTextEl.textContent = "UNRANKED";
+    tierContainer.style.background = "#888";
+  }
 }
 
 fetchData();
