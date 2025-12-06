@@ -7,30 +7,24 @@
 
 <style>
 html, body {
-  height:100%;
-  margin:0;
-  background:transparent;
-  font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-  -webkit-font-smoothing:antialiased;
-  -moz-osx-font-smoothing:grayscale;
-  overflow:hidden;
-  display:flex;
-  justify-content:center;
-  align-items:center;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background: transparent;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  overflow: hidden; /* no scrolling ever */
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 :root { --card-bg:rgba(28,28,28,0.95); }
 
 .card {
-  width:800px;
-  height:260px;
-  background:var(--card-bg);
-  border-radius:28px;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  padding:14px 0px;
-  color:#e9eef8;
+  width: 800px;
+  height: 260px;
+  flex: none; /* prevent flexbox sizing */
+  box-sizing: border-box;
 }
 
 /* Tier Row */
