@@ -23,13 +23,13 @@ html, body {
 
 .card {
   width:750px;
-  height:245px;
+  height:260px; /* Slight increase for better spacing */
   background:var(--card-bg);
   border-radius:28px;
   display:flex;
   flex-direction:column;
   align-items:center;
-  padding:16px 22px;
+  padding:14px 22px;
   color:#e9eef8;
 }
 
@@ -38,29 +38,27 @@ html, body {
   display:flex;
   align-items:center;
   justify-content:center;
-  gap:12px;
-  margin-bottom:6px;
+  gap:14px;
+  margin-bottom:14px;
 }
 
 #tierLabel {
-  font-size:26px;
-  font-weight:800;
+  font-size:30px; /* Increased */
+  font-weight:900;
   color:#bcd4ff;
   text-transform:uppercase;
 }
 
-/* Tier Badge */
 #tierContainer {
-  padding:6px 20px;
-  border-radius:18px;
+  padding:8px 26px;
+  border-radius:20px;
   background:rgba(255,255,255,0.08);
   transition:background 0.3s ease;
 }
 
 #tierText {
-  font-size:32px;
+  font-size:38px; /* Increased */
   font-weight:900;
-  color:#ffffff;
   text-transform:uppercase;
 }
 
@@ -69,8 +67,9 @@ html, body {
   width:100%;
   display:flex;
   justify-content:space-between;
-  align-items:center;
-  margin-top:4px;
+  align-items:flex-end; /* Shift down visually */
+  height:100%; /* Helps vertical positioning */
+  padding-bottom:12px; /* Moves numbers down */
 }
 
 .section {
@@ -85,29 +84,29 @@ html, body {
 .section.wins { width:30%; }
 
 .label {
-  font-size:26px;
-  font-weight:800;
+  font-size:30px; /* Increased significantly */
+  font-weight:900;
   color:#bcd4ff;
-  margin-bottom:6px;
+  margin-bottom:10px;
   text-transform:uppercase;
 }
 
 .metric {
-  font-size:86px;
-  font-weight:800;
+  font-size:94px; /* Slight bump for balance */
+  font-weight:900;
   line-height:1;
   white-space:nowrap;
 }
 
-/* Dividers centered to metrics */
+/* Divider centered with metrics */
 .section:after {
   content:"";
   position:absolute;
   right:-10px;
-  top:50%;
-  transform:translateY(-55%);
+  top:58%; /* Moved down to match numbers */
+  transform:translateY(-50%);
   width:3px;
-  height:72px;
+  height:82px; /* Taller for new spacing */
   background:rgba(255,255,255,0.12);
   border-radius:2px;
 }
@@ -120,7 +119,7 @@ html, body {
   opacity:0;
   pointer-events:none;
   transition:opacity 0.4s ease;
-  margin-top:4px;
+  margin-top:6px;
 }
 .delta-positive { color:#4ade80; }
 .delta-negative { color:#f87171; }
@@ -169,7 +168,6 @@ const winsEl=document.getElementById("winsNumber");
 const rankEl=document.getElementById("rankNumber");
 const tierTextEl=document.getElementById("tierText");
 const tierContainer=document.getElementById("tierContainer");
-
 const eloDeltaEl=document.getElementById("eloDelta");
 const winsDeltaEl=document.getElementById("winsDelta");
 const rankDeltaEl=document.getElementById("rankDelta");
@@ -194,13 +192,13 @@ function animateDelta(el,oldVal,newVal,reverse=false){
   setTimeout(()=>el.style.opacity="0",6500);
 }
 
-function formatTierName(name){
-  return (name?.replace(/^Season\s+\d+\s+/i,"") ?? "").toUpperCase();
+function formatTierName(n){
+  return (n?.replace(/^Season\s+\d+\s+/i,"") ?? "").toUpperCase();
 }
 
 function getTier(elo,rank,data){
   const cfg=data.resolved?.leaderboards?.["Season_10"];
-  if(!cfg) return null;
+  if(!cfg)return null;
   if(rank===1 && cfg.player_global_all_rank_tiers?.length)
     return cfg.player_global_all_rank_tiers[0];
   let best=null;
@@ -238,13 +236,14 @@ async function fetchData(){
   eloEl.textContent=elo;
   winsEl.textContent=wins;
   rankEl.textContent=rank;
-
   lastElo=elo; lastRank=rank; lastWins=wins;
 
   const tier=getTier(elo,rank,data);
   if(tier){
     const c=tier.color;
-    const r=parseInt(c.slice(1,3),16),g=parseInt(c.slice(3,5),16),b=parseInt(c.slice(5,7),16);
+    const r=parseInt(c.slice(1,3),16),
+          g=parseInt(c.slice(3,5),16),
+          b=parseInt(c.slice(5,7),16);
     tierTextEl.textContent=formatTierName(tier.name);
     tierTextEl.style.textShadow=`0 0 10px ${c}, 0 0 18px ${c}`;
     tierContainer.style.background=`rgba(${r},${g},${b},0.22)`;
