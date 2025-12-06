@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Elo • Rank • Tier</title>
+<title>Elo • Rank • Wins • Tier</title>
 
 <style>
 html, body {
@@ -11,8 +11,8 @@ html, body {
   margin:0;
   background: transparent;
   font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
   overflow:hidden;
   display:flex;
   justify-content:center;
@@ -24,8 +24,8 @@ html, body {
 }
 
 .card {
-  width:700px;
-  height:230px;
+  width:750px;
+  height:245px;
   background: var(--card-bg);
   border-radius:28px;
   display:flex;
@@ -37,7 +37,7 @@ html, body {
   color:#e9eef8;
 }
 
-/* Tier Inline Row */
+/* Tier */
 #tierRow {
   display:flex;
   align-items:center;
@@ -46,21 +46,19 @@ html, body {
   margin-bottom:18px;
 }
 
-/* Tier Label */
 #tierLabel {
   font-size:26px;
   font-weight:700;
   color:#bcd4ff;
 }
 
-/* Tier Badge */
 #tierContainer {
   display:flex;
   align-items:center;
   justify-content:center;
   padding:6px 20px;
   border-radius:18px;
-  background:rgba(255,255,255,0.08); /* overridden by JS */
+  background:rgba(255,255,255,0.08);
   transition:background 0.4s ease;
 }
 
@@ -71,7 +69,7 @@ html, body {
   transition: color 0.4s ease, text-shadow 0.4s ease;
 }
 
-/* Rank + Elo */
+/* 3-column stats row */
 .row {
   width:100%;
   display:flex;
@@ -79,8 +77,9 @@ html, body {
   align-items:flex-start;
 }
 
-.rank-section { width:30%; }
-.elo-section  { width:68%; }
+.section {
+  width:33%;
+}
 
 .label {
   font-size:26px;
@@ -90,7 +89,7 @@ html, body {
 }
 
 .metric {
-  font-size:110px;
+  font-size:88px;
   font-weight:800;
   line-height:1;
   white-space:nowrap;
@@ -104,7 +103,7 @@ html, body {
   margin:0 10px;
 }
 
-/* Deltas */
+/* Delta Animations */
 .delta {
   font-size:30px;
   font-weight:600;
@@ -125,7 +124,7 @@ html, body {
 <body>
 <div class="card">
 
-  <!-- ⭐ Tier inline -->
+  <!-- Tier -->
   <div id="tierRow">
     <div id="tierLabel">Tier</div>
     <div id="tierContainer">
@@ -134,25 +133,29 @@ html, body {
   </div>
 
   <div class="row">
-    <div class="section rank-section">
+
+    <div class="section">
       <div class="label">Rank</div>
       <span id="rankNumber" class="metric">—</span>
-      <span id="rankDelta" class="delta">
-        <span class="delta-arrow"></span>
-        <span class="delta-number"></span>
-      </span>
+      <span id="rankDelta" class="delta"><span class="delta-arrow"></span><span class="delta-number"></span></span>
     </div>
 
     <div class="divider"></div>
 
-    <div class="section elo-section">
+    <div class="section">
+      <div class="label">Wins</div>
+      <span id="winsNumber" class="metric">—</span>
+      <span id="winsDelta" class="delta"><span class="delta-arrow"></span><span class="delta-number"></span></span>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section">
       <div class="label">Elo</div>
       <span id="eloNumber" class="metric">—</span>
-      <span id="eloDelta" class="delta">
-        <span class="delta-arrow"></span>
-        <span class="delta-number"></span>
-      </span>
+      <span id="eloDelta" class="delta"><span class="delta-arrow"></span><span class="delta-number"></span></span>
     </div>
+
   </div>
 
 </div>
@@ -162,121 +165,101 @@ const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leader
 const REFRESH_MS = 15000;
 
 const eloEl = document.getElementById("eloNumber");
+const winsEl = document.getElementById("winsNumber");
 const rankEl = document.getElementById("rankNumber");
 const tierTextEl = document.getElementById("tierText");
 const tierContainer = document.getElementById("tierContainer");
 
 const eloDeltaEl = document.getElementById("eloDelta");
+const winsDeltaEl = document.getElementById("winsDelta");
 const rankDeltaEl = document.getElementById("rankDelta");
 
-const arrowElo = eloDeltaEl.querySelector(".delta-arrow");
-const numberElo = eloDeltaEl.querySelector(".delta-number");
-const arrowRank = rankDeltaEl.querySelector(".delta-arrow");
-const numberRank = rankDeltaEl.querySelector(".delta-number");
-
-let lastElo = null;
-let lastRank = null;
+let lastElo=null, lastRank=null, lastWins=null;
 
 function getPlayerId() {
   const pid = new URLSearchParams(location.search).get("player_id");
   return /^\d{19}$/.test(pid) ? pid : "702730732220579950";
 }
 
-function animateDelta(el, arrow, number, oldVal, newVal, reverse = false) {
-  const diff = newVal - oldVal;
-  if (diff === 0 || oldVal === null) return;
-  arrow.textContent = diff > 0 ? (reverse ? "▼" : "▲") : (reverse ? "▲" : "▼");
-  number.textContent = Math.abs(diff);
+function animateDelta(el,oldVal,newVal,reverse=false){
+  const diff=newVal-oldVal;
+  if(!oldVal || diff===0) return;
+  const arrow=el.querySelector(".delta-arrow");
+  const number=el.querySelector(".delta-number");
+  arrow.textContent=diff>0?(reverse?"▼":"▲"):(reverse?"▲":"▼");
+  number.textContent=Math.abs(diff);
 
   el.classList.remove("delta-positive","delta-negative");
-  const isPositive = !!(diff > 0 ^ reverse);
-  el.classList.add(isPositive ? "delta-positive" : "delta-negative");
-
-  el.style.opacity = "0";
-  el.style.transform = "translateY(10px)";
-  requestAnimationFrame(()=>{
-    el.style.opacity = "1";
-    el.style.transform = "translateY(0)";
-  });
-  setTimeout(()=>{ el.style.opacity="0"; },8000);
+  el.classList.add((diff>0 ^ reverse)?"delta-positive":"delta-negative");
+  el.style.opacity="1"; el.style.transform="translateY(0)";
+  setTimeout(()=>{ el.style.opacity="0"; },6500);
 }
 
-function formatTierName(name) {
-  return name?.replace(/^Season\s+\d+\s+/i,"") ?? "";
+function formatTierName(name){return name?.replace(/^Season\s+\d+\s+/i,"") ?? "";}
+
+function getTier(elo,rank,data){
+  const cfg=data.resolved?.leaderboards?.["Season_10"];
+  if(!cfg) return null;
+  if(rank===1 && cfg.player_global_all_rank_tiers?.length)
+    return cfg.player_global_all_rank_tiers[0];
+  let b=null;
+  for(const t of cfg.player_global_all_tiers) if(elo>=t.required_elo) b=t;
+  return b;
 }
 
-function getPlayerTier(elo, rank, data) {
-  const cfg = data.resolved?.leaderboards?.["Season_10"];
-  if (!cfg) return null;
-  const tiers = cfg.player_global_all_tiers ?? [];
-  const rankTiers = cfg.player_global_all_rank_tiers ?? [];
-
-  if (rank===1 && rankTiers.length>0) return rankTiers[0];
-
-  let best=null;
-  for (const t of tiers) if (elo>=t.required_elo) best=t;
-  return best;
-}
-
-async function fetchData() {
-  const pid = getPlayerId();
-  const resp = await fetch(WORKER_URL,{
+async function fetchData(){
+  const pid=getPlayerId();
+  const resp=await fetch(WORKER_URL,{
     method:"POST",
-    headers:{ "Content-Type":"application/json" },
+    headers:{"Content-Type":"application/json"},
     body:JSON.stringify({
       leaderboard:"season_10",
       rating_type:"player_global_all",
       client_id:"DISCORD|1069003073311211601"
     })
   });
-  if (!resp.ok) return;
-  const data = await resp.json();
-
-  const entries = data.leaderboard ?? [];
-  if (!entries.length) return;
+  if(!resp.ok) return;
+  const data=await resp.json();
+  const entries=data.leaderboard ?? [];
+  if(!entries.length) return;
 
   const sorted=[...entries].sort((a,b)=>(b.elo??0)-(a.elo??0));
-  const idx = sorted.findIndex(e=>e.team?.[0]===pid);
-  if (idx<0) return;
+  const idx=sorted.findIndex(e=>e.team?.[0]===pid);
+  if(idx<0) return;
+  const p=sorted[idx];
 
-  const p = sorted[idx];
-  const elo = p.elo ?? 0;
-  const rank = idx+1;
+  const elo=p.elo ?? 0;
+  const wins=p.count_placement_1 ?? 0;
+  const rank=idx+1;
 
-  if (lastElo!==null && elo!==lastElo)
-    animateDelta(eloDeltaEl,arrowElo,numberElo,lastElo,elo);
-  if (lastRank!==null && rank!==lastRank)
-    animateDelta(rankDeltaEl,arrowRank,numberRank,lastRank,rank,true);
+  if(lastElo!==null && elo!==lastElo) animateDelta(eloDeltaEl,lastElo,elo);
+  if(lastRank!==null && rank!==lastRank) animateDelta(rankDeltaEl,lastRank,rank,true);
+  if(lastWins!==null && wins!==lastWins) animateDelta(winsDeltaEl,lastWins,wins);
 
-  eloEl.textContent = elo;
-  rankEl.textContent = rank;
-  lastElo = elo;
-  lastRank = rank;
+  eloEl.textContent=elo;
+  winsEl.textContent=wins;
+  rankEl.textContent=rank;
+  lastElo=elo; lastRank=rank; lastWins=wins;
 
-  const tier = getPlayerTier(elo,rank,data);
-  if (tier) {
-    const color = tier.color;
-    const r = parseInt(color.slice(1,3),16);
-    const g = parseInt(color.slice(3,5),16);
-    const b = parseInt(color.slice(5,7),16);
-
-    tierTextEl.textContent = formatTierName(tier.name);
-    tierTextEl.style.color = color;
-    tierTextEl.style.textShadow = `0 0 6px ${color}, 0 0 14px ${color}`;
-    tierContainer.style.background = `rgba(${r}, ${g}, ${b}, 0.22)`;
-
+  const tier=getTier(elo,rank,data);
+  if(tier){
+    const c=tier.color;
+    const r=parseInt(c.slice(1,3),16), g=parseInt(c.slice(3,5),16), b=parseInt(c.slice(5,7),16);
+    tierTextEl.textContent=formatTierName(tier.name);
+    tierTextEl.style.color=c;
+    tierTextEl.style.textShadow=`0 0 6px ${c}, 0 0 14px ${c}`;
+    tierContainer.style.background=`rgba(${r},${g},${b},0.22)`;
   } else {
-    tierTextEl.textContent = "Unranked";
-    tierTextEl.style.color = "#bbb";
-    tierTextEl.style.textShadow = "none";
-    tierContainer.style.background = "rgba(255,255,255,0.08)";
+    tierTextEl.textContent="Unranked";
+    tierTextEl.style.color="#bbb";
+    tierTextEl.style.textShadow="none";
+    tierContainer.style.background="rgba(255,255,255,0.08)";
   }
 }
 
 fetchData();
-setInterval(fetchData, REFRESH_MS);
+setInterval(fetchData,REFRESH_MS);
 </script>
 
 </body>
 </html>
-
