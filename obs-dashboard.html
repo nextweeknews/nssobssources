@@ -82,7 +82,6 @@ html, body {
   text-align:center;
 }
 
-/* Strict 30/40/30 split */
 .section.rank  { width:30%; }
 .section.elo   { width:40%; }
 .section.wins  { width:30%; }
@@ -95,11 +94,41 @@ html, body {
   text-transform:uppercase;
 }
 
+/* Metric & delta overlay */
 .metric {
+  position:relative;
+  width:100%;
   font-size:94px;
   font-weight:800;
   line-height:1;
+  height:94px;
   white-space:nowrap;
+}
+
+.metric-value,
+.delta {
+  position:absolute;
+  top:0;
+  left:50%;
+  transform:translateX(-50%);
+  transition:opacity .4s ease;
+  opacity:1;
+}
+
+.delta {
+  opacity:0;
+  font-size:94px;
+  font-weight:900;
+  white-space:nowrap;
+}
+
+  .delta .delta-arrow {
+  font-size: 0.6em;
+  position: relative;
+  top: -0.1em;
+  display: inline-block;
+  margin-right: 2px;
+  vertical-align: middle;
 }
 
 /* Divider */
@@ -116,26 +145,18 @@ html, body {
 }
 .section:last-child:after { display:none; }
 
-/* Rank suffix */
+/* Rank suffix inline alignment */
 #rankSuffix {
+  position:relative;
+  top:-8px;
   font-size:36px;
   font-weight:800;
-  position: relative;
-  top:-8px;
 }
 
-/* Deltas */
-.delta {
-  font-size:28px;
-  font-weight:700;
-  opacity:0;
-  pointer-events:none;
-  transition:opacity 0.4s ease;
-  margin-top:6px;
-}
+/* Delta colors */
 .delta-positive { color:#4ade80; }
 .delta-negative { color:#f87171; }
-.delta-arrow { margin-right:4px; }
+
 </style>
 </head>
 
@@ -152,25 +173,33 @@ html, body {
 
     <div class="section rank">
       <div class="label">RANK</div>
-      <span class="metric"><span id="rankNumber">—</span><sup id="rankSuffix"></sup></span>
-      <span id="rankDelta" class="delta">
-        <span class="delta-arrow"></span><span class="delta-number"></span>
+      <span class="metric">
+        <span id="rankValue" class="metric-value">
+          <span id="rankNumber">—</span><sup id="rankSuffix"></sup>
+        </span>
+        <span id="rankDelta" class="delta">
+          <span class="delta-arrow"></span><span class="delta-number"></span>
+        </span>
       </span>
     </div>
 
     <div class="section elo">
       <div class="label">ELO</div>
-      <span id="eloNumber" class="metric">—</span>
-      <span id="eloDelta" class="delta">
-        <span class="delta-arrow"></span><span class="delta-number"></span>
+      <span class="metric">
+        <span id="eloValue" class="metric-value">—</span>
+        <span id="eloDelta" class="delta">
+          <span class="delta-arrow"></span><span class="delta-number"></span>
+        </span>
       </span>
     </div>
 
     <div class="section wins">
       <div class="label">WINS</div>
-      <span id="winsNumber" class="metric">—</span>
-      <span id="winsDelta" class="delta">
-        <span class="delta-arrow"></span><span class="delta-number"></span>
+      <span class="metric">
+        <span id="winsValue" class="metric-value">—</span>
+        <span id="winsDelta" class="delta">
+          <span class="delta-arrow"></span><span class="delta-number"></span>
+        </span>
       </span>
     </div>
 
@@ -181,17 +210,18 @@ html, body {
 const WORKER_URL="https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
 const REFRESH_MS=15000;
 
-const eloEl=document.getElementById("eloNumber");
-const winsEl=document.getElementById("winsNumber");
-const rankEl=document.getElementById("rankNumber");
-const rankSuffixEl=document.getElementById("rankSuffix");
-const tierTextEl=document.getElementById("tierText");
+const rankVal=document.getElementById("rankValue");
+const rankNum=document.getElementById("rankNumber");
+const rankSuffix=document.getElementById("rankSuffix");
+const eloVal=document.getElementById("eloValue");
+const winsVal=document.getElementById("winsValue");
+const rankDelta=document.getElementById("rankDelta");
+const eloDelta=document.getElementById("eloDelta");
+const winsDelta=document.getElementById("winsDelta");
+const tierText=document.getElementById("tierText");
 const tierContainer=document.getElementById("tierContainer");
-const eloDeltaEl=document.getElementById("eloDelta");
-const winsDeltaEl=document.getElementById("winsDelta");
-const rankDeltaEl=document.getElementById("rankDelta");
 
-let lastElo=null,lastRank=null,lastWins=null;
+let lastRank=null,lastElo=null,lastWins=null;
 
 function getOrdinalSuffix(n){
   const j=n%10,k=n%100;
@@ -202,36 +232,35 @@ function getOrdinalSuffix(n){
   return"th";
 }
 
-function getPlayerId() {
-  const pid = new URLSearchParams(location.search).get("player_id");
-  return /^\d{17,20}$/.test(pid) ? pid : "702730732220579950";
+function getPlayerId(){
+  const pid=new URLSearchParams(location.search).get("player_id");
+  return /^\d{17,20}$/.test(pid)?pid:"702730732220579950";
 }
 
-function animateDelta(el,oldVal,newVal,reverse=false){
+function animateDelta(valueEl, deltaEl, oldVal, newVal, reverse=false){
   const diff=newVal-oldVal;
-  if(!oldVal||diff===0)return;
-  const arrow=el.querySelector(".delta-arrow");
-  const number=el.querySelector(".delta-number");
-  arrow.textContent=diff>0?(reverse?"▼":"▲"):(reverse?"▲":"▼");
-  number.textContent=Math.abs(diff);
-  el.classList.remove("delta-positive","delta-negative");
-  el.classList.add((diff>0 ^ reverse)?"delta-positive":"delta-negative");
-  el.style.opacity="1";
-  setTimeout(()=>el.style.opacity="0",6500);
-}
+  if(!oldVal || diff===0) return;
 
-function formatTierName(n){
-  return (n?.replace(/^Season\s+\d+\s+/i,"") ?? "").toUpperCase();
-}
+  const arrow=deltaEl.querySelector(".delta-arrow");
+  const num=deltaEl.querySelector(".delta-number");
 
-function getTier(elo,rank,data){
-  const cfg=data.resolved?.leaderboards?.["Season_10"];
-  if(!cfg)return null;
-  if(rank===1 && cfg.player_global_all_rank_tiers?.length)
-    return cfg.player_global_all_rank_tiers[0];
-  let best=null;
-  for(const t of cfg.player_global_all_tiers) if(elo>=t.required_elo) best=t;
-  return best;
+  arrow.textContent = diff>0 ? (reverse?"▼":"▲") : (reverse?"▲":"▼");
+  num.textContent = Math.abs(diff);
+
+  deltaEl.classList.remove("delta-positive","delta-negative");
+  deltaEl.classList.add((diff>0 ^ reverse)?"delta-positive":"delta-negative");
+
+  valueEl.style.opacity="0";
+
+  setTimeout(()=>{
+    deltaEl.style.opacity="1";
+
+    setTimeout(()=>{
+      deltaEl.style.opacity="0";
+      setTimeout(()=>valueEl.style.opacity="1",400);
+    },5000);
+
+  },400);
 }
 
 async function fetchData(){
@@ -248,40 +277,52 @@ async function fetchData(){
 
   if(!resp.ok)return;
   const data=await resp.json();
-  const sorted=[...(data.leaderboard ?? [])].sort((a,b)=>(b.elo??0)-(a.elo??0));
-  const idx=sorted.findIndex(e=>e.team?.[0]===pid);
+  const sorted=[...(data.leaderboard??[])].sort((a,b)=>(b.elo??0)-(a.elo??0));
+  const idx=sorted.findIndex(p=>p.team?.[0]===pid);
   if(idx<0)return;
 
   const p=sorted[idx];
-  const elo=p.elo ?? 0;
-  const wins=p.count_placement_1 ?? 0;
   const rank=idx+1;
+  const elo=p.elo??0;
+  const wins=p.count_placement_1??0;
 
-  if(lastElo!==null && elo!==lastElo) animateDelta(eloDeltaEl,lastElo,elo);
-  if(lastRank!==null && rank!==lastRank) animateDelta(rankDeltaEl,lastRank,rank,true);
-  if(lastWins!==null && wins!==lastWins) animateDelta(winsDeltaEl,lastWins,wins);
+  if(lastRank!==null && rank!==lastRank)
+    animateDelta(rankVal,rankDelta,lastRank,rank,true);
+  if(lastElo!==null && elo!==lastElo)
+    animateDelta(eloVal,eloDelta,lastElo,elo);
+  if(lastWins!==null && wins!==lastWins)
+    animateDelta(winsVal,winsDelta,lastWins,wins);
 
-  eloEl.textContent=elo;
-  winsEl.textContent=wins;
-  rankEl.textContent=rank;
-  rankSuffixEl.textContent=getOrdinalSuffix(rank);
+  rankNum.textContent=rank;
+  rankSuffix.textContent=getOrdinalSuffix(rank);
+  eloVal.textContent=elo;
+  winsVal.textContent=wins;
 
-  lastElo=elo;
   lastRank=rank;
+  lastElo=elo;
   lastWins=wins;
 
-  const tier=getTier(elo,rank,data);
+  const cfg=data.resolved?.leaderboards?.["Season_10"];
+  let tier = null;
+  if(cfg){
+    if(rank===1 && cfg.player_global_all_rank_tiers?.length)
+      tier=cfg.player_global_all_rank_tiers[0];
+    else
+      for(const t of cfg.player_global_all_tiers)
+        if(elo>=t.required_elo)tier=t;
+  }
+
   if(tier){
     const c=tier.color;
+    tierText.textContent=tier.name.replace(/^Season\s+\d+\s+/i,"").toUpperCase();
     const r=parseInt(c.slice(1,3),16),
           g=parseInt(c.slice(3,5),16),
           b=parseInt(c.slice(5,7),16);
-    tierTextEl.textContent=formatTierName(tier.name);
-    tierTextEl.style.textShadow=`0 0 10px ${c}, 0 0 18px ${c}`;
+    tierText.style.textShadow=`0 0 10px ${c},0 0 18px ${c}`;
     tierContainer.style.background=`rgba(${r},${g},${b},0.22)`;
   } else {
-    tierTextEl.textContent="UNRANKED";
-    tierTextEl.style.textShadow="none";
+    tierText.textContent="UNRANKED";
+    tierText.style.textShadow="none";
     tierContainer.style.background="rgba(255,255,255,0.08)";
   }
 }
