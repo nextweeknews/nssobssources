@@ -102,6 +102,12 @@ html, body {
   white-space:nowrap;
 }
 
+  #rankSuffix {
+  font-size: 36px; /* significantly smaller than 94px number */
+  font-weight: 600;
+  vertical-align: super;
+}
+
 /* Dividers sitting between sections, taller, centered on metrics */
 .section:after {
   content:"";
@@ -181,6 +187,17 @@ const tierContainer=document.getElementById("tierContainer");
 const eloDeltaEl=document.getElementById("eloDelta");
 const winsDeltaEl=document.getElementById("winsDelta");
 const rankDeltaEl=document.getElementById("rankDelta");
+const rankSuffixEl = document.getElementById("rankSuffix");
+
+function getOrdinalSuffix(n) {
+  const j = n % 10,
+        k = n % 100;
+  if (k >= 11 && k <= 13) return "th"; // special cases: 11th, 12th, 13th
+  if (j === 1) return "st";
+  if (j === 2) return "nd";
+  if (j === 3) return "rd";
+  return "th";
+}
 
 let lastElo=null,lastRank=null,lastWins=null;
 
@@ -225,6 +242,8 @@ async function fetchData(){
       leaderboard:"season_10",
       rating_type:"player_global_all",
       client_id:"DISCORD|1069003073311211601"
+    rankEl.textContent = rank;
+    rankSuffixEl.textContent = getOrdinalSuffix(rank);
     })
   });
 
