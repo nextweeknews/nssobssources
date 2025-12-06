@@ -33,11 +33,40 @@ html, body {
   padding:10px 20px;
 }
 
+/* Tier moved to top */
+#tierContainer {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-bottom:10px;
+}
+
+.tier-label {
+  font-size:18px;
+  font-weight:600;
+  color:#bcd4ff;
+}
+
+#tierText {
+  font-size:26px;
+  font-weight:700;
+  text-transform:uppercase;
+}
+
 .row {
   width:100%;
   display:flex;
   justify-content:space-between;
   align-items:center;
+  margin-top:6px;
+}
+
+/* Separator between Rank and Elo */
+.divider {
+  width:2px;
+  height:80px;
+  background:rgba(255,255,255,0.08);
+  border-radius:2px;
 }
 
 .section {
@@ -46,6 +75,7 @@ html, body {
   align-items:center;
 }
 
+/* Rank + Elo labels + values */
 .label {
   font-size:26px;
   font-weight:600;
@@ -74,22 +104,20 @@ html, body {
 .delta-positive { color:#4ade80; }
 .delta-negative { color:#f87171; }
 .delta-arrow { margin-right:4px; }
-
-#tierLabel {
-  margin-top:12px;
-  font-size:28px;
-  font-weight:700;
-  color:#e9eef8;
-  text-transform:uppercase;
-}
 </style>
 </head>
 
 <body>
 <div class="card">
 
+  <!-- ⭐ Tier moved up here -->
+  <div id="tierContainer">
+    <span class="tier-label">Tier:</span>
+    <span id="tierText">—</span>
+  </div>
+
   <div class="row">
-    <div class="section" style="width:40%">
+    <div class="section" style="width:45%">
       <div class="label">Rank</div>
       <span id="rankNumber" class="metric">—</span>
       <span id="rankDelta" class="delta">
@@ -98,7 +126,9 @@ html, body {
       </span>
     </div>
 
-    <div class="section" style="width:60%">
+    <div class="divider"></div>
+
+    <div class="section" style="width:45%">
       <div class="label">ELO</div>
       <span id="eloNumber" class="metric">—</span>
       <span id="eloDelta" class="delta">
@@ -108,8 +138,6 @@ html, body {
     </div>
   </div>
 
-  <div id="tierLabel">—</div>
-
 </div>
 
 <script>
@@ -118,7 +146,7 @@ const REFRESH_MS = 15000;
 
 const eloEl = document.getElementById("eloNumber");
 const rankEl = document.getElementById("rankNumber");
-const tierEl = document.getElementById("tierLabel");
+const tierTextEl = document.getElementById("tierText");
 
 const eloDeltaEl = document.getElementById("eloDelta");
 const rankDeltaEl = document.getElementById("rankDelta");
@@ -132,22 +160,22 @@ const numberRank = rankDeltaEl.querySelector(".delta-number");
 let lastElo = null;
 let lastRank = null;
 
-// Player ID must be exactly 19 digits; otherwise use default.
+// Validate player_id 19 digits
 function getPlayerId() {
   const pid = new URLSearchParams(location.search).get("player_id");
   return /^\d{19}$/.test(pid) ? pid : "702730732220579950";
 }
 
+// Delta animation
 function animateDelta(el, arrow, number, oldVal, newVal, reverse = false) {
   const diff = newVal - oldVal;
   if (diff === 0 || oldVal === null) return;
 
-  // reverse=true means "up is bad" (higher rank number is worse)
   arrow.textContent = diff > 0 ? (reverse ? "▼" : "▲") : (reverse ? "▲" : "▼");
   number.textContent = Math.abs(diff);
 
   el.classList.remove("delta-positive", "delta-negative");
-  const isPositive = !!(diff > 0 ^ reverse); // XOR so "better" is green
+  const isPositive = !!(diff > 0 ^ reverse);
   el.classList.add(isPositive ? "delta-positive" : "delta-negative");
 
   el.style.opacity = "0";
@@ -162,51 +190,32 @@ function animateDelta(el, arrow, number, oldVal, newVal, reverse = false) {
   }, 8000);
 }
 
-// Strip "Season 10 " or "Season <n> " from the tier name
+// Trim "Season 10 "
 function formatTierName(name) {
   if (!name) return "";
   return name.replace(/^Season\s+\d+\s+/i, "");
 }
 
 function getPlayerTier(elo, rank, data) {
-  const resolved = data.resolved || {};
-  const lbs = resolved.leaderboards || {};
-
-  // We know Season_10 is the collection we care about
-  const seasonConfig = lbs["Season_10"];
+  const seasonConfig = data.resolved?.leaderboards?.["Season_10"];
   if (!seasonConfig) return null;
 
-  const tiers = Array.isArray(seasonConfig.player_global_all_tiers)
-    ? seasonConfig.player_global_all_tiers
-    : [];
+  const tiers = seasonConfig.player_global_all_tiers || [];
+  const rankTiers = seasonConfig.player_global_all_rank_tiers || [];
 
-  const rankTiers = Array.isArray(seasonConfig.player_global_all_rank_tiers)
-    ? seasonConfig.player_global_all_rank_tiers
-    : [];
-
-  // Rank #1 override if defined
   if (rank === 1 && rankTiers.length > 0) {
-    return {
-      name: rankTiers[0].name,
-      color: rankTiers[0].color
-    };
+    return { name: rankTiers[0].name, color: rankTiers[0].color };
   }
-
-  if (!tiers.length) return null;
 
   let currentTier = null;
   for (const t of tiers) {
-    if (typeof t.required_elo === "number" && elo >= t.required_elo) {
-      currentTier = t;
-    }
+    if (elo >= t.required_elo) currentTier = t;
   }
-
   return currentTier;
 }
 
 async function fetchData() {
   const pid = getPlayerId();
-
   try {
     const resp = await fetch(WORKER_URL, {
       method: "POST",
@@ -218,69 +227,40 @@ async function fetchData() {
       })
     });
 
-    if (!resp.ok) {
-      console.error("Leaderboard HTTP error", resp.status);
-      return;
-    }
-
+    if (!resp.ok) return console.error("HTTP", resp.status);
     const data = await resp.json();
 
-    const entries = Array.isArray(data.leaderboard) ? data.leaderboard : [];
+    const entries = data.leaderboard || [];
     if (!entries.length) return;
 
-    // Sort by Elo descending to compute rank
-    const sorted = [...entries].sort((a, b) => {
-      const ea = typeof a.elo === "number" ? a.elo : 0;
-      const eb = typeof b.elo === "number" ? b.elo : 0;
-      return eb - ea;
-    });
+    const sorted = [...entries].sort((a,b)=> (b.elo ??0)-(a.elo ??0));
+    const idx = sorted.findIndex(e=> e.team?.[0]===pid);
+    if (idx<0) return;
 
-    const idx = sorted.findIndex(
-      e => Array.isArray(e.team) && e.team[0] === pid
-    );
+    const player = sorted[idx];
+    const elo = player.elo ?? 0;
+    const rank = idx+1;
 
-    if (idx < 0) {
-      console.warn("Player not found in leaderboard for ID:", pid);
-      eloEl.textContent = "—";
-      rankEl.textContent = "—";
-      tierEl.textContent = "Unranked";
-      tierEl.style.color = "#e9eef8";
-      return;
-    }
+    if (lastElo!==null && elo!==lastElo)
+      animateDelta(eloDeltaEl,arrowElo,numberElo,lastElo,elo);
+    if (lastRank!==null && rank!==lastRank)
+      animateDelta(rankDeltaEl,arrowRank,numberRank,lastRank,rank,true);
 
-    const playerEntry = sorted[idx];
-    const newElo = typeof playerEntry.elo === "number" ? playerEntry.elo : 0;
-    const newRank = idx + 1;
+    eloEl.textContent = elo;
+    rankEl.textContent = rank;
+    lastElo = elo;
+    lastRank = rank;
 
-    // Animate deltas
-    if (lastElo !== null && newElo !== lastElo) {
-      animateDelta(eloDeltaEl, arrowElo, numberElo, lastElo, newElo);
-    }
-
-    if (lastRank !== null && newRank !== lastRank) {
-      animateDelta(rankDeltaEl, arrowRank, numberRank, lastRank, newRank, true);
-    }
-
-    eloEl.textContent = newElo;
-    rankEl.textContent = newRank;
-
-    lastElo = newElo;
-    lastRank = newRank;
-
-    // Tier calculation using Season_10 config
-    const tier = getPlayerTier(newElo, newRank, data);
-
+    const tier = getPlayerTier(elo, rank, data);
     if (tier) {
-      tierEl.textContent = formatTierName(tier.name);
-      tierEl.style.color = tier.color || "#e9eef8";
+      tierTextEl.textContent = formatTierName(tier.name);
+      tierTextEl.style.color = tier.color;
     } else {
-      tierEl.textContent = "Unranked";
-      tierEl.style.color = "#e9eef8";
+      tierTextEl.textContent = "UNRANKED";
+      tierTextEl.style.color = "#e9eef8";
     }
 
-  } catch (err) {
-    console.error("Leaderboard fetch error:", err);
-  }
+  } catch (err) { console.error("Fetch error:", err); }
 }
 
 fetchData();
