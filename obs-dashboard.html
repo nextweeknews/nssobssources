@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Elo • Rank • Tier</title>
+
+<style>
+html, body {
+  height:100%;
+  margin:0;
+  background: transparent;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow:hidden;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
+.card {
+  width:600px;
+  height:240px;
+  background: rgba(28,28,28,0.95);
+  border-radius:24px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  text-align:center;
+  color:#e9eef8;
+  padding:10px 20px;
+}
+
+.row {
+  width:100%;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.section {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+
+.label {
+  font-size:26px;
+  font-weight:600;
+  color:#bcd4ff;
+  margin-bottom:4px;
+}
+
+.metric {
+  font-size:80px;
+  font-weight:700;
+  line-height:1;
+  white-space:nowrap;
+}
+
+.delta {
+  font-size:28px;
+  font-weight:600;
+  opacity:0;
+  pointer-events:none;
+  display:inline-flex;
+  align-items:center;
+  margin-top:4px;
+  transition:opacity 0.4s ease, transform 0.4s ease;
+}
+
+.delta-positive { color:#4ade80; }
+.delta-negative { color:#f87171; }
+.delta-arrow { margin-right:4px; }
+
+#tierLabel {
+  margin-top:12px;
+  font-size:28px;
+  font-weight:700;
+  color:#e9eef8;
+  text-transform:uppercase;
+}
+</style>
+</head>
+
+<body>
+<div class="card">
+
+  <div class="row">
+    <div class="section" style="width:40%">
+      <div class="label">Rank</div>
+      <span id="rankNumber" class="metric">—</span>
+      <span id="rankDelta" class="delta">
+        <span class="delta-arrow"></span>
+        <span class="delta-number"></span>
+      </span>
+    </div>
+
+    <div class="section" style="width:60%">
+      <div class="label">ELO</div>
+      <span id="eloNumber" class="metric">—</span>
+      <span id="eloDelta" class="delta">
+        <span class="delta-arrow"></span>
+        <span class="delta-number"></span>
+      </span>
+    </div>
+  </div>
+
+  <div id="tierLabel">—</div>
+
+</div>
+
+<script>
+const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
+const REFRESH_MS = 15000;
+
+const eloEl = document.getElementById("eloNumber");
+const rankEl = document.getElementById("rankNumber");
+const tierEl = document.getElementById("tierLabel");
+
+const eloDeltaEl = document.getElementById("eloDelta");
+const rankDeltaEl = document.getElementById("rankDelta");
+
+const arrowElo = eloDeltaEl.querySelector(".delta-arrow");
+const numberElo = eloDeltaEl.querySelector(".delta-number");
+
+const arrowRank = rankDeltaEl.querySelector(".delta-arrow");
+const numberRank = rankDeltaEl.querySelector(".delta-number");
+
+let lastElo = null;
+let lastRank = null;
+
+// Player ID must be exactly 19 digits; otherwise use default.
+function getPlayerId() {
+  const pid = new URLSearchParams(location.search).get("player_id");
+  return /^\d{19}$/.test(pid) ? pid : "702730732220579950";
+}
+
+function animateDelta(el, arrow, number, oldVal, newVal, reverse = false) {
+  const diff = newVal - oldVal;
+  if (diff === 0 || oldVal === null) return;
+
+  // reverse=true means "up is bad" (higher rank number is worse)
+  arrow.textContent = diff > 0 ? (reverse ? "▼" : "▲") : (reverse ? "▲" : "▼");
+  number.textContent = Math.abs(diff);
+
+  el.classList.remove("delta-positive", "delta-negative");
+  const isPositive = !!(diff > 0 ^ reverse); // XOR so "better" is green
+  el.classList.add(isPositive ? "delta-positive" : "delta-negative");
+
+  el.style.opacity = "0";
+  el.style.transform = "translateY(10px)";
+  requestAnimationFrame(() => {
+    el.style.opacity = "1";
+    el.style.transform = "translateY(0)";
+  });
+
+  setTimeout(() => {
+    el.style.opacity = "0";
+  }, 8000);
+}
+
+// Strip "Season 10 " or "Season <n> " from the tier name
+function formatTierName(name) {
+  if (!name) return "";
+  return name.replace(/^Season\s+\d+\s+/i, "");
+}
+
+function getPlayerTier(elo, rank, data) {
+  const resolved = data.resolved || {};
+  const lbs = resolved.leaderboards || {};
+
+  // We know Season_10 is the collection we care about
+  const seasonConfig = lbs["Season_10"];
+  if (!seasonConfig) return null;
+
+  const tiers = Array.isArray(seasonConfig.player_global_all_tiers)
+    ? seasonConfig.player_global_all_tiers
+    : [];
+
+  const rankTiers = Array.isArray(seasonConfig.player_global_all_rank_tiers)
+    ? seasonConfig.player_global_all_rank_tiers
+    : [];
+
+  // Rank #1 override if defined
+  if (rank === 1 && rankTiers.length > 0) {
+    return {
+      name: rankTiers[0].name,
+      color: rankTiers[0].color
+    };
+  }
+
+  if (!tiers.length) return null;
+
+  let currentTier = null;
+  for (const t of tiers) {
+    if (typeof t.required_elo === "number" && elo >= t.required_elo) {
+      currentTier = t;
+    }
+  }
+
+  return currentTier;
+}
+
+async function fetchData() {
+  const pid = getPlayerId();
+
+  try {
+    const resp = await fetch(WORKER_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        leaderboard: "season_10",
+        rating_type: "player_global_all",
+        client_id: "DISCORD|1069003073311211601"
+      })
+    });
+
+    if (!resp.ok) {
+      console.error("Leaderboard HTTP error", resp.status);
+      return;
+    }
+
+    const data = await resp.json();
+
+    const entries = Array.isArray(data.leaderboard) ? data.leaderboard : [];
+    if (!entries.length) return;
+
+    // Sort by Elo descending to compute rank
+    const sorted = [...entries].sort((a, b) => {
+      const ea = typeof a.elo === "number" ? a.elo : 0;
+      const eb = typeof b.elo === "number" ? b.elo : 0;
+      return eb - ea;
+    });
+
+    const idx = sorted.findIndex(
+      e => Array.isArray(e.team) && e.team[0] === pid
+    );
+
+    if (idx < 0) {
+      console.warn("Player not found in leaderboard for ID:", pid);
+      eloEl.textContent = "—";
+      rankEl.textContent = "—";
+      tierEl.textContent = "Unranked";
+      tierEl.style.color = "#e9eef8";
+      return;
+    }
+
+    const playerEntry = sorted[idx];
+    const newElo = typeof playerEntry.elo === "number" ? playerEntry.elo : 0;
+    const newRank = idx + 1;
+
+    // Animate deltas
+    if (lastElo !== null && newElo !== lastElo) {
+      animateDelta(eloDeltaEl, arrowElo, numberElo, lastElo, newElo);
+    }
+
+    if (lastRank !== null && newRank !== lastRank) {
+      animateDelta(rankDeltaEl, arrowRank, numberRank, lastRank, newRank, true);
+    }
+
+    eloEl.textContent = newElo;
+    rankEl.textContent = newRank;
+
+    lastElo = newElo;
+    lastRank = newRank;
+
+    // Tier calculation using Season_10 config
+    const tier = getPlayerTier(newElo, newRank, data);
+
+    if (tier) {
+      tierEl.textContent = formatTierName(tier.name);
+      tierEl.style.color = tier.color || "#e9eef8";
+    } else {
+      tierEl.textContent = "Unranked";
+      tierEl.style.color = "#e9eef8";
+    }
+
+  } catch (err) {
+    console.error("Leaderboard fetch error:", err);
+  }
+}
+
+fetchData();
+setInterval(fetchData, REFRESH_MS);
+</script>
+
+</body>
+</html>
