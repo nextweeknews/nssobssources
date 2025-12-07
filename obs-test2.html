@@ -14,7 +14,8 @@
       display: flex; justify-content: center; align-items: center;
       -webkit-font-smoothing: antialiased;
       overflow: hidden;
-
+    }
+      
     .card {
       width: 1720px;
       background: rgba(15, 23, 42, 0.95);
@@ -371,20 +372,23 @@ async function fetchData() {
              previousRank !== currentRank;
     });
 
-    if (initialLoad || newHash !== lastMatchHash || rankChanged) {
-      lastMatchHash = newHash;
-      initialLoad = false;
+  if (initialLoad || newHash !== lastMatchHash || rankChanged) {
+    lastMatchHash = newHash;
+    initialLoad = false;
 
-      // Fade-out, update, then fade-in
-      resultsListEl.style.opacity = 0;
-      setTimeout(() => {
-        display(match, players, currentRanks);
-        requestAnimationFrame(() => (resultsListEl.style.opacity = 1));
-      }, 300);
+    resultsListEl.style.opacity = 0;
+    setTimeout(() => {
+      // Use previous lastRanks here
+      display(match, players, currentRanks);
 
-      // Store the full current leaderboard rank snapshot
+      // Now that we've rendered deltas based on the old snapshot,
+      // update lastRanks to the latest ranks for the *next* refresh.
       lastRanks = currentRanks;
-    }
+
+      requestAnimationFrame(() => (resultsListEl.style.opacity = 1));
+    }, 300);
+  }
+
 
   } catch (err) {
     resultsListEl.innerHTML = `<div class="error">${err.message}</div>`;
