@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Previous Match Results - Rank + Inline Deltas</title>
+  <title>Previous Match Results - Final</title>
 
   <style>
     html, body {
@@ -40,7 +40,7 @@
       text-align: center;
     }
 
-    /* Columns: Place | Player | Elo | Rank */
+    /* Columns: Place | Player | ELO | Rank */
     .header-row,
     .entry {
       display: grid;
@@ -103,22 +103,23 @@
     .delta-positive { color:#4ade80; }
     .delta-negative { color:#f87171; }
 
-    /* 🎨 Inline delta polish */
+    /* Delta values: vertically centered & 60% size of main metric */
     .inline-delta {
-      font-size:0.55em;
+      font-size:0.6em;
       font-weight:700;
-      margin-left:14px;
+      margin-left:16px;
       display:inline-flex;
       align-items:center;
-      gap:3px;
+      justify-content:center;
+      line-height:1;
+      gap:4px;
     }
     .inline-delta .arrow {
-      font-size:0.65em;
+      font-size:1em;
       line-height:1;
-      vertical-align:middle;
       display:inline-block;
       position:relative;
-      top:-0.05em;
+      top:-0.02em;
     }
 
     .name {
@@ -189,8 +190,8 @@ function computeRankDelta(id,current){
   const diff=old-current;
   return {
     diff,
-    arrow: diff>0?"▲":diff<0?"▼":"",
-    class: diff>0?"delta-positive":diff<0?"delta-negative":""
+    arrow: diff>0? "▲" : diff<0? "▼" : "",
+    class: diff>0? "delta-positive" : diff<0? "delta-negative" : ""
   };
 }
 
