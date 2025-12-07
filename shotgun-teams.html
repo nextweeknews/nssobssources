@@ -158,50 +158,52 @@
     return json.values || [];
   }
 
-  function renderData(values) {
-    const rowsContainer = document.getElementById("rows");
-    const status = document.getElementById("status");
-    const rowCountBadge = document.getElementById("row-count-badge");
-    const updatedAt = document.getElementById("updated-at");
+function renderData(values) {
+  const rowsContainer = document.getElementById("rows");
+  const status = document.getElementById("status");
+  const rowCountBadge = document.getElementById("row-count-badge");
+  const updatedAt = document.getElementById("updated-at");
 
-    status.style.display = "none";
-    rowsContainer.style.display = "block";
+  status.style.display = "none";
+  rowsContainer.style.display = "block";
 
-    const header = values[0];
-    const rows = values.slice(1);
+  const header = values[0];
+  const rows = values.slice(1);
 
-    rowsContainer.innerHTML = "";
-    let visibleRowCount = 0;
+  rowsContainer.innerHTML = "";
+  let visibleRowCount = 0;
 
-    rows.forEach((row, index) => {
-      if (!row.some(v => v && v.trim() !== "")) return;
-      visibleRowCount++;
+  rows.forEach((row, index) => {
+    // Row = [U, V, W, X] => [Rank, blank, Name, Score]
+    const rank = row[0];
+    const name = row[2];
+    const score = row[3];
 
-      const rowEl = document.createElement("div");
-      rowEl.className = "row";
+    if (!name || name.trim() === "") return;
 
-      const primaryName = row[0] || `Row ${index + 1}`;
+    visibleRowCount++;
 
-      rowEl.innerHTML = `
-        <div class="row-rank">
-          <span class="rank-pill">${visibleRowCount}</span>
-          <span class="row-name">${primaryName}</span>
-        </div>
-        <div class="cell-value">${row[1] || "–"}</div>
-        <div class="cell-value">${row[2] || "–"}</div>
-        <div class="cell-value">${row[3] || "–"}</div>
-      `;
+    const rowEl = document.createElement("div");
+    rowEl.className = "row";
 
-      rowsContainer.appendChild(rowEl);
-    });
+    rowEl.innerHTML = `
+      <div class="row-rank">
+        <span class="rank-pill">${rank || visibleRowCount}</span>
+        <span class="row-name">${name}</span>
+      </div>
+      <div class="cell-value">${score || "–"}</div>
+      <div class="cell-value"></div>
+      <div class="cell-value"></div>
+    `;
 
-    rowCountBadge.textContent =
-      visibleRowCount === 0 ?
-      "No rows in range" :
-      `${visibleRowCount} row${visibleRowCount === 1 ? "" : "s"} loaded`;
+    rowsContainer.appendChild(rowEl);
+  });
 
-    updatedAt.textContent = `Last updated: ${new Date().toLocaleString()}`;
-  }
+  rowCountBadge.textContent =
+    `${visibleRowCount} row${visibleRowCount === 1 ? "" : "s"} loaded`;
+
+  updatedAt.textContent = `Last updated: ${new Date().toLocaleString()}`;
+}
 
   async function init() {
     const status = document.getElementById("status");
