@@ -18,7 +18,7 @@
 
     .card {
       width: 1720px;
-      background: rgba(15, 23, 42, 0.92);
+      background: rgba(15, 23, 42, 0.95);
       border-radius: 24px;
       padding: 48px 50px;
       display: flex;
@@ -26,7 +26,7 @@
       align-items: stretch;
       transition: height 0.4s ease;
       color: #e9eef8;
-      box-shadow: 0 32px 80px rgba(0,0,0,0.65);
+      box-shadow: 0 32px 32px rgba(0,0,0,0.65);
       box-sizing: border-box;
     }
 
@@ -40,11 +40,11 @@
       text-align: center;
     }
 
-    /* 4 Columns: Place | Player | Elo | Rank */
+    /* Column structure */
     .header-row,
     .entry {
       display: grid;
-      grid-template-columns: 140px 1fr 200px 200px;
+      grid-template-columns: 150px 1fr 200px 150px 200px 150px;
       align-items: center;
     }
 
@@ -57,15 +57,11 @@
       text-transform: uppercase;
       color: #9ca3c7;
       border-radius: 12px;
+      text-align: center;
     }
 
-    .header-row span:nth-child(1),
-    .entry span:nth-child(1),
-    .header-row span:nth-child(3),
-    .entry span:nth-child(3),
-    .header-row span:nth-child(4),
-    .entry span:nth-child(4) {
-      text-align:center;
+    .header-row span:nth-child(2) {
+      text-align: left;
     }
 
     #resultsList {
@@ -83,7 +79,6 @@
       font-size:42px;
       font-weight:600;
       color:#fff;
-      display:grid;
       align-items:center;
       transition: background .3s ease, box-shadow .3s ease;
     }
@@ -96,54 +91,65 @@
     .place {
       font-size:42px;
       font-weight:800;
+      text-align:center;
     }
 
     .player-name {
       font-size:42px;
       font-weight:600;
-      text-align:left;
       overflow:hidden;
       text-overflow:ellipsis;
       white-space:nowrap;
+      text-align:left;
       padding-right:12px;
     }
 
-    .elo,
-    .rank {
+    .elo-value, .rank-value {
       font-size:42px;
       font-weight:800;
       text-align:center;
+      line-height:1;
     }
 
-    .elo-delta,
-    .rank-delta {
-      margin-left: 8px;
-      font-size: 32px;
-      font-weight: 600;
-      position: relative;
-      vertical-align: middle;
-      top: -5px;
+    .elo-delta, .rank-delta {
+      font-size:32px;
+      text-align:center;
+      position:relative;
+      vertical-align:middle;
     }
 
-    /* NEW: Arrows only */
     .delta-arrow {
-      font-size: 0.6em !important;
-      display: inline-flex;
-      align-items: center;
-      position: relative;
-      vertical-align: middle;
-      top: -0.2em;
-      margin-right: 2px;
+      margin-right:4px;
+      font-size:0.6em;
+      vertical-align:middle;
+      position:relative;
+      top:-0.2em;
     }
 
-    /* Medals */
     .gold { color:#ffd700; }
     .silver { color:#c0c0c0; }
     .bronze { color:#cd7f32; }
 
-    /* Delta colors */
     .delta-positive { color:#4ade80; }
     .delta-negative { color:#f87171; }
+
+    /* 🚧 NEW — Column Dividers */
+    .header-row span,
+    .entry span {
+      position: relative;
+      padding-left: 16px;
+    }
+
+    .header-row span:not(:first-child)::before,
+    .entry span:not(:first-child)::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 15%;
+      width: 2px;
+      height: 70%;
+      background: rgba(255,255,255,0.12);
+    }
 
     .loading,.error {
       font-size:36px;
@@ -162,7 +168,9 @@
     <span>Place</span>
     <span>Player</span>
     <span>Elo</span>
+    <span>+/-</span>
     <span>Rank</span>
+    <span>+/-</span>
   </div>
 
   <div id="resultsList">
@@ -252,23 +260,28 @@ function display(match,players,ranks){
     const name=players[p.id]?.display_name||"Unknown";
 
     const d=p.delta??0;
-    const da = d !== 0
-      ? `<span class="delta-arrow">${d > 0 ? "▲" : "▼"}</span>${Math.abs(d)}`
-      : "";
     const dC=d>0?"delta-positive":d<0?"delta-negative":"";
-    const eloCell = `${p.elo ?? "—"} ${d!==0 ? `<span class="elo-delta ${dC}">${da}</span>` : ""}`;
+    const eloDeltaHTML = d !== 0 ? `
+      <span class="elo-delta ${dC}">
+        <span class="delta-arrow">${d > 0 ? "▲" : "▼"}</span>${Math.abs(d)}
+      </span>` : `<span></span>`;
 
     const r=ranks[p.id]??"—";
     const rd=computeRankDelta(p.id,r);
-    const rankCell = showRankDelta && rd ?
-      `${r} <span class="rank-delta ${rd.class}"><span class="delta-arrow">${rd.arrow}</span>${Math.abs(rd.diff)}</span>` :
-      `${r}`;
+    const rankDeltaHTML = (showRankDelta && rd && rd.diff !== 0) ? `
+      <span class="rank-delta ${rd.class}">
+        <span class="delta-arrow">${rd.arrow}</span>${Math.abs(rd.diff)}
+      </span>` : `<span></span>`;
 
     row.innerHTML=`
       <span class="place ${placeClass}">${p.place}</span>
       <span class="player-name">${name}</span>
-      <span class="elo">${eloCell}</span>
-      <span class="rank">${rankCell}</span>
+
+      <span class="elo-value">${p.elo ?? "—"}</span>
+      ${eloDeltaHTML}
+
+      <span class="rank-value">${r}</span>
+      ${rankDeltaHTML}
     `;
 
     resultsListEl.appendChild(row);
