@@ -268,7 +268,7 @@ function display(match, players, ranks) {
     const row = document.createElement("div");
     row.className = "entry";
 
-    // Highlight the tracked player's row with placement-based color
+    // Highlight tracked player
     if (String(p.id) === String(PLAYER_ID)) {
       if (p.place === 1) row.classList.add("highlight-gold");
       else if (p.place === 2) row.classList.add("highlight-silver");
@@ -284,25 +284,29 @@ function display(match, players, ranks) {
 
     const name = players[p.id]?.display_name || "Unknown";
 
-    const d = p.delta ?? 0;
-    const dC = d > 0 ? "delta-positive" : d < 0 ? "delta-negative" : "";
-    const eloDeltaHTML = d !== 0 ? `
+    // 🔥 Ensure integers for Elo + Δ
+    const elo = Math.round(p.elo ?? 0);
+    const delta = Math.round(p.delta ?? 0);
+
+    const dC = delta > 0 ? "delta-positive" : delta < 0 ? "delta-negative" : "";
+    const eloDeltaHTML = delta !== 0 ? `
       <span class="elo-delta ${dC}">
-        <span class="delta-arrow">${d > 0 ? "▲" : "▼"}</span>${Math.abs(d)}
+        <span class="delta-arrow">${delta > 0 ? "▲" : "▼"}</span>${Math.abs(delta)}
       </span>` : `<span></span>`;
 
+    // 🔥 Ensure integers for Rank Δ
     const r = ranks[p.id] ?? "—";
     const rd = computeRankDelta(p.id, r);
     const rankDeltaHTML = (showRankDelta && rd && rd.diff !== 0) ? `
       <span class="rank-delta ${rd.class}">
-        <span class="delta-arrow">${rd.arrow}</span>${Math.abs(rd.diff)}
+        <span class="delta-arrow">${rd.arrow}</span>${Math.abs(Math.round(rd.diff))}
       </span>` : `<span></span>`;
 
     row.innerHTML = `
       <span class="place ${placeClass}">${p.place}</span>
       <span class="player-name">${name}</span>
 
-      <span class="elo-value">${p.elo ?? "—"}</span>
+      <span class="elo-value">${elo}</span>
       ${eloDeltaHTML}
 
       <span class="rank-value">${r}</span>
