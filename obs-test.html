@@ -264,12 +264,26 @@ function display(match,players,ranks){
       `${r} <span class="rank-delta ${rd.class}"><span class="delta-arrow">${rd.arrow}</span>${Math.abs(rd.diff)}</span>` :
       `${r}`;
 
-    row.innerHTML=`
-      <span class="place ${placeClass}">${p.place}</span>
-      <span class="player-name">${name}</span>
-      <span class="elo">${eloCell}</span>
-      <span class="rank">${rankCell}</span>
-    `;
+row.innerHTML = `
+  <span class="place ${placeClass}">${p.place}</span>
+  <span class="player-name">${name}</span>
+
+  <div class="elo-col">
+    <span class="elo-value">${p.elo ?? "—"}</span>
+    ${d !== 0 ? `
+      <span class="elo-delta ${dC}">
+        <span class="delta-arrow">${d > 0 ? "▲" : "▼"}</span>${Math.abs(d)}
+      </span>` : ""}
+  </div>
+
+  <div class="rank-col">
+    <span class="rank-value">${r}</span>
+    ${showRankDelta && rd && rd.diff !== 0 ? `
+      <span class="rank-delta ${rd.class}">
+        <span class="delta-arrow">${rd.arrow}</span>${Math.abs(rd.diff)}
+      </span>` : ""}
+  </div>
+`;
 
     resultsListEl.appendChild(row);
   });
