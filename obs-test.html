@@ -40,11 +40,10 @@
       text-align: center;
     }
 
-    /* NEW: column structure */
     .header-row,
     .entry {
       display: grid;
-      grid-template-columns: 150px 1fr 200px 150px 200px 150px;
+      grid-template-columns: 150px 1fr 200px 130px 180px 130px;
       align-items: center;
     }
 
@@ -62,6 +61,7 @@
     
     .header-row span:nth-child(2) {
       text-align: left;
+      padding-left:24px
     }
 
     #resultsList {
@@ -83,11 +83,6 @@
       transition: background .3s ease, box-shadow .3s ease;
     }
 
-    .entry.highlight {
-      background:rgba(52,211,153,0.3);
-      box-shadow:0 0 18px rgba(16,185,129,.45);
-    }
-
     .place {
       font-size:42px;
       font-weight:800;
@@ -101,10 +96,10 @@
       text-overflow:ellipsis;
       white-space:nowrap;
       text-align:left;
-      padding-right:12px;
+      padding-left:36px;
+      padding-right:36px;
     }
 
-    /* Values + deltas inline but aligned by column */
     .elo-value, .rank-value {
       font-size:42px;
       font-weight:800;
@@ -116,7 +111,6 @@
       font-size:32px;
       text-align:center;
       position:relative;
-      vertical-align:middle;
     }
 
     .delta-arrow {
@@ -134,12 +128,40 @@
     .delta-positive { color:#4ade80; }
     .delta-negative { color:#f87171; }
 
+    /* 🚧 NEW — Column Borders */
+    .entry > span {
+      border-right: 2px solid rgba(255,255,255,0.14);
+    }
+    .entry > span:last-child {
+      border-right: none;
+    }
+
+    /* 🚧 NEW — Placement-based highlighting */
+    .entry.highlight-gold {
+      background: rgba(255, 215, 0, 0.28);
+      box-shadow: 0 0 18px rgba(255, 215, 0, 0.45);
+    }
+
+    .entry.highlight-silver {
+      background: rgba(192, 192, 192, 0.28);
+      box-shadow: 0 0 18px rgba(192, 192, 192, 0.45);
+    }
+
+    .entry.highlight-bronze {
+      background: rgba(205, 127, 50, 0.28);
+      box-shadow: 0 0 18px rgba(205, 127, 50, 0.45);
+    }
+
+    .entry.highlight-default {
+      background: rgba(52, 211, 153, 0.30);
+      box-shadow: 0 0 18px rgba(16, 185, 129, 0.45);
+    }
+
     .loading,.error {
       font-size:36px;
       width:100%;
       text-align:center;
     }
-
   </style>
 </head>
 
@@ -187,7 +209,7 @@ function resizeCard(count){
 
 function hashMatch(match){
   return match.ratingResults[0].newRatings
-    .map(p => `${p.id}:${p.place}:${p.elo}:${p.delta}`).join("|");
+    .map(p => \`\${p.id}:\${p.place}:\${p.elo}:\${p.delta}\`).join("|");
 }
 
 function computeRankDelta(id,current){
@@ -237,7 +259,13 @@ function display(match,players,ranks){
   rows.forEach(p=>{
     const row=document.createElement("div");
     row.className="entry";
-    if(String(p.id)===String(PLAYER_ID)) row.classList.add("highlight");
+
+    if(String(p.id)===String(PLAYER_ID)){
+      if(p.place===1) row.classList.add("highlight-gold");
+      else if(p.place===2) row.classList.add("highlight-silver");
+      else if(p.place===3) row.classList.add("highlight-bronze");
+      else row.classList.add("highlight-default");
+    }
 
     const placeClass=p.place===1?"gold":p.place===2?"silver":p.place===3?"bronze":"";
     const name=players[p.id]?.display_name||"Unknown";
@@ -316,7 +344,7 @@ async function fetchData(){
     }
 
   }catch(err){
-    resultsListEl.innerHTML=`<div class="error">${err.message}</div>`;
+    resultsListEl.innerHTML=\`<div class="error">\${err.message}</div>\`;
   }
 }
 
