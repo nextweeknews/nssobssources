@@ -40,7 +40,7 @@
       text-align: center;
     }
 
-    /* 4 Columns: Place | Player | Elo | Rank */
+    /* Columns: Place | Player | Elo | Rank */
     .header-row,
     .entry {
       display: grid;
@@ -103,13 +103,25 @@
     .delta-positive { color:#4ade80; }
     .delta-negative { color:#f87171; }
 
-    .loading,.error {
-      font-size:36px;
-      width:100%;
-      text-align:center;
+    /* 🎨 Inline delta polish */
+    .inline-delta {
+      font-size:0.55em;
+      font-weight:700;
+      margin-left:14px;
+      display:inline-flex;
+      align-items:center;
+      gap:3px;
+    }
+    .inline-delta .arrow {
+      font-size:0.65em;
+      line-height:1;
+      vertical-align:middle;
+      display:inline-block;
+      position:relative;
+      top:-0.05em;
     }
 
-    span.name {
+    .name {
       text-align:left;
       overflow:hidden;
       text-overflow:ellipsis;
@@ -117,6 +129,11 @@
       padding-right:12px;
     }
 
+    .loading,.error {
+      font-size:36px;
+      width:100%;
+      text-align:center;
+    }
   </style>
 </head>
 
@@ -160,9 +177,10 @@ function resizeCard(count){
   cardEl.style.height=`${h}px`;
 }
 
-function hashMatch(match){
-  return match.ratingResults[0].newRatings
-    .map(p => `${p.id}:${p.place}:${p.elo}:${p.delta}`).join("|");
+function hashMatch(m){
+  return m.ratingResults[0].newRatings
+    .map(p => `${p.id}:${p.place}:${p.elo}:${p.delta}`)
+    .join("|");
 }
 
 function computeRankDelta(id,current){
@@ -204,8 +222,8 @@ function display(match,players,ranks){
   resultsListEl.innerHTML="";
 
   const showRankDelta = rows.some(p => {
-    const r = ranks[p.id];
-    const rd = computeRankDelta(p.id, r);
+    const r=ranks[p.id];
+    const rd=computeRankDelta(p.id,r);
     return rd?.diff !== 0;
   });
 
@@ -221,13 +239,21 @@ function display(match,players,ranks){
     const d=p.delta??0;
     const da=d>0?"▲":d<0?"▼":"";
     const dC=d>0?"delta-positive":d<0?"delta-negative":"";
-    const eloCell = `${p.elo ?? "—"} ${d!==0 ? `<span class="${dC}">${da}${Math.abs(d)}</span>` : ""}`;
+    const eloCell=`
+      ${p.elo ?? "—"}
+      ${d!==0?`<span class="inline-delta ${dC}">
+        <span class="arrow">${da}</span>${Math.abs(d)}
+      </span>`:""}
+    `;
 
     const r=ranks[p.id]??"—";
     const rd=computeRankDelta(p.id,r);
-    const rankCell = showRankDelta && rd ? 
-      `${r} <span class="${rd.class}">${rd.arrow}${Math.abs(rd.diff)}</span>` :
-      `${r}`;
+    const rankCell = showRankDelta && rd ? `
+      ${r}
+      <span class="inline-delta ${rd.class}">
+        <span class="arrow">${rd.arrow}</span>${Math.abs(rd.diff)}
+      </span>
+    ` : `${r}`;
 
     row.innerHTML=`
       <span class="place ${placeClass}">${p.place}</span>
@@ -256,10 +282,11 @@ async function fetchData(){
 
     const data=await resp.json();
     const players=data.resolved?.players||{};
-
     const match=(data.matches||[])
       .sort((a,b)=>b.ts-a.ts)
-      .find(m=>m.ratingResults.some(r => r.newRatings.some(p=>String(p.id)===String(PLAYER_ID))));
+      .find(m=>m.ratingResults.some(r =>
+        r.newRatings.some(p=>String(p.id)===String(PLAYER_ID))
+      ));
 
     if(!match){
       resultsListEl.innerHTML="<div class='loading'>No match</div>";
