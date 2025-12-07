@@ -132,6 +132,16 @@
       vertical-align:center;
     }
 
+    /* NEW: Arrows only */
+    .delta-arrow {
+      font-size: 0.6em !important;
+      display: inline-flex;
+      align-items: center;
+      vertical-align: middle;
+      line-height: 1;
+      margin-right: 2px;
+    }
+
     /* Medals */
     .gold { color:#ffd700; }
     .silver { color:#c0c0c0; }
@@ -248,14 +258,16 @@ function display(match,players,ranks){
     const name=players[p.id]?.display_name||"Unknown";
 
     const d=p.delta??0;
-    const da=d>0?"▲":d<0?"▼":"";
+    const da = d !== 0
+      ? `<span class="delta-arrow">${d > 0 ? "▲" : "▼"}</span>${Math.abs(d)}`
+      : "";
     const dC=d>0?"delta-positive":d<0?"delta-negative":"";
-    const eloCell = `${p.elo ?? "—"} ${d!==0 ? `<span class="elo-delta ${dC}">${da}${Math.abs(d)}</span>` : ""}`;
+    const eloCell = `${p.elo ?? "—"} ${d!==0 ? `<span class="elo-delta ${dC}">${da}</span>` : ""}`;
 
     const r=ranks[p.id]??"—";
     const rd=computeRankDelta(p.id,r);
     const rankCell = showRankDelta && rd ?
-      `${r} <span class="rank-delta ${rd.class}">${rd.arrow}${Math.abs(rd.diff)}</span>` :
+      `${r} <span class="rank-delta ${rd.class}"><span class="delta-arrow">${rd.arrow}</span>${Math.abs(rd.diff)}</span>` :
       `${r}`;
 
     row.innerHTML=`
