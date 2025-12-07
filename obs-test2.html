@@ -103,25 +103,23 @@
     .delta-positive { color:#4ade80; }
     .delta-negative { color:#f87171; }
 
-    /* ⬇ Fix: baseline-based centering */
+    /* Delta values: vertically centered & 60% size of main metric */
     .inline-delta {
       font-size:0.6em;
       font-weight:700;
       margin-left:16px;
       display:inline-flex;
-      align-items:baseline;
+      align-items:center;
+      justify-content:center;
+      line-height:1;
       gap:4px;
-      line-height:1;
-      vertical-align:middle;
     }
-
-    .delta-number {
-      line-height:1;
-    }
-
     .inline-delta .arrow {
-      font-size:1.1em; /* slight scale tweak for visual balance */
+      font-size:1em;
       line-height:1;
+      display:inline-block;
+      position:relative;
+      top:-0.02em;
     }
 
     .name {
@@ -245,8 +243,7 @@ function display(match,players,ranks){
     const eloCell=`
       ${p.elo ?? "—"}
       ${d!==0?`<span class="inline-delta ${dC}">
-        <span class="delta-number">${Math.abs(d)}</span>
-        <span class="arrow">${da}</span>
+        <span class="arrow">${da}</span>${Math.abs(d)}
       </span>`:""}
     `;
 
@@ -255,8 +252,7 @@ function display(match,players,ranks){
     const rankCell = showRankDelta && rd ? `
       ${r}
       <span class="inline-delta ${rd.class}">
-        <span class="delta-number">${Math.abs(rd.diff)}</span>
-        <span class="arrow">${rd.arrow}</span>
+        <span class="arrow">${rd.arrow}</span>${Math.abs(rd.diff)}
       </span>
     ` : `${r}`;
 
@@ -275,7 +271,7 @@ function display(match,players,ranks){
 
 async function fetchData(){
   try{
-    const resp= await fetch(API_URL,{
+    const resp=await fetch(API_URL,{
       method:"POST",
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({
@@ -326,4 +322,3 @@ setInterval(fetchData,REFRESH_MS);
 </script>
 </body>
 </html>
-
