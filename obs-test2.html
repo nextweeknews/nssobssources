@@ -60,10 +60,10 @@
     }
 
     .header-row span:nth-child(1),
-    .header-row span:nth-child(3),
-    .header-row span:nth-child(4),
     .entry span:nth-child(1),
+    .header-row span:nth-child(3),
     .entry span:nth-child(3),
+    .header-row span:nth-child(4),
     .entry span:nth-child(4) {
       text-align:center;
     }
@@ -85,6 +85,7 @@
       color:#fff;
       display:grid;
       align-items:center;
+      transition: background .3s ease, box-shadow .3s ease;
     }
 
     .entry.highlight {
@@ -94,12 +95,49 @@
 
     .place {
       font-size:42px;
-      font-weight:700;
+      font-weight:800;
     }
+
+    .player-name {
+      font-size:32px;
+      font-weight:600;
+      text-align:left;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      padding-right:12px;
+    }
+
+    .elo {
+      font-size:32px;
+      font-weight:600;
+      text-align:center;
+    }
+    .elo-delta {
+      margin-left: 8px;
+      font-size: 28px;
+      font-weight: 700;
+      opacity: 0.9;
+    }
+
+    .rank {
+      font-size:32px;
+      font-weight:600;
+      text-align:center;
+    }
+    .rank-delta {
+      margin-left: 8px;
+      font-size: 28px;
+      font-weight: 700;
+      opacity: 0.9;
+    }
+
+    /* Medals */
     .gold { color:#ffd700; }
     .silver { color:#c0c0c0; }
     .bronze { color:#cd7f32; }
 
+    /* Delta colors */
     .delta-positive { color:#4ade80; }
     .delta-negative { color:#f87171; }
 
@@ -107,14 +145,6 @@
       font-size:36px;
       width:100%;
       text-align:center;
-    }
-
-    span.name {
-      text-align:left;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      white-space:nowrap;
-      padding-right:12px;
     }
 
   </style>
@@ -127,7 +157,7 @@
   <div class="header-row">
     <span>Place</span>
     <span>Player</span>
-    <span>ELO</span>
+    <span>Elo</span>
     <span>Rank</span>
   </div>
 
@@ -212,7 +242,6 @@ function display(match,players,ranks){
   rows.forEach(p=>{
     const row=document.createElement("div");
     row.className="entry";
-
     if(String(p.id)===String(PLAYER_ID)) row.classList.add("highlight");
 
     const placeClass=p.place===1?"gold":p.place===2?"silver":p.place===3?"bronze":"";
@@ -221,19 +250,19 @@ function display(match,players,ranks){
     const d=p.delta??0;
     const da=d>0?"▲":d<0?"▼":"";
     const dC=d>0?"delta-positive":d<0?"delta-negative":"";
-    const eloCell = `${p.elo ?? "—"} ${d!==0 ? `<span class="${dC}">${da}${Math.abs(d)}</span>` : ""}`;
+    const eloCell = `${p.elo ?? "—"} ${d!==0 ? `<span class="elo-delta ${dC}">${da}${Math.abs(d)}</span>` : ""}`;
 
     const r=ranks[p.id]??"—";
     const rd=computeRankDelta(p.id,r);
-    const rankCell = showRankDelta && rd ? 
-      `${r} <span class="${rd.class}">${rd.arrow}${Math.abs(rd.diff)}</span>` :
+    const rankCell = showRankDelta && rd ?
+      `${r} <span class="rank-delta ${rd.class}">${rd.arrow}${Math.abs(rd.diff)}</span>` :
       `${r}`;
 
     row.innerHTML=`
       <span class="place ${placeClass}">${p.place}</span>
-      <span class="name">${name}</span>
-      <span>${eloCell}</span>
-      <span>${rankCell}</span>
+      <span class="player-name">${name}</span>
+      <span class="elo">${eloCell}</span>
+      <span class="rank">${rankCell}</span>
     `;
 
     resultsListEl.appendChild(row);
