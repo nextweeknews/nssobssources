@@ -59,7 +59,7 @@
       border-radius: 12px;
       text-align: center;
     }
-
+    
     .header-row span:nth-child(2) {
       text-align: left;
     }
@@ -115,7 +115,6 @@
       font-size:32px;
       text-align:center;
       position:relative;
-      vertical-align:middle;
     }
 
     .delta-arrow {
@@ -133,22 +132,16 @@
     .delta-positive { color:#4ade80; }
     .delta-negative { color:#f87171; }
 
-    /* 🚧 NEW — Column Dividers */
-    .header-row span,
-    .entry span {
-      position: relative;
-      padding-left: 16px;
+    /* 🚧 NEW — Column Borders */
+    .header-row > span,
+    .entry > span {
+      border-right: 2px solid rgba(255,255,255,0.14);
     }
 
-    .header-row span:not(:first-child)::before,
-    .entry span:not(:first-child)::before {
-      content: "";
-      position: absolute;
-      left: 0;
-      top: 15%;
-      width: 2px;
-      height: 70%;
-      background: rgba(255,255,255,0.12);
+    /* Remove trailing borders on right */
+    .header-row > span:last-child,
+    .entry > span:last-child {
+      border-right: none;
     }
 
     .loading,.error {
