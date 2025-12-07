@@ -103,20 +103,22 @@
     .delta-positive { color:#4ade80; }
     .delta-negative { color:#f87171; }
 
-    /* Delta values: vertically centered & 60% size of main metric */
+    /* Delta values — now correctly centered */
     .inline-delta {
-      font-size:0.8em;
-      font-weight:700;
-      margin-left:8px;
-      display: inline-flex;
-      align-items: center;
-      vertical-align: middle;
-      gap:4px;
-    }
-    .inline-delta .arrow {
       font-size:0.6em;
-      display:inline-block;
-      position:static;
+      font-weight:700;
+      margin-left:16px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      line-height:1;
+      gap:4px;
+      vertical-align: middle;
+    }
+
+    .inline-delta .arrow {
+      font-size:1em;
+      line-height:1;
     }
 
     .name {
