@@ -40,11 +40,11 @@
       text-align: center;
     }
 
-    /* NEW: Explicit column layout */
+    /* NEW: column structure */
     .header-row,
     .entry {
       display: grid;
-      grid-template-columns: 140px 1fr 200px 200px;
+      grid-template-columns: 140px 1fr 140px 60px 140px 60px;
       align-items: center;
     }
 
@@ -100,29 +100,18 @@
       padding-right:12px;
     }
 
-    /* NEW: Elo + Rank grouping */
-    .elo-col,
-    .rank-col {
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      justify-content:center;
-      gap:4px;
-    }
-
-    .elo-value,
-    .rank-value {
+    /* Values + deltas inline but aligned by column */
+    .elo-value, .rank-value,
+    .elo-delta, .rank-delta {
       font-size:42px;
-      font-weight:800;
+      font-weight:600;
       text-align:center;
       line-height:1;
     }
 
-    .elo-delta,
-    .rank-delta {
+    .elo-delta, .rank-delta {
       font-size:32px;
-      font-weight:600;
-      text-align:center;
+      margin-left:6px;
     }
 
     .delta-arrow {
@@ -155,12 +144,14 @@
     <span>Place</span>
     <span>Player</span>
     <span>Elo</span>
+    <span>Δ</span>
     <span>Rank</span>
+    <span>Δ</span>
   </div>
 
   <div id="resultsList">
-        <div class="loading">Loading…</div>
-    </div>
+    <div class="loading">Loading…</div>
+  </div>
 </div>
 
 <script>
@@ -249,28 +240,24 @@ function display(match,players,ranks){
     const eloDeltaHTML = d !== 0 ? `
       <span class="elo-delta ${dC}">
         <span class="delta-arrow">${d > 0 ? "▲" : "▼"}</span>${Math.abs(d)}
-      </span>` : "";
+      </span>` : `<span></span>`;
 
     const r=ranks[p.id]??"—";
     const rd=computeRankDelta(p.id,r);
     const rankDeltaHTML = (showRankDelta && rd && rd.diff !== 0) ? `
       <span class="rank-delta ${rd.class}">
         <span class="delta-arrow">${rd.arrow}</span>${Math.abs(rd.diff)}
-      </span>` : "";
+      </span>` : `<span></span>`;
 
     row.innerHTML=`
       <span class="place ${placeClass}">${p.place}</span>
       <span class="player-name">${name}</span>
 
-      <div class="elo-col">
-        <span class="elo-value">${p.elo ?? "—"}</span>
-        ${eloDeltaHTML}
-      </div>
+      <span class="elo-value">${p.elo ?? "—"}</span>
+      ${eloDeltaHTML}
 
-      <div class="rank-col">
-        <span class="rank-value">${r}</span>
-        ${rankDeltaHTML}
-      </div>
+      <span class="rank-value">${r}</span>
+      ${rankDeltaHTML}
     `;
 
     resultsListEl.appendChild(row);
