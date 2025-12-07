@@ -14,6 +14,9 @@
       display: flex; justify-content: center; align-items: center;
       -webkit-font-smoothing: antialiased;
       overflow: hidden;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+
     }
 
     .card {
@@ -174,20 +177,22 @@
 </head>
 
 <body>
-<div class="card" id="card">
-  <div class="title">Previous Match Results</div>
+<div class="blur-overlay">
+  <div class="card" id="card">
+    <div class="title">Previous Match Results</div>
 
-  <div class="header-row">
-    <span>Place</span>
-    <span>Player</span>
-    <span>Elo</span>
-    <span>+/-</span>
-    <span>Rank</span>
-    <span>+/-</span>
-  </div>
+    <div class="header-row">
+      <span>Place</span>
+      <span>Player</span>
+      <span>Elo</span>
+      <span>+/-</span>
+      <span>Rank</span>
+      <span>+/-</span>
+    </div>
 
-  <div id="resultsList">
+    <div id="resultsList">
     <div class="loading">Loading…</div>
+    </div>
   </div>
 </div>
 
