@@ -9,7 +9,7 @@
       margin: 0; padding: 0;
       width: 100%; height: 100%;
       background: transparent;
-      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto;
+      font-family: Inter, system-ui, sans-serif;
       display: flex; justify-content: center; align-items: center;
       -webkit-font-smoothing: antialiased;
       overflow: hidden;
@@ -20,13 +20,13 @@
       background: rgba(15, 23, 42, 0.92);
       border-radius: 24px;
       padding: 48px 50px;
-      box-sizing: border-box;
       display: flex;
       flex-direction: column;
       align-items: stretch;
       transition: height 0.4s ease;
       color: #e9eef8;
       box-shadow: 0 32px 80px rgba(0,0,0,0.65);
+      box-sizing: border-box;
     }
 
     .title {
@@ -39,15 +39,14 @@
       text-align: center;
     }
 
-    /* NEW GRID WITH CENTERED PLACE */
+    /* Correct layout — Place is on far left */
     .header-row,
     .entry {
       display: grid;
-      grid-template-columns: 1fr 120px 1fr 160px 160px;
+      grid-template-columns: 80px 1fr 160px 160px;
       align-items: center;
       padding: 0 24px;
       box-sizing: border-box;
-      gap: 0;
     }
 
     .header-row {
@@ -60,14 +59,14 @@
       color: #9ca3c7;
       border-radius: 12px;
     }
-    .header-row span {
+
+    .header-row span:nth-child(1),
+    .header-row span:nth-child(3),
+    .header-row span:nth-child(4) {
       text-align: center;
     }
-    .header-row span:nth-child(3) {
-      text-align: left; /* Player */ 
-    }
-    .header-row span:first-child {
-      width: 0; /* Hide spacer from header text alignment */
+    .header-row span:nth-child(2) {
+      text-align: left; /* Name column */
     }
 
     #resultsList {
@@ -87,24 +86,25 @@
       color: #fff;
     }
 
-    .entry span {
+    .entry span:nth-child(1),
+    .entry span:nth-child(3),
+    .entry span:nth-child(4) {
       text-align: center;
-      white-space: nowrap;
     }
 
     .entry span.name {
       text-align: left;
       overflow: hidden;
       text-overflow: ellipsis;
+      white-space: nowrap;
       padding-right: 12px;
     }
 
-    .entry span.place {
+    .place {
       font-size: 42px;
       font-weight: 700;
     }
-
-    .gold   { color: #ffd700; }
+    .gold { color: #ffd700; }
     .silver { color: #c0c0c0; }
     .bronze { color: #cd7f32; }
 
@@ -129,7 +129,6 @@
     <div class="title">Previous Match Results</div>
 
     <div class="header-row">
-      <span></span>   <!-- left spacer -->
       <span>Place</span>
       <span>Player</span>
       <span>ELO</span>
@@ -158,44 +157,47 @@
   let lastMatchHash = "";
   let initialLoad = true;
 
+  /* Auto-size card vertically */
   function resizeCardForPlayers(count) {
     const rowHeight = 90;
     const rowGap = 10;
-    const topBlock = 56 + 24 + 60 + 14 + 48 + 50;
-    const height = topBlock + (rowHeight * count) + (rowGap * (count - 1));
-    cardEl.style.height = `${height}px`;
+    const fixedHeaderStuff = 56 + 24 + 60 + 14 + 48 + 50;
+    const newHeight = fixedHeaderStuff + (rowHeight * count) + (rowGap * (count - 1));
+    cardEl.style.height = `${newHeight}px`;
   }
 
-  function hashMatch(m) {
-    return m.ratingResults[0].newRatings
+  function hashMatch(match) {
+    return match.ratingResults[0].newRatings
       .map(p => `${p.id}:${p.place}:${p.elo}:${p.delta}`)
       .join("|");
   }
 
   function displayResults(match, players) {
     const rows = match.ratingResults[0].newRatings.slice(0, 8);
-
     resultsListEl.innerHTML = "";
 
     rows.forEach(p => {
       const row = document.createElement("div");
       row.className = "entry";
+
       if (String(p.id) === String(PLAYER_ID)) row.classList.add("highlight");
 
-      const name = players[p.id]?.display_name || "Unknown";
-      const deltaClass = p.delta > 0 ? "delta-positive" : p.delta < 0 ? "delta-negative" : "";
+      const placeClass = p.place === 1 ? "gold"
+                        : p.place === 2 ? "silver"
+                        : p.place === 3 ? "bronze" : "";
+
+      const deltaClass = p.delta > 0 ? "delta-positive"
+                       : p.delta < 0 ? "delta-negative" : "";
+
       const arrow = p.delta > 0 ? "▲" : p.delta < 0 ? "▼" : "";
-      const placeClass =
-        p.place === 1 ? "gold" :
-        p.place === 2 ? "silver" :
-        p.place === 3 ? "bronze" : "";
+
+      const name = players[p.id]?.display_name || "Unknown";
 
       row.innerHTML = `
-        <span></span>
         <span class="place ${placeClass}">${p.place}</span>
         <span class="name">${name}</span>
         <span>${p.elo ?? "—"}</span>
-        <span class="delta ${deltaClass}">${arrow} ${Math.abs(p.delta ?? "—")}</span>
+        <span class="${deltaClass}">${arrow} ${Math.abs(p.delta ?? "—")}</span>
       `;
 
       resultsListEl.appendChild(row);
@@ -215,33 +217,36 @@
       if (!resp.ok) throw new Error("API Error");
 
       const data = await resp.json();
-      const resolved = data.resolved?.players || {};
+      const players = data.resolved?.players || {};
 
-      const match = data.matches
-        ?.sort((a,b) => b.ts - a.ts)
+      const match = (data.matches || [])
+        .sort((a,b) => b.ts - a.ts)
         .find(m =>
           m.ratingResults.some(r =>
             r.newRatings.some(p => String(p.id) === String(PLAYER_ID))
           )
         );
 
-      if (!match)
-        return resultsListEl.innerHTML = "<div class='loading'>No match</div>";
+      if (!match) {
+        resultsListEl.innerHTML = "<div class='loading'>No match</div>";
+        return;
+      }
 
       const newHash = hashMatch(match);
-
       if (initialLoad || newHash !== lastMatchHash) {
-        initialLoad = false;
         lastMatchHash = newHash;
+        initialLoad = false;
 
         resultsListEl.style.opacity = 0;
         setTimeout(() => {
-          displayResults(match, resolved);
-          requestAnimationFrame(() => resultsListEl.style.opacity = 1);
+          displayResults(match, players);
+          requestAnimationFrame(() =>
+            resultsListEl.style.opacity = 1
+          );
         }, 300);
       }
-
-    } catch (err) {
+    }
+    catch (err) {
       resultsListEl.innerHTML = `<div class="error">${err.message}</div>`;
     }
   }
