@@ -95,7 +95,6 @@
       background: radial-gradient(circle at top, var(--accent-soft), rgba(15, 23, 42, 0.9));
     }
     .row-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .cell-label { display: none; font-size: 0.7rem; color: var(--text-muted); }
     .cell-value { font-variant-numeric: tabular-nums; }
 
     .footer-note {
@@ -151,67 +150,74 @@
 
   async function fetchSheetRange() {
     const url = `${WORKER_URL}?sheetId=${SHEET_ID}&range=${encodeURIComponent(RANGE)}`;
-    const res = await fetch(url);
+    console.log("Fetching:", url);
 
+    const res = await fetch(url);
     if (!res.ok) throw new Error(`${res.status} Worker fetch failed`);
+
     const json = await res.json();
+    console.log("Raw API response:", json);
+
     return json.values || [];
   }
 
-function renderData(values) {
-  const rowsContainer = document.getElementById("rows");
-  const status = document.getElementById("status");
-  const rowCountBadge = document.getElementById("row-count-badge");
-  const updatedAt = document.getElementById("updated-at");
+  function renderData(values) {
+    console.log("Parsed values:", values); // Debug line
 
-  status.style.display = "none";
-  rowsContainer.style.display = "block";
+    const rowsContainer = document.getElementById("rows");
+    const status = document.getElementById("status");
+    const rowCountBadge = document.getElementById("row-count-badge");
+    const updatedAt = document.getElementById("updated-at");
 
-  const header = values[0];
-  const rows = values.slice(1);
+    status.style.display = "none";
+    rowsContainer.style.display = "block";
 
-  rowsContainer.innerHTML = "";
-  let visibleRowCount = 0;
+    const rows = values.slice(1); // skip header
 
-  rows.forEach((row, index) => {
-    // Row = [U, V, W, X] => [Rank, blank, Name, Score]
-    const rank = row[0];
-    const name = row[2];
-    const score = row[3];
+    rowsContainer.innerHTML = "";
+    let visibleRowCount = 0;
 
-    if (!name || name.trim() === "") return;
+    rows.forEach((row) => {
+      console.log("Row:", row); // Debug each row
 
-    visibleRowCount++;
+      const rank = row[0];
+      const name = row[2];
+      const score = row[3];
 
-    const rowEl = document.createElement("div");
-    rowEl.className = "row";
+      if (!name || typeof name !== "string" || !name.trim()) return;
 
-    rowEl.innerHTML = `
-      <div class="row-rank">
-        <span class="rank-pill">${rank || visibleRowCount}</span>
-        <span class="row-name">${name}</span>
-      </div>
-      <div class="cell-value">${score || "–"}</div>
-      <div class="cell-value"></div>
-      <div class="cell-value"></div>
-    `;
+      visibleRowCount++;
 
-    rowsContainer.appendChild(rowEl);
-  });
+      const rowEl = document.createElement("div");
+      rowEl.className = "row";
 
-  rowCountBadge.textContent =
-    `${visibleRowCount} row${visibleRowCount === 1 ? "" : "s"} loaded`;
+      rowEl.innerHTML = `
+        <div class="row-rank">
+          <span class="rank-pill">${rank || visibleRowCount}</span>
+          <span class="row-name">${name}</span>
+        </div>
+        <div class="cell-value">${score || "–"}</div>
+        <div class="cell-value"></div>
+        <div class="cell-value"></div>
+      `;
 
-  updatedAt.textContent = `Last updated: ${new Date().toLocaleString()}`;
-}
+      rowsContainer.appendChild(rowEl);
+    });
+
+    rowCountBadge.textContent =
+      `${visibleRowCount} row${visibleRowCount === 1 ? "" : "s"} loaded`;
+
+    updatedAt.textContent = `Last updated: ${new Date().toLocaleString()}`;
+  }
 
   async function init() {
     const status = document.getElementById("status");
     try {
       const values = await fetchSheetRange();
+      console.log("API response:", values);
       renderData(values);
     } catch (err) {
-      console.error(err);
+      console.error("Error:", err);
       status.className = "error";
       status.textContent = "Worker request failed. Check console for details.";
       document.getElementById("row-count-badge").textContent = "Error";
@@ -223,3 +229,4 @@ function renderData(values) {
 
 </body>
 </html>
+
