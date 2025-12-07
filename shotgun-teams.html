@@ -3,109 +3,76 @@
 <head>
   <meta charset="UTF-8" />
   <title>Shotgun League - Season 5 Preview</title>
-
   <style>
     :root {
-      --bg: #020617;
-      --card-bg: #0b1120;
-      --accent: #22c55e;
-      --accent-soft: rgba(34, 197, 94, 0.2);
-      --text-main: #e5e7eb;
-      --text-muted: #9ca3af;
+      --bg: #020617; --card-bg: #0b1120;
+      --accent: #22c55e; --accent-soft: rgba(34, 197, 94, 0.2);
+      --text-main: #e5e7eb; --text-muted: #9ca3af;
       --border-soft: rgba(148, 163, 184, 0.35);
     }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: radial-gradient(circle at top, #0f172a 0, #020617 55%);
-      color: var(--text-main);
-      display: flex;
-      align-items: flex-start;
-      justify-content: center;
-      padding: 2rem 1rem;
+    *{box-sizing:border-box}
+    body{
+      margin:0;min-height:100vh;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      background:radial-gradient(circle at top,#0f172a 0,#020617 55%);
+      color:var(--text-main);
+      display:flex;align-items:flex-start;justify-content:center;padding:2rem 1rem;
     }
-    .container { width: 100%; max-width: 960px; }
-    .header {
-      margin-bottom: 1.5rem;
-      padding: 1.25rem 1.5rem;
-      border-radius: 1rem;
-      background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(15, 118, 110, 0.6));
-      border: 1px solid rgba(148, 163, 184, 0.4);
-      box-shadow: 0 18px 45px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(15, 23, 42, 0.8);
+    .container{width:100%;max-width:960px}
+    .header{
+      margin-bottom:1.5rem;padding:1.25rem 1.5rem;border-radius:1rem;
+      background:linear-gradient(135deg,rgba(15,23,42,.95),rgba(15,118,110,.6));
+      border:1px solid rgba(148,163,184,.4);
+      box-shadow:0 18px 45px rgba(0,0,0,.65),0 0 0 1px rgba(15,23,42,.8);
     }
-    .header-title { font-size: 1.4rem; font-weight: 700; display: flex; align-items: center; gap: .6rem; }
-    .pill {
-      display: inline-flex; align-items: center; gap: .35rem; border-radius: 999px;
-      padding: 0.1rem 0.7rem; font-size: .7rem; text-transform: uppercase; letter-spacing: .08em;
-      background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(148, 163, 184, 0.5); color: var(--text-muted);
+    .header-title{font-size:1.4rem;font-weight:700;display:flex;gap:.6rem}
+    .pill{
+      display:inline-flex;gap:.35rem;border-radius:999px;
+      padding:.1rem .7rem;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;
+      background:rgba(15,23,42,.8);border:1px solid rgba(148,163,184,.5);color:var(--text-muted);
     }
-    .pill-dot {
-      width: .45rem; height: .45rem; border-radius: 999px; background: var(--accent);
-      box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.35);
+    .pill-dot{
+      width:.45rem;height:.45rem;border-radius:999px;
+      background:var(--accent);box-shadow:0 0 0 4px rgba(34,197,94,.35)
     }
-    .header-sub { margin-top: 0.4rem; font-size: 0.85rem; color: var(--text-muted); }
-
-    .embed-preview {
-      border-radius: 1.25rem;
-      padding: 1.25rem;
-      background: radial-gradient(circle at top left, rgba(34, 197, 94, 0.12), transparent 55%),
-                  radial-gradient(circle at bottom right, rgba(59, 130, 246, 0.12), transparent 55%),
-                  var(--card-bg);
-      border: 1px solid var(--border-soft);
-      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.85), 0 0 0 1px rgba(15, 23, 42, 0.9);
-      position: relative;
-      overflow: hidden;
+    .embed-preview{
+      border-radius:1.25rem;padding:1.25rem;
+      background:radial-gradient(circle at top left,rgba(34,197,94,.12),transparent 55%),
+                 radial-gradient(circle at bottom right,rgba(59,130,246,.12),transparent 55%),
+                 var(--card-bg);
+      border:1px solid var(--border-soft);
+      box-shadow:0 18px 40px rgba(15,23,42,.85),0 0 0 1px rgba(15,23,42,.9);
+      position:relative;overflow:hidden;
     }
-    .embed-accent {
-      position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
-      background: linear-gradient(to bottom, var(--accent), #16a34a);
+    .embed-accent{
+      position:absolute;left:0;top:0;bottom:0;width:4px;
+      background:linear-gradient(to bottom,var(--accent),#16a34a);
     }
-    .embed-header {
-      margin-left: 0.75rem; margin-bottom: 0.75rem;
-      display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+    .embed-header{
+      margin:0 0 .75rem .75rem;
+      display:flex;justify-content:space-between;align-items:center;
     }
-    .embed-title { font-size: 1.05rem; font-weight: 600; }
-    .embed-subtitle { font-size: .78rem; color: var(--text-muted); }
-    .embed-badge {
-      padding: 0.2rem 0.5rem; border-radius: 999px;
-      background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(148, 163, 184, 0.4);
-      font-size: 0.7rem; color: var(--text-muted); white-space: nowrap;
+    .rows{
+      margin-top:.75rem;border-radius:.9rem;background:rgba(15,23,42,.9);
+      border:1px solid rgba(55,65,81,.9);padding:.4rem .6rem;
+      max-height:480px;overflow-y:auto;
     }
-
-    .rows {
-      margin-top: 0.75rem; border-radius: 0.9rem;
-      background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(55, 65, 81, 0.9);
-      padding: 0.4rem 0.6rem; max-height: 480px; overflow-y: auto;
+    .row{
+      display:grid;grid-template-columns:0.6fr 1fr 1fr;gap:.75rem;
+      padding:.45rem .5rem;align-items:center;
+      border-bottom:1px solid rgba(31,41,55,.9);font-size:.8rem;
     }
-    .row {
-      display: grid; grid-template-columns: 0.6fr repeat(3, minmax(0, 0.33fr));
-      gap: 0.75rem; padding: 0.45rem 0.5rem; align-items: center;
-      border-bottom: 1px solid rgba(31, 41, 55, 0.9);
-      font-size: 0.8rem;
+    .row-rank{display:inline-flex;gap:.4rem;font-weight:600}
+    .rank-pill{
+      width:1.4rem;height:1.4rem;border-radius:999px;
+      display:inline-flex;align-items:center;justify-content:center;
+      border:1px solid rgba(148,163,184,.75);
+      background:radial-gradient(circle at top,var(--accent-soft),rgba(15,23,42,.9));
     }
-    .row:last-child { border-bottom: none; }
-    .row:hover { background: rgba(15, 23, 42, 0.9); }
-    .row-rank { display: inline-flex; align-items: center; gap: 0.4rem; font-weight: 600; }
-    .rank-pill {
-      width: 1.4rem; height: 1.4rem; border-radius: 999px;
-      display: inline-flex; align-items: center; justify-content: center;
-      font-size: 0.75rem; border: 1px solid rgba(148, 163, 184, 0.75);
-      background: radial-gradient(circle at top, var(--accent-soft), rgba(15, 23, 42, 0.9));
-    }
-    .row-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .cell-value { font-variant-numeric: tabular-nums; }
-
-    .footer-note {
-      margin-top: 0.6rem; font-size: 0.75rem; color: var(--text-muted);
-      display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
-    }
-    .loading { padding: 0.8rem; font-size: 0.85rem; color: var(--text-muted); }
-    .error {
-      padding: 0.8rem; font-size: 0.85rem; color: #fecaca;
-      background: rgba(127, 29, 29, 0.4); border-radius: 0.6rem;
-      border: 1px solid rgba(248, 113, 113, 0.5); margin-top: 0.5rem;
+    .cell-value{font-variant-numeric:tabular-nums;text-align:right}
+    .loading{padding:.8rem;font-size:.85rem;color:var(--text-muted)}
+    .error{
+      padding:.8rem;font-size:.85rem;color:#fecaca;background:rgba(127,29,29,.4);
+      border-radius:.6rem;border:1px solid rgba(248,113,113,.5);margin-top:.5rem;
     }
   </style>
 </head>
@@ -114,12 +81,8 @@
   <div class="container">
     <div class="header">
       <div class="pill"><span class="pill-dot"></span>Shotgun League • Season 5</div>
-      <div class="header-title">
-        Range Preview: <span style="opacity:.85;">Season 5!U4:X15</span>
-      </div>
-      <div class="header-sub">
-        This is a visual mockup of how the Google Sheets data will appear when turned into a Discord-style embed.
-      </div>
+      <div class="header-title">Range Preview: Season 5!U4:X15</div>
+      <div class="header-sub">Live standings pulled from Google Sheets 🔄</div>
     </div>
 
     <div class="embed-preview">
@@ -128,98 +91,71 @@
       <div class="embed-header">
         <div>
           <div class="embed-title">Season 5 Standings</div>
-          <div class="embed-subtitle">Live from Google Sheets — via Cloudflare Worker</div>
+          <div class="embed-subtitle">Live via Cloudflare Worker</div>
         </div>
         <div class="embed-badge" id="row-count-badge">Loading rows…</div>
       </div>
 
-      <div id="status" class="loading">Contacting Worker…</div>
+      <div id="status" class="loading">Fetching standings…</div>
       <div class="rows" id="rows" style="display:none;"></div>
-
-      <div class="footer-note">
-        <span>🔁 Data synced with live Google Sheet</span>
-        <span id="updated-at"></span>
-      </div>
     </div>
   </div>
 
 <script>
   const WORKER_URL = "https://small-mud-2771.nextweekmedia.workers.dev/";
-  const SHEET_ID = "2PACX-1vTzXVDEZKX1OziMk4r1nthI6BjvI8IUCiXL_6RUKqLHGcRwvfRlzK8_1qJ6Uf26De26CHuvoSgPOomu";
-  const RANGE = "Season 5!U4:X15";
+  const SHEET_ID = "1qIM0HKhx9Y-3eCJCFzBqrbATwiPrK3C1ynATwZzRC1o";
+  const RANGE = "Season 5!U4:X30"; // Extended to ensure no crop
 
   async function fetchSheetRange() {
-    const url = `${WORKER_URL}?sheetId=${SHEET_ID}&range=${encodeURIComponent(RANGE)}`;
-    console.log("Fetching:", url);
-
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`${res.status} Worker fetch failed`);
-
+    const res = await fetch(`${WORKER_URL}?sheetId=${SHEET_ID}&range=${encodeURIComponent(RANGE)}`);
+    if (!res.ok) throw new Error("Worker fetch failed: " + res.status);
     const json = await res.json();
-    console.log("Raw API response:", json);
-
     return json.values || [];
   }
 
   function renderData(values) {
-    console.log("Parsed values:", values); // Debug line
-
     const rowsContainer = document.getElementById("rows");
     const status = document.getElementById("status");
     const rowCountBadge = document.getElementById("row-count-badge");
-    const updatedAt = document.getElementById("updated-at");
 
     status.style.display = "none";
     rowsContainer.style.display = "block";
 
-    const rows = values.slice(1); // skip header
+    const rows = values; // No header in this sheet section
 
+    let count = 0;
     rowsContainer.innerHTML = "";
-    let visibleRowCount = 0;
 
     rows.forEach((row) => {
-      console.log("Row:", row); // Debug each row
-
       const rank = row[0];
       const name = row[2];
       const score = row[3];
 
-      if (!name || typeof name !== "string" || !name.trim()) return;
-
-      visibleRowCount++;
+      if (!name) return;
 
       const rowEl = document.createElement("div");
       rowEl.className = "row";
-
       rowEl.innerHTML = `
-        <div class="row-rank">
-          <span class="rank-pill">${rank || visibleRowCount}</span>
-          <span class="row-name">${name}</span>
-        </div>
-        <div class="cell-value">${score || "–"}</div>
-        <div class="cell-value"></div>
+        <div class="row-rank"><span class="rank-pill">${rank}</span>${name}</div>
+        <div class="cell-value">${score ?? "–"}</div>
         <div class="cell-value"></div>
       `;
 
       rowsContainer.appendChild(rowEl);
+      count++;
     });
 
-    rowCountBadge.textContent =
-      `${visibleRowCount} row${visibleRowCount === 1 ? "" : "s"} loaded`;
-
-    updatedAt.textContent = `Last updated: ${new Date().toLocaleString()}`;
+    rowCountBadge.textContent = count > 0 ? `${count} rows loaded` : "No rows found";
   }
 
   async function init() {
-    const status = document.getElementById("status");
     try {
       const values = await fetchSheetRange();
-      console.log("API response:", values);
       renderData(values);
     } catch (err) {
-      console.error("Error:", err);
-      status.className = "error";
-      status.textContent = "Worker request failed. Check console for details.";
+      console.error(err);
+      document.getElementById("status").className = "error";
+      document.getElementById("status").textContent = "Error loading data.";
       document.getElementById("row-count-badge").textContent = "Error";
     }
   }
@@ -229,4 +165,3 @@
 
 </body>
 </html>
-
