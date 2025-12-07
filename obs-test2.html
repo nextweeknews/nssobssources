@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Previous Match Results - Rank + Delta</title>
+  <title>Previous Match Results - Rank + Inline Deltas</title>
+
   <style>
     html, body {
       margin: 0; padding: 0;
@@ -34,18 +35,17 @@
       color: #c7d7ff;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.035em;
+      letter-spacing: .035em;
       margin-bottom: 24px;
       text-align: center;
     }
 
-    /* Updated: 6 columns now */
+    /* 4 Columns: Place | Player | Elo | Rank */
     .header-row,
     .entry {
       display: grid;
-      grid-template-columns: 140px 1fr 140px 140px 140px 120px;
+      grid-template-columns: 140px 1fr 200px 200px;
       align-items: center;
-      box-sizing: border-box;
     }
 
     .header-row {
@@ -62,238 +62,235 @@
     .header-row span:nth-child(1),
     .header-row span:nth-child(3),
     .header-row span:nth-child(4),
-    .header-row span:nth-child(5),
-    .header-row span:nth-child(6) {
-      text-align: center;
+    .entry span:nth-child(1),
+    .entry span:nth-child(3),
+    .entry span:nth-child(4) {
+      text-align:center;
     }
 
     #resultsList {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      opacity: 1;
-      transition: opacity 0.3s ease;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      opacity:1;
+      transition:opacity .3s ease;
     }
 
     .entry {
-      height: 90px;
-      background: rgba(255,255,255,0.07);
-      border-radius: 14px;
-      font-size: 32px;
-      font-weight: 600;
-      color: #fff;
+      height:90px;
+      background:rgba(255,255,255,0.07);
+      border-radius:14px;
+      font-size:32px;
+      font-weight:600;
+      color:#fff;
+      display:grid;
+      align-items:center;
     }
 
-    .entry span:nth-child(1),
-    .entry span:nth-child(3),
-    .entry span:nth-child(4),
-    .entry span:nth-child(5),
-    .entry span:nth-child(6) {
-      text-align: center;
-    }
-
-    .entry span.name {
-      text-align: left;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      padding-right: 12px;
+    .entry.highlight {
+      background:rgba(52,211,153,0.3);
+      box-shadow:0 0 18px rgba(16,185,129,.45);
     }
 
     .place {
-      font-size: 42px;
-      font-weight: 700;
+      font-size:42px;
+      font-weight:700;
     }
-    .gold { color: #ffd700; }
-    .silver { color: #c0c0c0; }
-    .bronze { color: #cd7f32; }
+    .gold { color:#ffd700; }
+    .silver { color:#c0c0c0; }
+    .bronze { color:#cd7f32; }
 
-    .entry.highlight {
-      background: rgba(52, 211, 153, 0.3);
-      box-shadow: 0 0 18px rgba(16, 185, 129, 0.45);
+    .delta-positive { color:#4ade80; }
+    .delta-negative { color:#f87171; }
+
+    .loading,.error {
+      font-size:36px;
+      width:100%;
+      text-align:center;
     }
 
-    .delta-positive { color: #4ade80 !important; }
-    .delta-negative { color: #f87171 !important; }
-
-    .loading, .error {
-      font-size: 36px;
-      width: 100%;
-      text-align: center;
+    span.name {
+      text-align:left;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      padding-right:12px;
     }
+
   </style>
 </head>
 
 <body>
-  <div class="card" id="card">
-    <div class="title">Previous Match Results</div>
+<div class="card" id="card">
+  <div class="title">Previous Match Results</div>
 
-    <div class="header-row">
-      <span>Place</span>
-      <span>Player</span>
-      <span>ELO</span>
-      <span>Δ</span>
-      <span>Rank</span>
-      <span>Δ</span>
-    </div>
-
-    <div id="resultsList">
-      <div class="loading">Loading…</div>
-    </div>
+  <div class="header-row">
+    <span>Place</span>
+    <span>Player</span>
+    <span>ELO</span>
+    <span>Rank</span>
   </div>
 
+  <div id="resultsList">
+    <div class="loading">Loading…</div>
+  </div>
+</div>
+
 <script>
-  const API_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_rating_history";
-  const LB_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
-  const CLIENT_ID = "DISCORD|1069003073311211601";
-  const REFRESH_MS = 15000;
+const API_URL="https://rapid-haze-012c.nextweekmedia.workers.dev/get_rating_history";
+const LB_URL="https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
+const CLIENT_ID="DISCORD|1069003073311211601";
+const REFRESH_MS=15000;
 
-  const cardEl = document.getElementById("card");
-  const resultsListEl = document.getElementById("resultsList");
-  const PLAYER_ID = new URLSearchParams(window.location.search).get("player_id");
+const cardEl=document.getElementById("card");
+const resultsListEl=document.getElementById("resultsList");
+const PLAYER_ID=new URLSearchParams(location.search).get("player_id");
 
-  let lastMatchHash = "";
-  let initialLoad = true;
-  let lastRanks = {}; // store rank snapshot to compute ΔRank
+let lastMatchHash="";
+let initialLoad=true;
+let lastRanks={};
 
-  if (!PLAYER_ID) {
-    resultsListEl.innerHTML = '<div class="error">Missing player_id</div>';
-    throw new Error("player_id required");
-  }
+if(!PLAYER_ID){
+  resultsListEl.innerHTML="<div class='error'>Missing player_id</div>";
+  throw new Error("player_id required");
+}
 
-  function resizeCardForPlayers(count) {
-    const rowHeight = 90;
-    const rowGap = 10;
-    const fixedHeight = 56 + 24 + 60 + 14 + 48 + 50;
-    cardEl.style.height = `${fixedHeight + (rowHeight * count) + (rowGap * (count - 1))}px`;
-  }
+function resizeCard(count){
+  const h=56+24+60+14+48+50 + (90*count) + (10*(count-1));
+  cardEl.style.height=`${h}px`;
+}
 
-  function hashMatch(match) {
-    return match.ratingResults[0].newRatings
-      .map(p => `${p.id}:${p.place}:${p.elo}:${p.delta}`)
-      .join("|");
-  }
+function hashMatch(match){
+  return match.ratingResults[0].newRatings
+    .map(p => `${p.id}:${p.place}:${p.elo}:${p.delta}`).join("|");
+}
 
-  function computeRankDelta(id, current) {
-    const old = lastRanks[id];
-    if (!old) return null;
-    const diff = old - current;
-    return {
-      diff,
-      arrow: diff > 0 ? "▲" : diff < 0 ? "▼" : "",
-      class: diff > 0 ? "delta-positive" : diff < 0 ? "delta-negative" : ""
-    };
-  }
+function computeRankDelta(id,current){
+  const old=lastRanks[id];
+  if(!old) return null;
+  const diff=old-current;
+  return {
+    diff,
+    arrow: diff>0?"▲":diff<0?"▼":"",
+    class: diff>0?"delta-positive":diff<0?"delta-negative":""
+  };
+}
 
-  async function fetchRanksForPlayers(playerIds) {
-    const resp = await fetch(LB_URL, {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({
-        leaderboard: "season_10",
-        rating_type: "player_global_all",
-        client_id: CLIENT_ID
+async function getRanks(ids){
+  const resp=await fetch(LB_URL,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      leaderboard:"season_10",
+      rating_type:"player_global_all",
+      client_id:CLIENT_ID
+    })
+  });
+
+  const data=await resp.json();
+  const sorted=[...(data.leaderboard||[])]
+    .sort((a,b)=>(b.elo??0)-(a.elo??0));
+
+  const ranks={};
+  sorted.forEach((p,i)=>{
+    const id=p.team?.[0];
+    if(ids.includes(id)) ranks[id]=i+1;
+  });
+  return ranks;
+}
+
+function display(match,players,ranks){
+  const rows=match.ratingResults[0].newRatings.slice(0,8);
+  resultsListEl.innerHTML="";
+
+  const showRankDelta = rows.some(p => {
+    const r = ranks[p.id];
+    const rd = computeRankDelta(p.id, r);
+    return rd?.diff !== 0;
+  });
+
+  rows.forEach(p=>{
+    const row=document.createElement("div");
+    row.className="entry";
+
+    if(String(p.id)===String(PLAYER_ID)) row.classList.add("highlight");
+
+    const placeClass=p.place===1?"gold":p.place===2?"silver":p.place===3?"bronze":"";
+    const name=players[p.id]?.display_name||"Unknown";
+
+    const d=p.delta??0;
+    const da=d>0?"▲":d<0?"▼":"";
+    const dC=d>0?"delta-positive":d<0?"delta-negative":"";
+    const eloCell = `${p.elo ?? "—"} ${d!==0 ? `<span class="${dC}">${da}${Math.abs(d)}</span>` : ""}`;
+
+    const r=ranks[p.id]??"—";
+    const rd=computeRankDelta(p.id,r);
+    const rankCell = showRankDelta && rd ? 
+      `${r} <span class="${rd.class}">${rd.arrow}${Math.abs(rd.diff)}</span>` :
+      `${r}`;
+
+    row.innerHTML=`
+      <span class="place ${placeClass}">${p.place}</span>
+      <span class="name">${name}</span>
+      <span>${eloCell}</span>
+      <span>${rankCell}</span>
+    `;
+
+    resultsListEl.appendChild(row);
+  });
+
+  resizeCard(rows.length);
+}
+
+async function fetchData(){
+  try{
+    const resp=await fetch(API_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        player_id:PLAYER_ID,
+        client_id:CLIENT_ID,
+        limit:10
       })
     });
 
-    const data = await resp.json();
-    const sorted = [...(data.leaderboard ?? [])]
-      .sort((a,b) => (b.elo ?? 0) - (a.elo ?? 0));
+    const data=await resp.json();
+    const players=data.resolved?.players||{};
 
-    const ranks = {};
-    sorted.forEach((p, i) => {
-      const id = p.team?.[0];
-      if (playerIds.includes(id)) {
-        ranks[id] = i + 1;
-      }
-    });
-    return ranks;
-  }
+    const match=(data.matches||[])
+      .sort((a,b)=>b.ts-a.ts)
+      .find(m=>m.ratingResults.some(r => r.newRatings.some(p=>String(p.id)===String(PLAYER_ID))));
 
-  function displayResults(match, players, ranks) {
-    const rows = match.ratingResults[0].newRatings.slice(0, 8);
-    resultsListEl.innerHTML = "";
-
-    rows.forEach(p => {
-      const row = document.createElement("div");
-      row.className = "entry";
-      if (String(p.id) === String(PLAYER_ID)) row.classList.add("highlight");
-
-      const placeClass = p.place === 1 ? "gold"
-                        : p.place === 2 ? "silver"
-                        : p.place === 3 ? "bronze" : "";
-
-      const name = players[p.id]?.display_name || "Unknown";
-      const arrow = p.delta > 0 ? "▲" : p.delta < 0 ? "▼" : "";
-      const deltaClass = p.delta > 0 ? "delta-positive"
-                       : p.delta < 0 ? "delta-negative" : "";
-
-      const r = ranks[p.id] ?? "—";
-      const rd = computeRankDelta(p.id, r);
-
-      row.innerHTML = `
-        <span class="place ${placeClass}">${p.place}</span>
-        <span class="name">${name}</span>
-        <span>${p.elo ?? "—"}</span>
-        <span class="${deltaClass}">${arrow} ${Math.abs(p.delta ?? "")}</span>
-        <span>${r}</span>
-        <span class="${rd?.class ?? ""}">
-          ${rd ? `${rd.arrow} ${Math.abs(rd.diff)}` : ""}
-        </span>
-      `;
-
-      resultsListEl.appendChild(row);
-    });
-
-    resizeCardForPlayers(rows.length);
-  }
-
-  async function fetchData() {
-    try {
-      const resp = await fetch(API_URL, {
-        method: "POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({ player_id: PLAYER_ID, client_id: CLIENT_ID, limit: 10 })
-      });
-
-      const data = await resp.json();
-      const players = data.resolved?.players || {};
-
-      const match = (data.matches || [])
-        .sort((a,b) => b.ts - a.ts)
-        .find(m => m.ratingResults.some(r =>
-          r.newRatings.some(p => String(p.id) === String(PLAYER_ID))
-        ));
-
-      if (!match) {
-        resultsListEl.innerHTML = "<div class='loading'>No match</div>";
-        return;
-      }
-
-      const newHash = hashMatch(match);
-      if (initialLoad || newHash !== lastMatchHash) {
-        lastMatchHash = newHash;
-        initialLoad = false;
-
-        const playerIds = match.ratingResults[0].newRatings.map(p => p.id);
-        const ranks = await fetchRanksForPlayers(playerIds);
-
-        resultsListEl.style.opacity = 0;
-        setTimeout(() => {
-          displayResults(match, players, ranks);
-          requestAnimationFrame(() => resultsListEl.style.opacity = 1);
-        }, 300);
-
-        lastRanks = {...ranks};
-      }
+    if(!match){
+      resultsListEl.innerHTML="<div class='loading'>No match</div>";
+      return;
     }
-    catch (err) {
-      resultsListEl.innerHTML = `<div class="error">${err.message}</div>`;
-    }
-  }
 
-  fetchData();
-  setInterval(fetchData, REFRESH_MS);
+    const newHash=hashMatch(match);
+
+    if(initialLoad || newHash!==lastMatchHash){
+      lastMatchHash=newHash;
+      initialLoad=false;
+
+      const ids=match.ratingResults[0].newRatings.map(p=>p.id);
+      const ranks=await getRanks(ids);
+
+      resultsListEl.style.opacity=0;
+      setTimeout(()=>{
+        display(match,players,ranks);
+        requestAnimationFrame(()=>resultsListEl.style.opacity=1);
+      },300);
+
+      lastRanks={...ranks};
+    }
+
+  }catch(err){
+    resultsListEl.innerHTML=`<div class="error">${err.message}</div>`;
+  }
+}
+
+fetchData();
+setInterval(fetchData,REFRESH_MS);
 </script>
 </body>
 </html>
