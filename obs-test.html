@@ -40,7 +40,7 @@
       text-align: center;
     }
 
-    /* 4 Columns: Place | Player | Elo | Rank */
+    /* NEW: Explicit column layout */
     .header-row,
     .entry {
       display: grid;
@@ -57,15 +57,7 @@
       text-transform: uppercase;
       color: #9ca3c7;
       border-radius: 12px;
-    }
-
-    .header-row span:nth-child(1),
-    .entry span:nth-child(1),
-    .header-row span:nth-child(3),
-    .entry span:nth-child(3),
-    .header-row span:nth-child(4),
-    .entry span:nth-child(4) {
-      text-align:center;
+      text-align: center;
     }
 
     #resultsList {
@@ -83,7 +75,6 @@
       font-size:42px;
       font-weight:600;
       color:#fff;
-      display:grid;
       align-items:center;
       transition: background .3s ease, box-shadow .3s ease;
     }
@@ -96,52 +87,54 @@
     .place {
       font-size:42px;
       font-weight:800;
+      text-align:center;
     }
 
     .player-name {
       font-size:42px;
       font-weight:600;
-      text-align:left;
       overflow:hidden;
       text-overflow:ellipsis;
       white-space:nowrap;
+      text-align:left;
       padding-right:12px;
     }
 
-    .elo,
-    .rank {
+    /* NEW: Elo + Rank grouping */
+    .elo-col,
+    .rank-col {
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap:4px;
+    }
+
+    .elo-value,
+    .rank-value {
       font-size:42px;
       font-weight:800;
       text-align:center;
+      line-height:1;
     }
 
     .elo-delta,
     .rank-delta {
-      margin-left: 8px;
-      font-size: 32px;
-      font-weight: 600;
-      position: relative;
-      vertical-align: middle;
-      top: -5px;
+      font-size:32px;
+      font-weight:600;
+      text-align:center;
     }
 
-    /* NEW: Arrows only */
     .delta-arrow {
-      font-size: 0.6em !important;
-      display: inline-flex;
-      align-items: center;
-      position: relative;
-      vertical-align: middle;
-      top: -0.2em;
-      margin-right: 2px;
+      margin-right:4px;
+      font-size:0.75em;
+      vertical-align:middle;
     }
 
-    /* Medals */
     .gold { color:#ffd700; }
     .silver { color:#c0c0c0; }
     .bronze { color:#cd7f32; }
 
-    /* Delta colors */
     .delta-positive { color:#4ade80; }
     .delta-negative { color:#f87171; }
 
@@ -166,8 +159,8 @@
   </div>
 
   <div id="resultsList">
-    <div class="loading">Loading…</div>
-  </div>
+        <div class="loading">Loading…</div>
+    </div>
 </div>
 
 <script>
@@ -252,38 +245,33 @@ function display(match,players,ranks){
     const name=players[p.id]?.display_name||"Unknown";
 
     const d=p.delta??0;
-    const da = d !== 0
-      ? `<span class="delta-arrow">${d > 0 ? "▲" : "▼"}</span>${Math.abs(d)}`
-      : "";
     const dC=d>0?"delta-positive":d<0?"delta-negative":"";
-    const eloCell = `${p.elo ?? "—"} ${d!==0 ? `<span class="elo-delta ${dC}">${da}</span>` : ""}`;
+    const eloDeltaHTML = d !== 0 ? `
+      <span class="elo-delta ${dC}">
+        <span class="delta-arrow">${d > 0 ? "▲" : "▼"}</span>${Math.abs(d)}
+      </span>` : "";
 
     const r=ranks[p.id]??"—";
     const rd=computeRankDelta(p.id,r);
-    const rankCell = showRankDelta && rd ?
-      `${r} <span class="rank-delta ${rd.class}"><span class="delta-arrow">${rd.arrow}</span>${Math.abs(rd.diff)}</span>` :
-      `${r}`;
-
-row.innerHTML = `
-  <span class="place ${placeClass}">${p.place}</span>
-  <span class="player-name">${name}</span>
-
-  <div class="elo-col">
-    <span class="elo-value">${p.elo ?? "—"}</span>
-    ${d !== 0 ? `
-      <span class="elo-delta ${dC}">
-        <span class="delta-arrow">${d > 0 ? "▲" : "▼"}</span>${Math.abs(d)}
-      </span>` : ""}
-  </div>
-
-  <div class="rank-col">
-    <span class="rank-value">${r}</span>
-    ${showRankDelta && rd && rd.diff !== 0 ? `
+    const rankDeltaHTML = (showRankDelta && rd && rd.diff !== 0) ? `
       <span class="rank-delta ${rd.class}">
         <span class="delta-arrow">${rd.arrow}</span>${Math.abs(rd.diff)}
-      </span>` : ""}
-  </div>
-`;
+      </span>` : "";
+
+    row.innerHTML=`
+      <span class="place ${placeClass}">${p.place}</span>
+      <span class="player-name">${name}</span>
+
+      <div class="elo-col">
+        <span class="elo-value">${p.elo ?? "—"}</span>
+        ${eloDeltaHTML}
+      </div>
+
+      <div class="rank-col">
+        <span class="rank-value">${r}</span>
+        ${rankDeltaHTML}
+      </div>
+    `;
 
     resultsListEl.appendChild(row);
   });
