@@ -15,21 +15,6 @@
       -webkit-font-smoothing: antialiased;
       overflow: hidden;
 
-    }
-
-    .blur-overlay {
-      background: rgba(15, 23, 42, 0.4);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      width: 100%;
-      height: 100%;
-      position: absolute;
-      inset: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-
     .card {
       width: 1720px;
       background: rgba(15, 23, 42, 0.95);
@@ -124,7 +109,7 @@
     }
 
     .elo-delta, .rank-delta {
-      font-size: 32px;
+      font-size: 36px;
       text-align: center;
       position: relative;
     }
@@ -188,22 +173,20 @@
 </head>
 
 <body>
-<div class="blur-overlay">
-  <div class="card" id="card">
-    <div class="title">Previous Match Results</div>
+<div class="card" id="card">
+  <div class="title">Previous Match Results</div>
 
-    <div class="header-row">
-      <span>Place</span>
-      <span>Player</span>
-      <span>Elo</span>
-      <span>+/-</span>
-      <span>Rank</span>
-      <span>+/-</span>
-    </div>
+  <div class="header-row">
+    <span>Place</span>
+    <span>Player</span>
+    <span>Elo</span>
+    <span>+/-</span>
+    <span>Rank</span>
+    <span>+/-</span>
+  </div>
 
-    <div id="resultsList">
-    <div class="loading">Loading…</div>
-    </div>
+  <div id="resultsList">
+  <div class="loading">Loading…</div>
   </div>
 </div>
 
