@@ -104,7 +104,7 @@
 <script>
   const WORKER_URL = "https://small-mud-2771.nextweekmedia.workers.dev/";
   const SHEET_ID = "1qIM0HKhx9Y-3eCJCFzBqrbATwiPrK3C1ynATwZzRC1o";
-  const RANGE = "Season 5!U4:X30"; // Extended to ensure no crop
+  const RANGE = "Season 5!U4:X15"; // Extended to ensure no crop
 
   async function fetchSheetRange() {
     const res = await fetch(`${WORKER_URL}?sheetId=${SHEET_ID}&range=${encodeURIComponent(RANGE)}`);
