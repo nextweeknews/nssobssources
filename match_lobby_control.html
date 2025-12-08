@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Match Lobby Control</title>
+
+<style>
+  body {
+    background: #0f172a;
+    font-family: Inter, system-ui, sans-serif;
+    color: #e9eef8;
+    margin: 0;
+    padding: 30px;
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 42px;
+    font-weight: 900;
+    margin-bottom: 30px;
+  }
+
+  input {
+    font-size: 28px;
+    padding: 10px 16px;
+    border-radius: 12px;
+    border: none;
+    width: 440px;
+    margin-right: 10px;
+  }
+
+  button {
+    background: #3b82f6;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 12px;
+    color: #fff;
+    font-size: 24px;
+    cursor: pointer;
+    transition: background .2s;
+  }
+  button:hover {
+    background: #2563eb;
+  }
+
+  .section-title {
+    margin-top: 36px;
+    font-size: 30px;
+    font-weight: 700;
+    margin-bottom: 12px;
+  }
+
+  .player-row {
+    background: rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 16px 20px;
+    font-size: 26px;
+    margin-bottom: 10px;
+    display: grid;
+    grid-template-columns: 1fr 120px 90px 140px;
+    align-items: center;
+    gap: 10px;
+    opacity: 1;
+    transition: opacity .2s;
+  }
+
+  .track-btn {
+    background: #10b981;
+  }
+  .track-btn.active {
+    background: #06a173;
+    box-shadow: 0 0 12px rgba(16,185,129,0.7);
+  }
+  .track-btn:hover {
+    background: #059669;
+  }
+
+  .remove-btn {
+    background: #ef4444;
+  }
+  .remove-btn:hover {
+    background: #dc2626;
+  }
+
+  .result-row {
+    cursor: pointer;
+    background: rgba(255,255,255,0.05);
+    border-radius: 10px;
+    padding: 14px 18px;
+    font-size: 24px;
+    margin-bottom: 6px;
+    display: grid;
+    grid-template-columns: 1fr 120px 90px;
+    gap: 10px;
+  }
+  .result-row:hover {
+    background: rgba(59,130,246,0.4);
+  }
+
+  .error-msg {
+    font-size: 24px;
+    color: #f87171;
+    margin-top: 10px;
+  }
+</style>
+</head>
+
+<body>
+<h1>Match Lobby Control</h1>
+
+<div>
+  <input id="searchInput" placeholder="Search by ID or name…" />
+  <button onclick="performSearch()">Search</button>
+</div>
+
+<div id="errorOutput" class="error-msg"></div>
+
+<div class="section-title">Search Results</div>
+<div id="searchResults"></div>
+
+<div class="section-title">Current Lobby (Sorted by Rank)</div>
+<div id="lobbyList"></div>
+
+<script>
+const LB_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
+const CLIENT_ID = "DISCORD|1069003073311211601";
+
+let lobbyPlayers = JSON.parse(localStorage.getItem("matchLobbyPlayers") || "[]");
+let tracked = localStorage.getItem("matchLobbyTracked") || "";
+
+let leaderboard = [];
+let resolvedPlayers = {};
+let rankMap = {};
+
+function saveState() {
+  localStorage.setItem("matchLobbyPlayers", JSON.stringify(lobbyPlayers));
+  if (tracked) localStorage.setItem("matchLobbyTracked", tracked);
+  else localStorage.removeItem("matchLobbyTracked");
+
+  renderLobby();
+}
+
+async function loadLeaderboard() {
+  const resp = await fetch(LB_URL, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      leaderboard: "season_10",
+      rating_type: "player_global_all",
+      client_id: CLIENT_ID
+    })
+  });
+  const data = await resp.json();
+  leaderboard = data.leaderboard || [];
+  resolvedPlayers = (data.resolved && data.resolved.players) || {};
+
+  // Build global rank map
+  const sorted = [...leaderboard].sort((a,b) => (b.elo ?? 0) - (a.elo ?? 0));
+  sorted.forEach((entry,i)=>{
+    const id = entry.team?.[0];
+    if (id!=null) rankMap[String(id)] = i+1;
+  });
+
+  renderLobby();
+}
+loadLeaderboard();
+
+function showError(msg) {
+  document.getElementById("errorOutput").textContent = msg;
+  setTimeout(()=> (document.getElementById("errorOutput").textContent=""), 3500);
+}
+
+function findEntry(id) {
+  return leaderboard.find(e => String(e.team?.[0]) === String(id)) || null;
+}
+
+function getName(id) {
+  const rp = resolvedPlayers[id] || {};
+  return rp.display_name || rp.username || `Player ${id}`;
+}
+
+function formatRow(id) {
+  const e = findEntry(id);
+  return {
+    id,
+    name: getName(id),
+    elo: e?.elo ?? "—",
+    rank: rankMap[id] ?? "—"
+  };
+}
+
+function renderLobby() {
+  const container = document.getElementById("lobbyList");
+  container.innerHTML = "";
+
+  const rows = lobbyPlayers
+    .map(formatRow)
+    .sort((a,b) => (a.rank ?? 99999) - (b.rank ?? 99999));
+
+  rows.forEach(r => {
+    const row = document.createElement("div");
+    row.className = "player-row";
+    row.innerHTML = `
+      <span>${r.name}</span>
+      <span>R${r.rank}</span>
+      <span>${Math.round(r.elo)}</span>
+      <div style="display:flex;gap:6px">
+        <button class="track-btn ${tracked===String(r.id)?"active":""}"
+          onclick="setTracked('${r.id}')">Track</button>
+        <button class="remove-btn" onclick="removePlayer('${r.id}')">X</button>
+      </div>
+    `;
+    container.appendChild(row);
+  });
+}
+
+function setTracked(id) {
+  tracked = String(id);
+  saveState();
+}
+
+function removePlayer(id) {
+  lobbyPlayers = lobbyPlayers.filter(x=>String(x)!==String(id));
+  if (tracked===String(id)) tracked="";
+  saveState();
+}
+
+function addPlayer(id) {
+  id = String(id);
+  if (lobbyPlayers.includes(id)) return;
+  if (lobbyPlayers.length>=8) return showError("Max 8 players allowed");
+  lobbyPlayers.push(id);
+  saveState();
+}
+
+function performSearch() {
+  const q = document.getElementById("searchInput").value.trim();
+  if (!q) return;
+
+  const sr = document.getElementById("searchResults");
+  sr.innerHTML="";
+
+  // If numeric-like → treat as ID direct lookup
+  if (/^\d+$/.test(q)) {
+    const row = formatRow(q);
+    sr.innerHTML = `<div class="result-row" onclick="addPlayer('${row.id}')">
+      <span>${row.name}</span>
+      <span>R${row.rank}</span>
+      <span>${Math.round(row.elo)}</span>
+    </div>`;
+    return;
+  }
+
+  // Otherwise, name search
+  const lc = q.toLowerCase();
+  const matches = leaderboard
+    .filter(e => {
+      const id = e.team?.[0];
+      const name = getName(id);
+      return name.toLowerCase().includes(lc);
+    })
+    .slice(0,12); // limit list
+
+  if (!matches.length) {
+    return (sr.innerHTML = `<div class="error-msg">No matching players</div>`);
+  }
+
+  matches.forEach(e => {
+    const id = e.team?.[0];
+    const row = formatRow(id);
+    const div = document.createElement("div");
+    div.className = "result-row";
+    div.innerHTML = `
+      <span>${row.name}</span>
+      <span>R${row.rank}</span>
+      <span>${Math.round(row.elo)}</span>
+    `;
+    div.onclick = () => addPlayer(row.id);
+    sr.appendChild(div);
+  });
+}
+</script>
+
+</body>
+</html>
