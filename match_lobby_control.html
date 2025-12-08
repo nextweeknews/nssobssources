@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Match Lobby Control</title>
 
 <style>
@@ -10,277 +10,183 @@
     background: #0f172a;
     font-family: Inter, system-ui, sans-serif;
     color: #e9eef8;
-    margin: 0;
-    padding: 30px;
+    padding: 22px;
   }
-
-  h1 {
-    text-align: center;
-    font-size: 42px;
-    font-weight: 900;
-    margin-bottom: 30px;
-  }
-
-  input {
-    font-size: 28px;
-    padding: 10px 16px;
+  h1 { font-size: 38px; text-align: center; margin-bottom: 18px; }
+  input,button {
+    font-size: 24px;
+    padding: 14px;
     border-radius: 12px;
     border: none;
-    width: 440px;
-    margin-right: 10px;
   }
-
-  button {
-    background: #3b82f6;
-    border: none;
-    padding: 12px 20px;
-    border-radius: 12px;
-    color: #fff;
-    font-size: 24px;
-    cursor: pointer;
-    transition: background .2s;
+  input { width: calc(100% - 100px); margin-bottom: 8px; }
+  button { background:#3b82f6;color:white;margin-left:4px; }
+  .player-row,.result-row {
+    background:rgba(255,255,255,0.08);
+    border-radius:12px;
+    margin-bottom:10px;
+    padding:12px 16px;
+    font-size:22px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
   }
-  button:hover {
-    background: #2563eb;
-  }
-
-  .section-title {
-    margin-top: 36px;
-    font-size: 30px;
-    font-weight: 700;
-    margin-bottom: 12px;
-  }
-
-  .player-row {
-    background: rgba(255,255,255,0.08);
-    border-radius: 12px;
-    padding: 16px 20px;
-    font-size: 26px;
-    margin-bottom: 10px;
-    display: grid;
-    grid-template-columns: 1fr 120px 90px 140px;
-    align-items: center;
-    gap: 10px;
-    opacity: 1;
-    transition: opacity .2s;
-  }
-
-  .track-btn {
-    background: #10b981;
-  }
-  .track-btn.active {
-    background: #06a173;
-    box-shadow: 0 0 12px rgba(16,185,129,0.7);
-  }
-  .track-btn:hover {
-    background: #059669;
-  }
-
-  .remove-btn {
-    background: #ef4444;
-  }
-  .remove-btn:hover {
-    background: #dc2626;
-  }
-
-  .result-row {
-    cursor: pointer;
-    background: rgba(255,255,255,0.05);
-    border-radius: 10px;
-    padding: 14px 18px;
-    font-size: 24px;
-    margin-bottom: 6px;
-    display: grid;
-    grid-template-columns: 1fr 120px 90px;
-    gap: 10px;
-  }
-  .result-row:hover {
-    background: rgba(59,130,246,0.4);
-  }
-
-  .error-msg {
-    font-size: 24px;
-    color: #f87171;
-    margin-top: 10px;
-  }
+  .error-msg {color:#f87171;font-size:20px;margin-top:8px;}
 </style>
 </head>
 
 <body>
 <h1>Match Lobby Control</h1>
 
-<div>
-  <input id="searchInput" placeholder="Search by ID or name…" />
-  <button onclick="performSearch()">Search</button>
+<div id="passwordBox">
+  <input id="pw" type="password" placeholder="Enter PIN (7466)">
+  <button onclick="submitPW()">OK</button>
 </div>
 
-<div id="errorOutput" class="error-msg"></div>
+<div id="ui" style="display:none">
+  <input id="search" placeholder="Search by ID or name…" />
+  <button onclick="searchPlayers()">Search</button>
 
-<div class="section-title">Search Results</div>
-<div id="searchResults"></div>
+  <div id="error" class="error-msg"></div>
 
-<div class="section-title">Current Lobby (Sorted by Rank)</div>
-<div id="lobbyList"></div>
+  <h2>Results</h2>
+  <div id="searchResults"></div>
+
+  <h2>Lobby</h2>
+  <div id="lobbyList"></div>
+</div>
 
 <script>
+const API_URL = "https://blue-dust-07fa.nextweekmedia.workers.dev/lobby";
 const LB_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
 const CLIENT_ID = "DISCORD|1069003073311211601";
 
-let lobbyPlayers = JSON.parse(localStorage.getItem("matchLobbyPlayers") || "[]");
-let tracked = localStorage.getItem("matchLobbyTracked") || "";
-
+let password = "";
 let leaderboard = [];
 let resolvedPlayers = {};
 let rankMap = {};
 
-function saveState() {
-  localStorage.setItem("matchLobbyPlayers", JSON.stringify(lobbyPlayers));
-  if (tracked) localStorage.setItem("matchLobbyTracked", tracked);
-  else localStorage.removeItem("matchLobbyTracked");
-
-  renderLobby();
+async function submitPW() {
+  password = document.getElementById("pw").value.trim();
+  if (!password) return;
+  document.getElementById("passwordBox").style.display="none";
+  document.getElementById("ui").style.display="block";
+  await loadLeaderboard();
+  await refreshLobby();
 }
 
 async function loadLeaderboard() {
-  const resp = await fetch(LB_URL, {
+  const data = await (await fetch(LB_URL, {
     method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({
-      leaderboard: "season_10",
-      rating_type: "player_global_all",
-      client_id: CLIENT_ID
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      leaderboard:"season_10",
+      rating_type:"player_global_all",
+      client_id:CLIENT_ID
     })
-  });
-  const data = await resp.json();
-  leaderboard = data.leaderboard || [];
-  resolvedPlayers = (data.resolved && data.resolved.players) || {};
-
-  // Build global rank map
-  const sorted = [...leaderboard].sort((a,b) => (b.elo ?? 0) - (a.elo ?? 0));
-  sorted.forEach((entry,i)=>{
-    const id = entry.team?.[0];
-    if (id!=null) rankMap[String(id)] = i+1;
-  });
-
-  renderLobby();
-}
-loadLeaderboard();
-
-function showError(msg) {
-  document.getElementById("errorOutput").textContent = msg;
-  setTimeout(()=> (document.getElementById("errorOutput").textContent=""), 3500);
+  })).json();
+  leaderboard = data.leaderboard;
+  resolvedPlayers = data.resolved?.players || {};
+  const sorted = [...leaderboard].sort((a,b)=>(b.elo ?? 0)-(a.elo ?? 0));
+  sorted.forEach((e,i)=> rankMap[String(e.team?.[0])] = i+1 );
 }
 
-function findEntry(id) {
-  return leaderboard.find(e => String(e.team?.[0]) === String(id)) || null;
-}
-
-function getName(id) {
+function nameOf(id) {
   const rp = resolvedPlayers[id] || {};
   return rp.display_name || rp.username || `Player ${id}`;
 }
 
-function formatRow(id) {
-  const e = findEntry(id);
-  return {
-    id,
-    name: getName(id),
-    elo: e?.elo ?? "—",
-    rank: rankMap[id] ?? "—"
-  };
+function showError(msg) {
+  document.getElementById("error").textContent = msg;
+  setTimeout(()=> document.getElementById("error").textContent="",3000);
 }
 
-function renderLobby() {
+async function refreshLobby() {
+  const state = await (await fetch(API_URL)).json();
+  renderLobby(state);
+}
+
+function renderLobby(state) {
   const container = document.getElementById("lobbyList");
-  container.innerHTML = "";
+  container.innerHTML="";
+  const rows = state.players
+    .map(id=>{
+      const e = leaderboard.find(x=>String(x.team?.[0])===String(id)) || {};
+      return {
+        id,
+        name:nameOf(id),
+        rank:rankMap[id] ?? "—",
+        tracked: state.tracked===String(id)
+      };
+    })
+    .sort((a,b)=>(a.rank ?? 99999)-(b.rank ?? 99999));
 
-  const rows = lobbyPlayers
-    .map(formatRow)
-    .sort((a,b) => (a.rank ?? 99999) - (b.rank ?? 99999));
-
-  rows.forEach(r => {
+  rows.forEach(x=>{
     const row = document.createElement("div");
-    row.className = "player-row";
+    row.className="player-row";
     row.innerHTML = `
-      <span>${r.name}</span>
-      <span>R${r.rank}</span>
-      <span>${Math.round(r.elo)}</span>
-      <div style="display:flex;gap:6px">
-        <button class="track-btn ${tracked===String(r.id)?"active":""}"
-          onclick="setTracked('${r.id}')">Track</button>
-        <button class="remove-btn" onclick="removePlayer('${r.id}')">X</button>
-      </div>
-    `;
+      <span>${x.name} (R${x.rank})</span>
+      <span style="display:flex;gap:6px">
+        <button onclick="setTracked('${x.id}')">${x.tracked?'Untrack':'Track'}</button>
+        <button onclick="removePlayer('${x.id}')">X</button>
+      </span>`;
     container.appendChild(row);
   });
 }
 
-function setTracked(id) {
-  tracked = String(id);
-  saveState();
+async function saveState(players, tracked) {
+  const res = await fetch(API_URL, {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({password,players,tracked})
+  });
+  if (!res.ok) return showError("Wrong PIN?");
+  await refreshLobby();
 }
 
-function removePlayer(id) {
-  lobbyPlayers = lobbyPlayers.filter(x=>String(x)!==String(id));
-  if (tracked===String(id)) tracked="";
-  saveState();
+async function removePlayer(id) {
+  const state = await (await fetch(API_URL)).json();
+  const list = state.players.filter(x=>String(x)!==String(id));
+  await saveState(list, state.tracked===id?"":state.tracked);
 }
 
-function addPlayer(id) {
-  id = String(id);
-  if (lobbyPlayers.includes(id)) return;
-  if (lobbyPlayers.length>=8) return showError("Max 8 players allowed");
-  lobbyPlayers.push(id);
-  saveState();
+async function setTracked(id) {
+  const state = await (await fetch(API_URL)).json();
+  await saveState(state.players, state.tracked===id?"":id);
 }
 
-function performSearch() {
-  const q = document.getElementById("searchInput").value.trim();
-  if (!q) return;
-
+async function searchPlayers() {
+  const q = document.getElementById("search").value.trim();
   const sr = document.getElementById("searchResults");
   sr.innerHTML="";
 
-  // If numeric-like → treat as ID direct lookup
-  if (/^\d+$/.test(q)) {
-    const row = formatRow(q);
-    sr.innerHTML = `<div class="result-row" onclick="addPlayer('${row.id}')">
-      <span>${row.name}</span>
-      <span>R${row.rank}</span>
-      <span>${Math.round(row.elo)}</span>
-    </div>`;
-    return;
-  }
+  if (!q) return;
+  if (/^\d+$/.test(q)) return addResult(q, sr);
 
-  // Otherwise, name search
   const lc = q.toLowerCase();
-  const matches = leaderboard
-    .filter(e => {
-      const id = e.team?.[0];
-      const name = getName(id);
-      return name.toLowerCase().includes(lc);
-    })
-    .slice(0,12); // limit list
+  const results = leaderboard.filter(e=>{
+    const id=e.team?.[0];
+    return nameOf(id).toLowerCase().includes(lc);
+  }).slice(0, 10);
 
-  if (!matches.length) {
-    return (sr.innerHTML = `<div class="error-msg">No matching players</div>`);
-  }
+  results.forEach(e=> addResult(e.team?.[0], sr));
+}
 
-  matches.forEach(e => {
-    const id = e.team?.[0];
-    const row = formatRow(id);
-    const div = document.createElement("div");
-    div.className = "result-row";
-    div.innerHTML = `
-      <span>${row.name}</span>
-      <span>R${row.rank}</span>
-      <span>${Math.round(row.elo)}</span>
-    `;
-    div.onclick = () => addPlayer(row.id);
-    sr.appendChild(div);
-  });
+function addResult(id, container) {
+  const div=document.createElement("div");
+  div.className="result-row";
+  div.innerHTML = `<span>${nameOf(id)} (R${rankMap[id]})</span>
+    <button onclick="addPlayer('${id}')">Add</button>`;
+  container.appendChild(div);
+}
+
+async function addPlayer(id) {
+  const state = await (await fetch(API_URL)).json();
+  if (state.players.includes(id)) return;
+  if (state.players.length>=8) return showError("Max 8 players");
+  state.players.push(id);
+  await saveState(state.players, state.tracked);
 }
 </script>
-
 </body>
 </html>
