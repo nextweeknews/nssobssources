@@ -1,0 +1,28 @@
+name: Update Standings Every Minute
+
+on:
+  schedule:
+    - cron: "*/1 * * * *"  # every minute
+  workflow_dispatch:      # allows running manually from Actions tab
+
+jobs:
+  update-standings:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run standings updater
+        env:
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+          MESSAGE_ID: ${{ secrets.MESSAGE_ID }}
+        run: node send-standings.js
