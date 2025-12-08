@@ -1,1 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Match Lobby</title>
+
+  <style>
+    html, body {
+      margin: 0; padding: 0;
+      width: 100%; height: 100%;
+      background: transparent;
+      font-family: Inter, system-ui, sans-serif;
+      display: flex; justify-content: center; align-items: center;
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+    }
+
+    .card {
+      width: 1720px;
+      background: rgba(15, 23, 42, 1);
+      border-radius: 24px;
+      padding: 48px 50px;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      transition: height 0.4s ease;
+      color: #e9eef8;
+      box-shadow: 0 32px 32px rgba(0,0,0,0.65);
+      box-sizing: border-box;
+    }
+
+    .title {
+      font-size: 56px;
+      color: #c7d7ff;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: .035em;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    /* Column structure: Rank | Player | Elo | Wins | Win Rate */
+    .header-row,
+    .entry {
+      display: grid;
+      grid-template-columns: 150px 1fr 200px 170px 200px;
+      align-items: center;
+    }
+
+    .header-row {
+      height: 60px;
+      margin-bottom: 14px;
+      background: rgba(148, 163, 184, 0.12);
+      font-size: 24px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #9ca3c7;
+      border-radius: 12px;
+      text-align: center;
+    }
+
+    .header-row span:nth-child(2) {
+      text-align: left;
+      padding-left: 24px;
+    }
+
+    #resultsList {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      opacity: 1;
+      transition: opacity .3s ease;
+    }
+
+    .entry {
+      height: 90px;
+      background: rgba(255,255,255,0.07);
+      border-radius: 14px;
+      font-size: 42px;
+      font-weight: 600;
+      color: #fff;
+      align-items: center;
+      transition: background .3s ease, box-shadow .3s ease;
+    }
+
+    .rank-value {
+      font-size: 42px;
+      font-weight: 800;
+      text-align: center;
+      line-height: 1;
+    }
+
+    .player-name {
+      font-size: 36px;
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: left;
+      padding-left: 36px;
+      padding-right: 36px;
+    }
+
+    .elo-value, .wins-value, .wr-value {
+      font-size: 42px;
+      font-weight: 800;
+      text-align: center;
+      line-height: 1;
+    }
+
+    /* Column borders */
+    .entry > span {
+      border-right: 2px solid rgba(255,255,255,0.14);
+      right: -1px;
+      height: 45px;
+      position: relative;
+      vertical-align: middle;
+    }
+
+    .entry > span:last-child {
+      border-right: none;
+    }
+
+    /* Tracked player highlight */
+    .entry.highlight-default {
+      background: rgba(52, 211, 153, 0.30);
+      box-shadow: 0 0 18px rgba(16, 185, 129, 0.3);
+    }
+
+    .loading, .error {
+      font-size: 36px;
+      width: 100%;
+      text-align: center;
+    }
+  </style>
+</head>
+
+<body>
+<div class="card" id="card">
+  <div class="title">Match Lobby</div>
+
+  <div class="header-row">
+    <span>Rank</span>
+    <span>Player</span>
+    <span>Elo</span>
+    <span>Wins</span>
+    <span>Win Rate</span>
+  </div>
+
+  <div id="resultsList">
+    <div class="loading">Loading…</div>
+  </div>
+</div>
+
+<script>
+  const LB_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
+  const CLIENT_ID = "DISCORD|1069003073311211601";
+  const REFRESH_MS = 15000;
+
+  const cardEl = document.getElementById("card");
+  const resultsListEl = document.getElementById("resultsList");
+  const params = new URLSearchParams(location.search);
+
+  const playersParam = params.get("players") || "";
+  const PLAYER_IDS = playersParam
+    .split(",")
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  const TRACKED_ID = params.get("player_id");
+
+  let lastHash = "";
+  let initialLoad = true;
+
+  if (PLAYER_IDS.length < 2 || PLAYER_IDS.length > 8) {
+    resultsListEl.innerHTML = "<div class='error'>Need between 2 and 8 players in ?players=ID1,ID2,…</div>";
+    throw new Error("Invalid players list");
+  }
+
+  function resizeCard(count) {
+    // Preserve same row sizing logic as your original
+    const h = 56 + 24 + 60 + 14 + 48 + 50 + (90 * count) + (10 * (count - 1));
+    cardEl.style.height = `${h}px`;
+  }
+
+  function hashState(rows) {
+    return rows
+      .map(r => `${r.id}:${r.rank}:${r.elo}:${r.wins}:${r.matches}`)
+      .join("|");
+  }
+
+  function formatWinRate(wins, matches) {
+    if (!matches || matches <= 0) return "—";
+    const pct = (wins / matches) * 100;
+    return `${pct.toFixed(1)}%`;
+  }
+
+  function display(rows) {
+    resultsListEl.innerHTML = "";
+
+    rows.forEach(r => {
+      const row = document.createElement("div");
+      row.className = "entry";
+
+      if (TRACKED_ID && String(r.id) === String(TRACKED_ID)) {
+        row.classList.add("highlight-default");
+      }
+
+      const rankText = r.rank != null ? r.rank : "—";
+      const eloText = r.elo != null ? Math.round(r.elo) : "—";
+      const winsText = r.wins != null ? r.wins : "0";
+      const wrText = formatWinRate(r.wins, r.matches);
+
+      row.innerHTML = `
+        <span class="rank-value">${rankText}</span>
+        <span class="player-name">${r.name}</span>
+        <span class="elo-value">${eloText}</span>
+        <span class="wins-value">${winsText}</span>
+        <span class="wr-value">${wrText}</span>
+      `;
+
+      resultsListEl.appendChild(row);
+    });
+
+    resizeCard(rows.length);
+  }
+
+  async function fetchData() {
+    try {
+      const resp = await fetch(LB_URL, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          leaderboard: "season_10",
+          rating_type: "player_global_all",
+          client_id: CLIENT_ID
+        })
+      });
+
+      const data = await resp.json();
+      const leaderboard = data.leaderboard || [];
+      const resolvedPlayers = (data.resolved && data.resolved.players) || {};
+
+      // Map IDs to leaderboard entries
+      const idToEntry = {};
+      leaderboard.forEach(entry => {
+        const id = entry.team && entry.team[0];
+        if (id != null) {
+          idToEntry[String(id)] = entry;
+        }
+      });
+
+      // Build global rank map (by Elo, descending)
+      const sorted = [...leaderboard].sort(
+        (a, b) => (b.elo ?? 0) - (a.elo ?? 0)
+      );
+      const rankMap = {};
+      sorted.forEach((entry, i) => {
+        const id = entry.team && entry.team[0];
+        if (id != null) {
+          rankMap[String(id)] = i + 1;
 
