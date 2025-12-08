@@ -110,7 +110,7 @@ html, body {
   font-weight:900;
 }
 
-/* UNIFIED small arrow styling */
+/* UNIFIED — smaller delta arrows */
 .delta-arrow {
   font-size: 0.6em;
   vertical-align: middle;
@@ -140,9 +140,11 @@ html, body {
   margin-top: 6px;
   font-weight:600;
 }
+
+/* Session-specific — matches label sizing, arrow still small */
 .session-delta {
-  font-weight:900;
-  font-size: 0.8em;
+  font-weight:600;
+  font-size:1em;
   vertical-align:middle;
 }
 
@@ -292,7 +294,8 @@ async function fetchData(){
   const elo=p.elo??0;
   const wins=p.count_placement_1??0;
   const matches=p.matches??0;
-  const winRate = matches ? ((wins/matches)*100).toFixed(0) : "0";
+  const winRate = matches ? ((wins/matches)*100).toFixed(0) : "0"; // whole %
+  const sessionDiff = elo - initialElo;
 
   if(initialElo===null) initialElo=elo;
 
@@ -312,10 +315,8 @@ async function fetchData(){
   lastElo=elo;
   lastWins=wins;
 
-  // Subtext improvements
-  rankSub.textContent = `out of ${sorted.length}`;
-
-  const sessionDiff = elo - initialElo;
+  // Subtext UI updates (no animation)
+  rankSub.textContent = `out of ${sorted.length} players`;
 
   if(sessionDiff === 0) {
     eloSub.textContent = `Session: —`;
@@ -331,6 +332,7 @@ async function fetchData(){
 
   winsSub.textContent = `Games: ${matches} (${winRate}%)`;
 
+  // Tier
   const cfg=data.resolved?.leaderboards?.["Season_10"];
   let tier = null;
   if(cfg){
