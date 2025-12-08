@@ -95,14 +95,14 @@
   }
 
   /* Center-align numeric/stat columns */
-  .entry span:nth-child(1), /* Rank */
-  .entry span:nth-child(3), /* Elo */
-  .entry span:nth-child(4), /* Wins */
-  .entry span:nth-child(5)  /* Win Rate */ {
+  .col-rank,
+  .col-elo,
+  .col-wins,
+  .col-winrate {
     text-align: center;
   }
 
-  /* Ensure header row also centers matching columns */
+  /* Header center for numeric/stat columns */
   .header-row span:nth-child(1),
   .header-row span:nth-child(3),
   .header-row span:nth-child(4),
@@ -110,17 +110,26 @@
     text-align: center;
   }
 
-  /* Player column stays left with padding */
-  .entry span:nth-child(2) {
+  /* Player column left w/ padding */
+  .col-player {
     text-align: left;
     padding-left: 24px;
   }
-
   .header-row span:nth-child(2) {
     text-align: left;
     padding-left: 24px;
   }
-  
+
+  /* Rank medals */
+  .col-rank.rank-1 {
+    color: #ffd700; /* Gold */
+  }
+  .col-rank.rank-2 {
+    color: #c0c0c0; /* Silver */
+  }
+  .col-rank.rank-3 {
+    color: #cd7f32; /* Bronze */
+  }
 </style>
 </head>
 
@@ -144,10 +153,8 @@ const API_URL = "https://blue-dust-07fa.nextweekmedia.workers.dev/lobby";
 const LB_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
 const CLIENT_ID = "DISCORD|1069003073311211601";
 const REFRESH_MS = 10000;
-
 const resultsListEl = document.getElementById("resultsList");
 const cardEl = document.getElementById("card");
-
 let lastHash = "";
 
 function resizeCard(count) {
@@ -172,12 +179,14 @@ function display(rows, tracked) {
     if (tracked && String(r.id) === String(tracked)) {
       div.classList.add("highlight-default");
     }
+
     div.innerHTML = `
-      <span>${r.rank}</span>
-      <span>${r.name}</span>
-      <span>${Math.round(r.elo)}</span>
-      <span>${r.wins}</span>
-      <span>${formatWinRate(r.wins, r.matches)}</span>`;
+      <span class="col-rank rank-${r.rank}">${r.rank}</span>
+      <span class="col-player">${r.name}</span>
+      <span class="col-elo">${Math.round(r.elo)}</span>
+      <span class="col-wins">${r.wins}</span>
+      <span class="col-winrate">${formatWinRate(r.wins, r.matches)}</span>`;
+
     resultsListEl.appendChild(div);
   });
   resizeCard(rows.length);
