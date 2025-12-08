@@ -19,8 +19,8 @@
     border-radius: 12px;
     border: none;
   }
-  input { width: 50%; margin-bottom: 8px; }
   button { background:#3b82f6;color:white; cursor:pointer; }
+  input { width: 100%; margin-bottom: 8px; }
   .player-row,.result-row {
     background:rgba(255,255,255,0.08);
     border-radius:12px;
@@ -36,6 +36,11 @@
     padding:10px 14px;
   }
   .error-msg {color:#f87171;font-size:20px;margin-top:8px;}
+  .logout-btn {
+    background:#ef4444;
+    margin-top:12px;
+    width:100%;
+  }
 </style>
 </head>
 
@@ -44,8 +49,9 @@
 
 <!-- PASSWORD SCREEN -->
 <div id="passwordBox">
-  <input id="pw" type="password" placeholder="Enter PIN">
+  <input id="pw" type="password" placeholder="Enter PIN (7466)">
   <button onclick="submitPW()">OK</button>
+  <div id="pwError" class="error-msg"></div>
 </div>
 
 <!-- UI -->
@@ -59,6 +65,8 @@
 
   <h2>Lobby</h2>
   <div id="lobbyList"></div>
+
+  <button class="logout-btn" onclick="logout()">Log Out</button>
 </div>
 
 <script>
@@ -66,32 +74,58 @@ const API_URL = "https://blue-dust-07fa.nextweekmedia.workers.dev/lobby";
 const LB_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
 const CLIENT_ID = "DISCORD|1069003073311211601";
 
-let password = "";
+let password = sessionStorage.getItem("lobbyPIN") || "";
 let leaderboard = [];
 let resolvedPlayers = {};
-let rankMap = {};
 
-async function submitPW() {
-  password = document.getElementById("pw").value.trim();
-  if (!password) return;
+async function init() {
+  if (password) {
+    hidePWBox();
+    await loadLeaderboard();
+    await refreshLobby();
+  } else {
+    showPWBox();
+  }
+}
+
+function showPWBox() {
+  document.getElementById("passwordBox").style.display="block";
+  document.getElementById("ui").style.display="none";
+}
+
+function hidePWBox() {
   document.getElementById("passwordBox").style.display="none";
   document.getElementById("ui").style.display="block";
+}
+
+async function submitPW() {
+  const inputVal = document.getElementById("pw").value.trim();
+  if (!inputVal) return;
+  password = inputVal;
+  sessionStorage.setItem("lobbyPIN", password);
+
+  hidePWBox();
+
   await loadLeaderboard();
   await refreshLobby();
 }
 
+function logout() {
+  sessionStorage.removeItem("lobbyPIN");
+  password = "";
+  showPWBox();
+}
+
 async function loadLeaderboard() {
-  const res = await fetch(LB_URL, {
+  const data = await (await fetch(LB_URL, {
     method: "POST",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify({
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
       leaderboard:"season_10",
       rating_type:"player_global_all",
       client_id:CLIENT_ID
     })
-  });
-
-  const data = await res.json();
+  })).json();
   leaderboard = data.leaderboard;
   resolvedPlayers = data.resolved?.players || {};
 }
@@ -102,8 +136,9 @@ function nameOf(id) {
 }
 
 function showError(msg) {
-  document.getElementById("error").textContent = msg;
-  setTimeout(()=> document.getElementById("error").textContent="",3000);
+  const el = document.getElementById("error");
+  el.textContent = msg;
+  setTimeout(()=> el.textContent="",3000);
 }
 
 async function refreshLobby() {
@@ -125,7 +160,7 @@ function renderLobby(state) {
         tracked: state.tracked===String(id)
       };
     })
-    .sort((a,b)=>(b.elo ?? 0)-(a.elo ?? 0)); // Sort by Elo
+    .sort((a,b)=>(b.elo ?? 0)-(a.elo ?? 0));
 
   rows.forEach(x=>{
     const row = document.createElement("div");
@@ -146,7 +181,14 @@ async function saveState(players, tracked) {
     headers:{"Content-Type":"application/json"},
     body:JSON.stringify({password,players,tracked})
   });
-  if (!res.ok) return showError("Wrong PIN?");
+
+  if (!res.ok) {
+    sessionStorage.removeItem("lobbyPIN");
+    password = "";
+    showPWBox();
+    showError("PIN expired — please re-enter");
+    return;
+  }
   await refreshLobby();
 }
 
@@ -168,7 +210,6 @@ async function searchPlayers() {
 
   if (!q) return;
 
-  // direct ID lookup shortcut
   if (/^\d+$/.test(q)) return addResult(q, sr);
 
   const lc = q.toLowerCase();
@@ -200,6 +241,8 @@ async function addPlayer(id) {
   state.players.push(id);
   await saveState(state.players, state.tracked);
 }
+
+init(); // kick off session-restored UI
 </script>
 </body>
 </html>
