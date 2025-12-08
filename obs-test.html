@@ -110,7 +110,7 @@ html, body {
   font-weight:900;
 }
 
-/* UNIFIED DELTA ARROW STYLE - applied to all */
+/* UNIFIED small arrow styling */
 .delta-arrow {
   font-size: 0.6em;
   vertical-align: middle;
@@ -312,22 +312,25 @@ async function fetchData(){
   lastElo=elo;
   lastWins=wins;
 
-  // Subvalues (no animation)
-  rankSub.textContent = `out of ${sorted.length} players`;
+  // Subtext improvements
+  rankSub.textContent = `out of ${sorted.length}`;
 
   const sessionDiff = elo - initialElo;
-  const sessionArrow = sessionDiff > 0 ? "▲" : sessionDiff < 0 ? "▼" : "";
-  const sessionClass = sessionDiff > 0 ? "delta-positive" :
-                       sessionDiff < 0 ? "delta-negative" : "";
 
-  eloSub.innerHTML = `Session:
-    <span class="session-delta ${sessionClass}">
-      <span class="delta-arrow">${sessionArrow}</span>${Math.abs(sessionDiff)}
-    </span>`;
+  if(sessionDiff === 0) {
+    eloSub.textContent = `Session: —`;
+  } else {
+    const sessionArrow = sessionDiff > 0 ? "▲" : "▼";
+    const sessionClass = sessionDiff > 0 ? "delta-positive" : "delta-negative";
 
-  winsSub.textContent = `Matches: ${matches} (${winRate}%)`;
+    eloSub.innerHTML = `Session:
+      <span class="session-delta ${sessionClass}">
+        <span class="delta-arrow">${sessionArrow}</span>${Math.abs(sessionDiff)}
+      </span>`;
+  }
 
-  // Tier
+  winsSub.textContent = `Games: ${matches} (${winRate}%)`;
+
   const cfg=data.resolved?.leaderboards?.["Season_10"];
   let tier = null;
   if(cfg){
