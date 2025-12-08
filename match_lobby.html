@@ -59,16 +59,10 @@
     text-align: center;
   }
 
-  .header-row span:nth-child(2) {
-    text-align: left;
-    padding-left: 24px;
-  }
-
   #resultsList {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    opacity: 1;
     transition: opacity .3s ease;
   }
 
@@ -83,34 +77,16 @@
     transition: background .3s ease, box-shadow .3s ease;
   }
 
-  .rank-value, .elo-value, .wins-value, .wr-value {
-    font-size: 42px;
-    font-weight: 800;
-    text-align: center;
-    line-height: 1;
-  }
-
-  .player-name {
-    font-size: 36px;
-    font-weight: 600;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    text-align: left;
-    padding: 0 36px;
+  .highlight-default {
+    background: rgba(52, 211, 153, 0.30);
+    box-shadow: 0 0 18px rgba(16, 185, 129, 0.3);
   }
 
   .entry > span {
     border-right: 2px solid rgba(255,255,255,0.14);
     height: 45px;
-    position: relative;
   }
   .entry > span:last-child { border-right: none; }
-
-  .highlight-default {
-    background: rgba(52, 211, 153, 0.30);
-    box-shadow: 0 0 18px rgba(16, 185, 129, 0.3);
-  }
 
   .loading, .error {
     font-size: 36px;
@@ -136,15 +112,15 @@
 </div>
 
 <script>
+const API_URL = "https://blue-dust-07fa.nextweekmedia.workers.dev/lobby";
 const LB_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
 const CLIENT_ID = "DISCORD|1069003073311211601";
-const REFRESH_MS = 15000;
+const REFRESH_MS = 10000;
+
+const resultsListEl = document.getElementById("resultsList");
+const cardEl = document.getElementById("card");
 
 let lastHash = "";
-let initialLoad = true;
-
-const cardEl = document.getElementById("card");
-const resultsListEl = document.getElementById("resultsList");
 
 function resizeCard(count) {
   const h = 56 + 24 + 60 + 14 + 48 + 50 + (90 * count) + (10 * (count - 1));
@@ -156,44 +132,36 @@ function hashState(rows) {
 }
 
 function formatWinRate(wins, matches) {
-  if (!matches || matches <= 0) return "—";
+  if (!matches) return "—";
   return `${((wins / matches) * 100).toFixed(1)}%`;
 }
 
 function display(rows, tracked) {
   resultsListEl.innerHTML = "";
-
   rows.forEach(r => {
-    const row = document.createElement("div");
-    row.className = "entry";
+    const div = document.createElement("div");
+    div.className = "entry";
     if (tracked && String(r.id) === String(tracked)) {
-      row.classList.add("highlight-default");
+      div.classList.add("highlight-default");
     }
-    row.innerHTML = `
-      <span class="rank-value">${r.rank}</span>
-      <span class="player-name">${r.name}</span>
-      <span class="elo-value">${Math.round(r.elo)}</span>
-      <span class="wins-value">${r.wins}</span>
-      <span class="wr-value">${formatWinRate(r.wins, r.matches)}</span>
-    `;
-    resultsListEl.appendChild(row);
+    div.innerHTML = `
+      <span>${r.rank}</span>
+      <span>${r.name}</span>
+      <span>${Math.round(r.elo)}</span>
+      <span>${r.wins}</span>
+      <span>${formatWinRate(r.wins, r.matches)}</span>`;
+    resultsListEl.appendChild(div);
   });
-
   resizeCard(rows.length);
 }
 
 async function fetchData() {
-  const lobbyPlayers = JSON.parse(localStorage.getItem("matchLobbyPlayers") || "[]");
-  const tracked = localStorage.getItem("matchLobbyTracked") || "";
-
-  if (lobbyPlayers.length < 2)
-    return resultsListEl.innerHTML = `<div class='loading'>Add 2+ players in Match Lobby Control</div>`;
-
-  if (lobbyPlayers.length > 8)
-    return resultsListEl.innerHTML = `<div class='error'>Max 8 players allowed</div>`;
-
   try {
-    const resp = await fetch(LB_URL, {
+    const lobby = await (await fetch(API_URL)).json();
+    if (!Array.isArray(lobby.players) || lobby.players.length < 2)
+      return resultsListEl.innerHTML = `<div class='loading'>Add 2+ players</div>`;
+
+    const lb = await (await fetch(LB_URL, {
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({
@@ -201,55 +169,43 @@ async function fetchData() {
         rating_type: "player_global_all",
         client_id: CLIENT_ID
       })
-    });
+    })).json();
 
-    const data = await resp.json();
-    const leaderboard = data.leaderboard || [];
-    const resolvedPlayers = data.resolved?.players || {};
+    const leaderboard = lb.leaderboard || [];
+    const resolved = lb.resolved?.players || {};
 
-    const sorted = [...leaderboard].sort((a,b) => (b.elo ?? 0) - (a.elo ?? 0));
+    const sortedByElo = [...leaderboard].sort((a,b)=>(b.elo ?? 0)-(a.elo ?? 0));
     const rankMap = {};
-    sorted.forEach((e,i)=>{
-      const id = e.team?.[0];
-      if (id!=null) rankMap[String(id)] = i+1;
-    });
+    sortedByElo.forEach((e,i)=> rankMap[e.team?.[0]] = i+1 );
 
-    const rows = lobbyPlayers.map(id => {
+    const rows = lobby.players.map(id => {
       const entry = leaderboard.find(e => String(e.team?.[0]) === String(id)) || {};
-      const wins = entry.count_placement_1 ?? 0;
-      const matches = entry.matches ?? 0;
       return {
         id,
-        name: resolvedPlayers[id]?.display_name || resolvedPlayers[id]?.username || `Player ${id}`,
+        name: resolved[id]?.display_name || resolved[id]?.username || `Player ${id}`,
         elo: entry.elo ?? 0,
-        wins,
-        matches,
+        wins: entry.count_placement_1 ?? 0,
+        matches: entry.matches ?? 0,
         rank: rankMap[id] ?? "—"
       };
-    });
+    }).sort((a,b)=>(a.rank ?? 99999)-(b.rank ?? 99999));
 
-    const sortedRows = rows.sort((a,b) => (a.rank ?? 99999) - (b.rank ?? 99999));
-    const newHash = hashState(sortedRows);
-
-    if (initialLoad || newHash !== lastHash) {
-      lastHash = newHash;
-      initialLoad = false;
+    const hash = hashState(rows);
+    if (hash !== lastHash) {
+      lastHash = hash;
       resultsListEl.style.opacity = 0;
-      setTimeout(() => {
-        display(sortedRows, tracked);
-        requestAnimationFrame(() => (resultsListEl.style.opacity = 1));
-      }, 300);
+      setTimeout(()=>{
+        display(rows, lobby.tracked);
+        resultsListEl.style.opacity = 1;
+      },300);
     }
-  }
-  catch (err) {
-    resultsListEl.innerHTML = `<div class="error">${err.message}</div>`;
+  } catch {
+    resultsListEl.innerHTML = `<div class='error'>API Error</div>`;
   }
 }
 
-window.addEventListener("storage", fetchData);
 fetchData();
 setInterval(fetchData, REFRESH_MS);
 </script>
-
 </body>
 </html>
