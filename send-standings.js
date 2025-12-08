@@ -30,7 +30,6 @@ function buildFieldBlock(rows) {
       const name = r[2];
       const score = r[3] ?? "–";
 
-      // For top 3: medal replaces rank entirely
       const rankDisplay = medals[i] || `**${rank}**`;
 
       return `${rankDisplay} ${score} ${name}`;
@@ -66,7 +65,6 @@ async function main() {
 
   const embed = await buildEmbed();
 
-  // If MESSAGE_ID isn't set, create a new webhook message
   if (!MESSAGE_ID) {
     console.log("No MESSAGE_ID — creating a new message…");
     const res = await fetch(`${WEBHOOK_URL}?wait=true`, {
@@ -80,7 +78,6 @@ async function main() {
     return;
   }
 
-  // Update an existing webhook message
   const res = await fetch(`${WEBHOOK_URL}/messages/${MESSAGE_ID}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
