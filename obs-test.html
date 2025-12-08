@@ -332,13 +332,13 @@ async function fetchData(){
   lastWins=wins;
 
   // NEW: Update subtext fields
-  rankSub.textContent = `out of ${sorted.length} players`;
+  rankSub.textContent = `out of ${sorted.length}`;
 
   const sessionDiff = elo - initialElo;
   const sign = sessionDiff > 0 ? "+" : "";
   eloSub.textContent = `Session: ${sign}${sessionDiff}`;
 
-  winsSub.textContent = `Total Matches: ${matches} (${winRate}%)`;
+  winsSub.textContent = `Matches: ${matches} (${winRate}%)`;
 
   // Tier logic unchanged…
   const cfg=data.resolved?.leaderboards?.["Season_10"];
