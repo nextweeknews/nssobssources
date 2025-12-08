@@ -21,9 +21,20 @@ async function getData(range) {
 }
 
 function buildFieldBlock(rows) {
+  const medals = ["🥇", "🥈", "🥉"];
+
   return rows
     .filter(r => r[0] && r[2])
-    .map(r => `**#${r[0]}** ${r[2]} — **${r[3] ?? "–"}**`)
+    .map((r, i) => {
+      const rank = r[0];
+      const name = r[2];
+      const score = r[3] ?? "–";
+
+      // For top 3: medal replaces rank entirely
+      const rankDisplay = medals[i] || `**${rank}**`;
+
+      return `${rankDisplay} ${score} ${name}`;
+    })
     .join("\n");
 }
 
@@ -33,11 +44,14 @@ async function buildEmbed() {
     getData(RANGES.players)
   ]);
 
+  const sheetLink = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit?usp=sharing`;
+
   return {
     title: "Shotgun League — Season 5 Standings",
     description:
-      `__Team Standings__\n${buildFieldBlock(teams)}\n\n` +
-      `__Top 10 Players__\n${buildFieldBlock(players)}`,
+      `**Team Standings**\n${buildFieldBlock(teams)}\n\n` +
+      `**Top 10 Players**\n${buildFieldBlock(players)}\n\n` +
+      `[Full & Previous Season Results](${sheetLink})`,
     color: 0x22c55e,
     footer: { text: "Live from Google Sheets" },
     timestamp: new Date().toISOString()
@@ -52,6 +66,7 @@ async function main() {
 
   const embed = await buildEmbed();
 
+  // If MESSAGE_ID isn't set, create a new webhook message
   if (!MESSAGE_ID) {
     console.log("No MESSAGE_ID — creating a new message…");
     const res = await fetch(`${WEBHOOK_URL}?wait=true`, {
@@ -65,6 +80,7 @@ async function main() {
     return;
   }
 
+  // Update an existing webhook message
   const res = await fetch(`${WEBHOOK_URL}/messages/${MESSAGE_ID}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
