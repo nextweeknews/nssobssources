@@ -2,7 +2,7 @@ name: Update Standings Every Minute
 
 on:
   schedule:
-    - cron: "*/1 * * * *"  # every minute
+    - cron: "*/5 * * * *"  # every 5 minutes
   workflow_dispatch:      # allows running manually from Actions tab
 
 jobs:
