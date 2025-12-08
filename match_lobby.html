@@ -93,6 +93,34 @@
     width: 100%;
     text-align: center;
   }
+
+  /* Center-align numeric/stat columns */
+  .entry span:nth-child(1), /* Rank */
+  .entry span:nth-child(3), /* Elo */
+  .entry span:nth-child(4), /* Wins */
+  .entry span:nth-child(5)  /* Win Rate */ {
+    text-align: center;
+  }
+
+  /* Ensure header row also centers matching columns */
+  .header-row span:nth-child(1),
+  .header-row span:nth-child(3),
+  .header-row span:nth-child(4),
+  .header-row span:nth-child(5) {
+    text-align: center;
+  }
+
+  /* Player column stays left with padding */
+  .entry span:nth-child(2) {
+    text-align: left;
+    padding-left: 24px;
+  }
+
+  .header-row span:nth-child(2) {
+    text-align: left;
+    padding-left: 24px;
+  }
+  
 </style>
 </head>
 
