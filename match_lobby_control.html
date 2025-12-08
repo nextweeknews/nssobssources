@@ -19,8 +19,8 @@
     border-radius: 12px;
     border: none;
   }
-  input { width: calc(100% - 100px); margin-bottom: 8px; }
-  button { background:#3b82f6;color:white;margin-left:4px; }
+  input { width: 100%; margin-bottom: 8px; }
+  button { background:#3b82f6;color:white; cursor:pointer; }
   .player-row,.result-row {
     background:rgba(255,255,255,0.08);
     border-radius:12px;
@@ -31,6 +31,10 @@
     justify-content:space-between;
     align-items:center;
   }
+  .player-row button, .result-row button {
+    font-size:20px;
+    padding:10px 14px;
+  }
   .error-msg {color:#f87171;font-size:20px;margin-top:8px;}
 </style>
 </head>
@@ -38,14 +42,15 @@
 <body>
 <h1>Match Lobby Control</h1>
 
+<!-- PASSWORD SCREEN -->
 <div id="passwordBox">
-  <input id="pw" type="password" placeholder="Enter PIN (7466)">
+  <input id="pw" type="password" placeholder="Enter PIN">
   <button onclick="submitPW()">OK</button>
 </div>
 
+<!-- UI -->
 <div id="ui" style="display:none">
-  <input id="search" placeholder="Search by ID or name…" />
-  <button onclick="searchPlayers()">Search</button>
+  <input id="search" placeholder="Search by ID or name…" oninput="searchPlayers()" autocomplete="off" />
 
   <div id="error" class="error-msg"></div>
 
@@ -76,24 +81,24 @@ async function submitPW() {
 }
 
 async function loadLeaderboard() {
-  const data = await (await fetch(LB_URL, {
+  const res = await fetch(LB_URL, {
     method: "POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({
       leaderboard:"season_10",
       rating_type:"player_global_all",
       client_id:CLIENT_ID
     })
-  })).json();
+  });
+
+  const data = await res.json();
   leaderboard = data.leaderboard;
   resolvedPlayers = data.resolved?.players || {};
-  const sorted = [...leaderboard].sort((a,b)=>(b.elo ?? 0)-(a.elo ?? 0));
-  sorted.forEach((e,i)=> rankMap[String(e.team?.[0])] = i+1 );
 }
 
 function nameOf(id) {
-  const rp = resolvedPlayers[id] || {};
-  return rp.display_name || rp.username || `Player ${id}`;
+  const p = resolvedPlayers[id] || {};
+  return p.display_name || p.username || `Player ${id}`;
 }
 
 function showError(msg) {
@@ -109,23 +114,24 @@ async function refreshLobby() {
 function renderLobby(state) {
   const container = document.getElementById("lobbyList");
   container.innerHTML="";
+
   const rows = state.players
     .map(id=>{
       const e = leaderboard.find(x=>String(x.team?.[0])===String(id)) || {};
       return {
         id,
         name:nameOf(id),
-        rank:rankMap[id] ?? "—",
+        elo: e?.elo ?? 0,
         tracked: state.tracked===String(id)
       };
     })
-    .sort((a,b)=>(a.rank ?? 99999)-(b.rank ?? 99999));
+    .sort((a,b)=>(b.elo ?? 0)-(a.elo ?? 0)); // Sort by Elo
 
   rows.forEach(x=>{
     const row = document.createElement("div");
     row.className="player-row";
     row.innerHTML = `
-      <span>${x.name} (R${x.rank})</span>
+      <span>${x.name} (Elo ${Math.round(x.elo)})</span>
       <span style="display:flex;gap:6px">
         <button onclick="setTracked('${x.id}')">${x.tracked?'Untrack':'Track'}</button>
         <button onclick="removePlayer('${x.id}')">X</button>
@@ -161,21 +167,28 @@ async function searchPlayers() {
   sr.innerHTML="";
 
   if (!q) return;
+
+  // direct ID lookup shortcut
   if (/^\d+$/.test(q)) return addResult(q, sr);
 
   const lc = q.toLowerCase();
-  const results = leaderboard.filter(e=>{
-    const id=e.team?.[0];
-    return nameOf(id).toLowerCase().includes(lc);
-  }).slice(0, 10);
+  const results = leaderboard
+    .filter(e=>{
+      const id=e.team?.[0];
+      return nameOf(id).toLowerCase().includes(lc);
+    })
+    .slice(0, 10);
 
   results.forEach(e=> addResult(e.team?.[0], sr));
 }
 
 function addResult(id, container) {
+  const e = leaderboard.find(x => String(x.team?.[0]) === String(id)) || {};
+  const elo = e.elo != null ? Math.round(e.elo) : "—";
+
   const div=document.createElement("div");
   div.className="result-row";
-  div.innerHTML = `<span>${nameOf(id)} (R${rankMap[id]})</span>
+  div.innerHTML = `<span>${nameOf(id)} (Elo ${elo})</span>
     <button onclick="addPlayer('${id}')">Add</button>`;
   container.appendChild(div);
 }
