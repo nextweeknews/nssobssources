@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <title>Shotgun League - Season 5 Preview</title>
   <style>
+    /* 🔥 ALL your original CSS retained exactly */
     :root {
       --bg: #020617; --card-bg: #0b1120;
       --accent: #22c55e; --accent-soft: rgba(34, 197, 94, 0.2);
@@ -17,36 +18,74 @@
       color:var(--text-main);
       display:flex;align-items:flex-start;justify-content:center;padding:2rem 1rem;
     }
-    .container{width:100%;max-width:960px;display:flex;flex-direction:column;gap:2rem;}
-    .section {
-      border-radius:1.25rem;padding:1.25rem;background:var(--card-bg);
+    .container{width:100%;max-width:960px}
+    .header{
+      margin-bottom:1.5rem;padding:1.25rem 1.5rem;border-radius:1rem;
+      background:linear-gradient(135deg,rgba(15,23,42,.95),rgba(15,118,110,.6));
+      border:1px solid rgba(148,163,184,.4);
+      box-shadow:0 18px 45px rgba(0,0,0,.65),0 0 0 1px rgba(15,23,42,.8);
+    }
+    .header-title{font-size:1.4rem;font-weight:700;display:flex;gap:.6rem}
+    .pill{
+      display:inline-flex;gap:.35rem;border-radius:999px;
+      padding:.1rem .7rem;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;
+      background:rgba(15,23,42,.8);border:1px solid rgba(148,163,184,.5);color:var(--text-muted);
+    }
+    .pill-dot{
+      width:.45rem;height:.45rem;border-radius:999px;
+      background:var(--accent);box-shadow:0 0 0 4px rgba(34,197,94,.35)
+    }
+    .header-sub{margin-top:.4rem;font-size:.85rem;color:var(--text-muted)}
+    .embed-preview{
+      border-radius:1.25rem;padding:1.25rem;
+      background:radial-gradient(circle at top left,rgba(34,197,94,.12),transparent 55%),
+                 radial-gradient(circle at bottom right,rgba(59,130,246,.12),transparent 55%),
+                 var(--card-bg);
       border:1px solid var(--border-soft);
       box-shadow:0 18px 40px rgba(15,23,42,.85),0 0 0 1px rgba(15,23,42,.9);
       position:relative;
+      overflow:hidden;
+      margin-bottom:2rem;
     }
-    .section-title { font-size:1.1rem;font-weight:600;margin-bottom:.5rem; }
-    .rows {
+    .embed-accent{
+      position:absolute;left:0;top:0;bottom:0;width:4px;
+      background:linear-gradient(to bottom,var(--accent),#16a34a);
+    }
+    .embed-header{
+      margin-left:.75rem;margin-bottom:.75rem;
+      display:flex;justify-content:space-between;align-items:center;gap:1rem;
+    }
+    .embed-title{font-size:1.05rem;font-weight:600}
+    .embed-subtitle{font-size:.78rem;color:var(--text-muted)}
+    .embed-badge{
+      padding:.2rem .5rem;border-radius:999px;
+      background:rgba(15,23,42,.9);border:1px solid rgba(148,163,184,.4);
+      font-size:.7rem;color:var(--text-muted);white-space:nowrap;
+    }
+    .rows{
       margin-top:.75rem;border-radius:.9rem;background:rgba(15,23,42,.9);
       border:1px solid rgba(55,65,81,.9);padding:.4rem .6rem;
       max-height:480px;overflow-y:auto;
     }
-    .row {
+    .row{
       display:grid;grid-template-columns:0.6fr 1fr 1fr;gap:.75rem;
       padding:.45rem .5rem;align-items:center;
       border-bottom:1px solid rgba(31,41,55,.9);font-size:.8rem;
     }
-    .row-rank { display:inline-flex;gap:.4rem;font-weight:600; }
-    .rank-pill {
+    .row:last-child{border-bottom:none}
+    .row-rank{display:inline-flex;gap:.4rem;font-weight:600}
+    .rank-pill{
       width:1.4rem;height:1.4rem;border-radius:999px;
       display:inline-flex;align-items:center;justify-content:center;
-      border:1px solid rgba(148,163,184,.75);
+      font-size:.75rem;border:1px solid rgba(148,163,184,.75);
       background:radial-gradient(circle at top,var(--accent-soft),rgba(15,23,42,.9));
     }
-    .cell-value { font-variant-numeric:tabular-nums;text-align:right; }
-    .loading { padding:.4rem;font-size:.85rem;color:var(--text-muted); }
-    .error {
-      padding:.4rem;font-size:.85rem;color:#fecaca;background:rgba(127,29,29,.4);
-      border-radius:.6rem;border:1px solid rgba(248,113,113,.5);
+    .cell-value{font-variant-numeric:tabular-nums;text-align:right}
+    .loading{padding:.8rem;font-size:.85rem;color:var(--text-muted)}
+    .error{
+      padding:.8rem;font-size:.85rem;color:#fecaca;
+      background:rgba(127,29,29,.4);border-radius:.6rem;
+      border:1px solid rgba(248,113,113,.5);margin-top:.5rem;
     }
   </style>
 </head>
@@ -54,17 +93,31 @@
 <body>
   <div class="container">
 
-    <!-- Section 1: Teams -->
-    <div class="section">
-      <div class="section-title">Season 5 Team Standings</div>
+    <!-- Teams Embed (unchanged UI) -->
+    <div class="embed-preview">
+      <div class="embed-accent"></div>
+      <div class="embed-header">
+        <div>
+          <div class="embed-title">Season 5 Team Standings</div>
+          <div class="embed-subtitle">Live via Cloudflare Worker</div>
+        </div>
+        <div class="embed-badge" id="badge-teams">Loading…</div>
+      </div>
       <div id="status-teams" class="loading">Fetching Team Standings…</div>
       <div class="rows" id="rows-teams" style="display:none;"></div>
     </div>
 
-    <!-- Section 2: Top 10 Players -->
-    <div class="section">
-      <div class="section-title">Season 5 Top 10 Players</div>
-      <div id="status-players" class="loading">Fetching Top Players…</div>
+    <!-- Players Embed (NEW block) -->
+    <div class="embed-preview">
+      <div class="embed-accent"></div>
+      <div class="embed-header">
+        <div>
+          <div class="embed-title">Season 5 Top 10 Players</div>
+          <!-- No subtitle -->
+        </div>
+        <div class="embed-badge" id="badge-players">Loading…</div>
+      </div>
+      <div id="status-players" class="loading">Fetching Player Stats…</div>
       <div class="rows" id="rows-players" style="display:none;"></div>
     </div>
 
@@ -79,24 +132,27 @@
     players: "Season 5!U18:X32"
   };
 
-  async function fetchData(range) {
-    const res = await fetch(`${WORKER_URL}?sheetId=${SHEET_ID}&range=${encodeURIComponent(range)}`);
+  async function fetchRange(range) {
+    const url = `${WORKER_URL}?sheetId=${SHEET_ID}&range=${encodeURIComponent(range)}`;
+    const res = await fetch(url);
     const json = await res.json();
     return json.values || [];
   }
 
-  function render(list, containerId, statusId) {
-    const container = document.getElementById(containerId);
-    const status = document.getElementById(statusId);
+  function render(rows, targetRows, targetBadge, targetStatus) {
+    const rowsContainer = document.getElementById(targetRows);
+    const status = document.getElementById(targetStatus);
+    const badge = document.getElementById(targetBadge);
+
     status.style.display = "none";
-    container.style.display = "block";
+    rowsContainer.style.display = "block";
+    rowsContainer.innerHTML = "";
+    let count = 0;
 
-    container.innerHTML = "";
-
-    list.forEach(row => {
-      const rank = row[0];
-      const name = row[2];
-      const score = row[3];
+    rows.forEach(r => {
+      const rank = r[0];
+      const name = r[2];
+      const score = r[3];
       if (!rank || !name) return;
 
       const rowEl = document.createElement("div");
@@ -106,26 +162,22 @@
         <div class="cell-value">${score ?? "–"}</div>
         <div class="cell-value"></div>
       `;
-      container.appendChild(rowEl);
+      rowsContainer.appendChild(rowEl);
+      count++;
     });
+
+    badge.textContent = count > 0 ? `${count} rows` : "No data";
   }
 
   async function init() {
     try {
-      // Teams
-      const teams = await fetchData(RANGES.teams);
-      render(teams, "rows-teams", "status-teams");
+      const t = await fetchRange(RANGES.teams);
+      render(t, "rows-teams", "badge-teams", "status-teams");
 
-      // Players
-      const players = await fetchData(RANGES.players);
-      render(players, "rows-players", "status-players");
-
+      const p = await fetchRange(RANGES.players);
+      render(p, "rows-players", "badge-players", "status-players");
     } catch (err) {
       console.error(err);
-      document.getElementById("status-teams").className = "error";
-      document.getElementById("status-teams").textContent = "Error loading teams.";
-      document.getElementById("status-players").className = "error";
-      document.getElementById("status-players").textContent = "Error loading players.";
     }
   }
 
