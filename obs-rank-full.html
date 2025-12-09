@@ -248,9 +248,9 @@ function normalize(list,res){
       rank:i+1,
       id,
       name:rp.display_name || rp.username || `Player ${id}`,
-      elo:Math.round(e.elo??0.0),
+      elo:Math.round(e.elo??0),
       wins,
-      winRate:m>0?Math.round((wins/m)*100):null
+      winRate: m > 0 ? ((wins / m) * 100).toFixed(1) : null
     };
   });
 }
