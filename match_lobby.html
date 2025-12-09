@@ -47,7 +47,6 @@
     align-items: center;
   }
 
-  /* HEADER formatting */
   .header-row {
     height: 60px;
     margin-bottom: 14px;
@@ -59,21 +58,19 @@
     border-radius: 12px;
   }
 
-/* HEADER alignment — corrected */
-.header-row .col {
-  border-right: none !important;
-  text-align: center;
-  justify-content: center;
-  padding-left: 0;
-}
+  .header-row .col {
+    border-right: none !important;
+    text-align: center;
+    justify-content: center;
+    padding-left: 0;
+  }
 
-.header-row .col.col-name {
-  text-align: left !important;
-  justify-content: flex-start !important;
-  padding-left: 24px;
-}
+  .header-row .col.col-name {
+    text-align: left !important;
+    justify-content: flex-start !important;
+    padding-left: 24px;
+  }
 
-  /* ROW formatting */
   .entry .col {
     height: 45px;
     display: flex;
@@ -81,7 +78,6 @@
     padding: 0 12px;
     font-size: 42px;
     font-weight: 600;
-    color: #fff;
     border-right: 2px solid rgba(255,255,255,0.14);
   }
   .entry .col:last-child {
@@ -119,9 +115,9 @@
 
   .entry .col-winrate {
     font-size: 36px;
-    color: #d3d3d3;
     text-align: center;
     align-items: center;
+    color: inherit !important;
   }
 
   #resultsList {
@@ -139,13 +135,11 @@
     transition: background .3s ease, box-shadow .3s ease;
   }
 
-  /* Highlight current user row */
   .entry.highlight-default {
     background: rgba(52,211,153,0.30);
     box-shadow: 0 0 18px rgba(16,185,129,0.3);
   }
 
-  /* Medal coloring */
   .col-rank.rank-1 { color: #ffd700; }
   .col-rank.rank-2 { color: #c0c0c0; }
   .col-rank.rank-3 { color: #cd7f32; }
@@ -199,12 +193,32 @@ function display(rows, tracked){
     const row=document.createElement("div");
     row.className="entry";
     if(String(r.id)===String(tracked)) row.classList.add("highlight-default");
+
+    const winRate = r.matches ? (r.wins / r.matches) * 100 : null;
+    const winRateText = winRate === null ? "—" : winRate.toFixed(1) + "%";
+
+    // 🔥 Conditional formatting (added)
+    let color = "#d3d3d3";
+    if(winRate !== null){
+      if(winRate <= 15){
+        color = "#ff4d4d"; // red
+      } else if(winRate >= 50){
+        color = "#4ade80"; // green
+      } else {
+        const t = (winRate - 15) / (50 - 15);
+        const rCol = Math.round(255 - (255 - 250) * t);
+        const gCol = Math.round(77 + (218 - 77) * t);
+        const bCol = Math.round(77 - (128 * t));
+        color = `rgb(${rCol},${gCol},${Math.max(bCol,0)})`;
+      }
+    }
+
     row.innerHTML=`
       <span class="col col-rank rank-${r.rank}">${r.rank}</span>
       <span class="col col-name">${r.name}</span>
       <span class="col col-elo">${Math.round(r.elo)}</span>
       <span class="col col-wins">${r.wins}</span>
-      <span class="col col-winrate">${formatWinRate(r.wins,r.matches)}</span>
+      <span class="col col-winrate" style="color:${color} !important;">${winRateText}</span>
     `;
     resultsListEl.appendChild(row);
   });
