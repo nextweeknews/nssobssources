@@ -101,26 +101,26 @@
       padding-right: 24px;
     }
 
-    /* Individual stat column styling — identical for now */
+    /* Individual stat column styling */
     .elo-col {
       font-size: 24px;
       font-weight: 750;
       text-align: center;
       color: #ffffff;
     }
-    
+
     .wins-col {
       font-size: 20px;
       font-weight: 500;
       text-align: center;
       color: #98fb98;
     }
-    
+
     .wr-col {
       font-size: 20px;
       font-weight: 500;
       text-align: center;
-      color: #d3d3d3;
+      color: #d3d3d3; /* fallback */
     }
 
     .gold { color: #ffd700; }
@@ -138,22 +138,10 @@
     .entry > span:nth-child(2) { justify-content: flex-start; }
     .entry > span:last-child { border-right: none; }
 
-    /* Compact highlight */
-    .entry.highlight-gold {
-      background: rgba(255,215,0,0.18);
-    }
-
-    .entry.highlight-silver {
-      background: rgba(192,192,192,0.18);
-    }
-
-    .entry.highlight-bronze {
-      background: rgba(205,127,50,0.18);
-    }
-
-    .entry.highlight-default {
-      background: rgba(52,211,153,0.20);
-    }
+    .entry.highlight-gold     { background: rgba(255,215,0,0.18); }
+    .entry.highlight-silver   { background: rgba(192,192,192,0.18); }
+    .entry.highlight-bronze   { background: rgba(205,127,50,0.18); }
+    .entry.highlight-default  { background: rgba(52,211,153,0.20); }
 
     .loading, .error {
       width: 100%;
@@ -193,6 +181,40 @@ const CARD_H=880;
 
 let lastState=null;
 
+function getWinRateColor(rate) {
+  if (rate == null) return "#d3d3d3";
+  if (rate <= 15) return "#f87171"; // red
+  if (rate >= 50) return "#4ade80"; // green
+
+  const mid = 32.5;
+  if (rate < mid) {
+    const t = (rate - 15) / (mid - 15);
+    return interpolateColor("#f87171", "#facc15", t);
+  } else {
+    const t = (rate - mid) / (50 - mid);
+    return interpolateColor("#facc15", "#4ade80", t);
+  }
+}
+
+function interpolateColor(c1, c2, t) {
+  const a = parseInt(c1.slice(1), 16),
+        b = parseInt(c2.slice(1), 16);
+
+  const ar = (a >> 16) & 0xff,
+        ag = (a >> 8) & 0xff,
+        ab = a & 0xff;
+
+  const br = (b >> 16) & 0xff,
+        bg = (b >> 8) & 0xff,
+        bb = b & 0xff;
+
+  const rr = Math.round(ar + t * (br - ar)),
+        rg = Math.round(ag + t * (bg - ag)),
+        rb = Math.round(ab + t * (bb - ab));
+
+  return `rgb(${rr},${rg},${rb})`;
+}
+
 function adjustSpacing(rowCount){
   const content=rowCount*ROW_H;
   const remain=CARD_H - TITLE_H - HEADER_H - content;
@@ -229,7 +251,9 @@ function render(list){
       <span class="player-name">${p.name}</span>
       <span class="elo-col">${p.elo}</span>
       <span class="wins-col">${p.wins}</span>
-      <span class="wr-col">${p.winRate!=null?p.winRate+"%":"—"}</span>
+      <span class="wr-col" style="color:${getWinRateColor(p.winRate)}">
+        ${p.winRate != null ? p.winRate.toFixed(1) + "%" : "—"}
+      </span>
     `;
 
     el.appendChild(r);
@@ -244,13 +268,13 @@ function normalize(list,res){
     const rp=res[id]||{};
     const wins=e.count_placement_1??0;
     const m=e.matches??0;
-    return{
+    return {
       rank:i+1,
       id,
       name:rp.display_name || rp.username || `Player ${id}`,
-      elo:Math.round(e.elo??0),
+      elo:Math.round(e.elo??0.0),
       wins,
-      winRate: m > 0 ? ((wins / m) * 100).toFixed(1) : null
+      winRate:m>0?((wins/m)*100):null // one decimal formatting happens in render
     };
   });
 }
@@ -259,10 +283,7 @@ function pickSlice(list){
   const idx=list.findIndex(p=>String(p.id)===PLAYER_ID);
   if(idx<0) return list.slice(0,16);
   if(list[idx].rank<=16) return list.slice(0,16);
-  const start=Math.min(
-    Math.max(idx-Math.floor(15/2),0),
-    list.length-15
-  );
+  const start=Math.min(Math.max(idx-Math.floor(15/2),0), list.length-15);
   return list.slice(start,start+15);
 }
 
