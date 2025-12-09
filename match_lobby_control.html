@@ -19,7 +19,17 @@
     border-radius: 12px;
     border: none;
   }
+  
   button { background:#3b82f6;color:white; cursor:pointer; }
+  .remove-btn {
+    background: #ef4444 !important; /* bright red */
+    padding: 10px 20px !important;  /* wider */
+    font-weight: 700;
+  }
+  .remove-btn:hover {
+    background: #dc2626 !important; /* darker red hover */
+  }
+
   input { width: 60%; margin-bottom: 8px; }
   .player-row,.result-row {
     background:rgba(255,255,255,0.08);
@@ -160,7 +170,7 @@ function renderLobby(state) {
       <span>${x.name} (${Math.round(x.elo)})</span>
       <span style="display:flex;gap:6px">
         <button onclick="setTracked('${x.id}')">${x.tracked?'Untrack':'Track'}</button>
-        <button onclick="removePlayer('${x.id}')">X</button>
+        <button class="remove-btn" onclick="removePlayer('${x.id}')">X</button>
       </span>`;
     container.appendChild(row);
   });
