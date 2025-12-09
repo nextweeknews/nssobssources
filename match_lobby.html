@@ -197,22 +197,25 @@ function display(rows, tracked){
     const winRate = r.matches ? (r.wins / r.matches) * 100 : null;
     const winRateText = winRate === null ? "—" : winRate.toFixed(1) + "%";
 
-    // 🔥 Conditional formatting (added)
-    let color = "#d3d3d3";
-    if(winRate !== null){
-      if(winRate <= 10){
+    // 🔥 Conditional formatting
+    let color = "#d3d3d3"; // Default gray
+    if (Number.isFinite(winRate)) {
+      if (winRate <= 10) {
         color = "#ff4d4d"; // red
-      } else if(winRate >= 40){
+      } else if (winRate >= 40) {
         color = "#4ade80"; // green
       } else {
-        const t = (winRate - 10) / (40 - 10);
-        const rCol = Math.round(255 - (255 - 250) * t);
-        const gCol = Math.round(77 + (218 - 77) * t);
-        const bCol = Math.round(77 - (128 * t));
-        color = `rgb(${rCol},${gCol},${Math.max(bCol,0)})`;
+        // Smooth gradient between red ➜ green
+        const low = { r: 255, g: 77,  b: 77 };
+        const high = { r: 74,  g: 222, b: 128 };
+        const t = Math.min(1, Math.max(0, (winRate - 10) / 30));
+        const r = Math.round(low.r + (high.r - low.r) * t);
+        const g = Math.round(low.g + (high.g - low.g) * t);
+        const b = Math.round(low.b + (high.b - low.b) * t);
+        color = `rgb(${r},${g},${b})`;
       }
     }
-
+    
     row.innerHTML=`
       <span class="col col-rank rank-${r.rank}">${r.rank}</span>
       <span class="col col-name">${r.name}</span>
