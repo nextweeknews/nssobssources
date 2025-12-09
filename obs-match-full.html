@@ -218,7 +218,7 @@ function display(rows, tracked){
       <span class="col col-name">${r.name}</span>
       <span class="col col-elo">${Math.round(r.elo)}</span>
       <span class="col col-wins">${r.wins}</span>
-      <span class="col col-winrate" style="color:${color};">${winRateText}</span>
+      <span class="col col-winrate" style="color:${color} !important;">${winRateText}</span>
     `;
     resultsListEl.appendChild(row);
   });
