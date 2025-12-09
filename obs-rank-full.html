@@ -57,17 +57,6 @@
       flex-shrink: 0;
     }
 
-    .header-row span {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-
-    .header-row span:nth-child(2) {
-      justify-content: flex-start;
-      padding-left: 24px;
-    }
-
     #resultsList {
       display: flex;
       flex-direction: column;
@@ -86,6 +75,30 @@
       transition: background .25s ease, box-shadow .25s ease;
     }
 
+    /* --- Unified Cell Styling Fix --- */
+    .header-row span,
+    .entry > span {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 12px;
+      box-sizing: border-box;
+      border-right: 2px solid rgba(255,255,255,0.12);
+    }
+
+    /* Player name alignment */
+    .header-row span:nth-child(2),
+    .entry > span:nth-child(2) {
+      justify-content: flex-start;
+      padding-left: 24px;
+    }
+
+    /* Remove border on last column */
+    .header-row span:last-child,
+    .entry > span:last-child {
+      border-right: none;
+    }
+
     .place {
       font-size: 24px;
       font-weight: 750;
@@ -97,11 +110,8 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      padding-left: 24px;
-      padding-right: 24px;
     }
 
-    /* Individual stat column styling */
     .elo-col {
       font-size: 24px;
       font-weight: 750;
@@ -120,23 +130,12 @@
       font-size: 20px;
       font-weight: 500;
       text-align: center;
-      color: #d3d3d3; /* fallback */
+      color: #d3d3d3;
     }
 
     .gold { color: #ffd700; }
     .silver { color: #c0c0c0; }
     .bronze { color: #cd7f32; }
-
-    .entry > span {
-      border-right: 2px solid rgba(255,255,255,0.12);
-      height: 28px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      right: -1px;
-    }
-    .entry > span:nth-child(2) { justify-content: flex-start; }
-    .entry > span:last-child { border-right: none; }
 
     .entry.highlight-gold     { background: rgba(255,215,0,0.18); }
     .entry.highlight-silver   { background: rgba(192,192,192,0.18); }
@@ -183,8 +182,8 @@ let lastState=null;
 
 function getWinRateColor(rate) {
   if (rate == null) return "#d3d3d3";
-  if (rate <= 10) return "#f87171"; // red
-  if (rate >= 40) return "#4ade80"; // green
+  if (rate <= 10) return "#f87171";
+  if (rate >= 40) return "#4ade80";
 
   const mid = 25;
   if (rate < mid) {
@@ -274,7 +273,7 @@ function normalize(list,res){
       name:rp.display_name || rp.username || `Player ${id}`,
       elo:Math.round(e.elo??0.0),
       wins,
-      winRate:m>0?((wins/m)*100):null // one decimal formatting happens in render
+      winRate:m>0?((wins/m)*100):null
     };
   });
 }
