@@ -17,7 +17,7 @@
 
     .card {
       width: 1720px;
-      height: 880px; /* Fixed */
+      height: 880px; /* Fixed total height */
       background: rgba(15,23,42,1);
       border-radius: 20px;
       padding: 32px 40px;
@@ -32,14 +32,15 @@
       font-size: 46px;
       font-weight: 900;
       color: #c7d7ff;
-      text-align: center;
-      margin-bottom: 16px;
       text-transform: uppercase;
       letter-spacing: .035em;
+      text-align: center;
+      margin-bottom: 16px;
       flex-shrink: 0;
     }
 
-    .header-row, .entry {
+    .header-row,
+    .entry {
       display: grid;
       grid-template-columns: 120px 1fr 160px 150px 150px;
       align-items: center;
@@ -48,34 +49,43 @@
     .header-row {
       height: 46px;
       margin-bottom: 10px;
-      border-radius: 10px;
       background: rgba(148,163,184,0.12);
+      border-radius: 10px;
       font-size: 20px;
       font-weight: 700;
-      color: #9ca3c7;
       text-transform: uppercase;
+      color: #9ca3c7;
       flex-shrink: 0;
     }
 
+    /* Header alignment */
+    .header-row span {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* Player header left-justified */
     .header-row span:nth-child(2) {
-      text-align: left;
-      padding-left: 18px;
+      justify-content: flex-start;
+      padding-left: 24px;
     }
 
     #resultsList {
-      flex-shrink: 1;
       display: flex;
       flex-direction: column;
       gap: 6px;
+      flex-shrink: 1;
       transition: opacity .3s ease, gap .3s ease;
       overflow: hidden;
     }
 
     .entry {
       height: 56px;
-      font-size: 26px;
       background: rgba(255,255,255,0.06);
       border-radius: 10px;
+      font-size: 26px;
+      font-weight: 600;
       transition: background .25s ease, box-shadow .25s ease;
     }
 
@@ -94,17 +104,19 @@
       padding-right: 24px;
     }
 
-    .elo-value, .stat-value {
+    .elo-value,
+    .stat-value {
       font-size: 26px;
       font-weight: 800;
       text-align: center;
+      font-variant-numeric: tabular-nums; /* Perfect number alignment */
     }
 
     .gold { color: #ffd700; }
     .silver { color: #c0c0c0; }
     .bronze { color: #cd7f32; }
 
-    /* Subtle 1px column borders */
+    /* Slim column borders */
     .entry > span {
       border-right: 1px solid rgba(255,255,255,0.12);
       height: 32px;
@@ -120,23 +132,21 @@
       background: rgba(255,215,0,0.23);
       box-shadow: 0 0 14px rgba(255,215,0,0.25);
     }
-
     .entry.highlight-silver {
       background: rgba(192,192,192,0.23);
       box-shadow: 0 0 14px rgba(192,192,192,0.25);
     }
-
     .entry.highlight-bronze {
       background: rgba(205,127,50,0.23);
       box-shadow: 0 0 14px rgba(205,127,50,0.25);
     }
-
     .entry.highlight-default {
       background: rgba(52,211,153,0.23);
       box-shadow: 0 0 14px rgba(16,185,129,0.25);
     }
 
-    .loading, .error {
+    .loading,
+    .error {
       width: 100%;
       text-align: center;
       font-size: 28px;
@@ -162,126 +172,136 @@
 </div>
 
 <script>
-const LB_URL="https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
-const CLIENT_ID="DISCORD|1069003073311211601";
-const REFRESH_MS=15000;
-const PLAYER_ID=new URLSearchParams(location.search).get("player_id");
+const LB_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
+const CLIENT_ID = "DISCORD|1069003073311211601";
+const REFRESH_MS = 15000;
+const PLAYER_ID = new URLSearchParams(location.search).get("player_id");
 
-const MAX_ROWS=16;
-const SLICE_ROWS=15;
-const ROW_H=56;
-const TITLE_H=46+16;
-const HEADER_H=46+10;
-const CARD_H=880;
+const MAX_ROWS = 16;
+const SLICE_ROWS = 15;
+const ROW_H = 56;
+const HEADER_TOTAL = 46 + 10;
+const TITLE_TOTAL = 46 + 16;
+const CARD_H = 880;
 
-let last=null;
+let lastState = null;
 
-function adjust(rowCount){
-  const content=rowCount*ROW_H;
-  const remain=CARD_H - TITLE_H - HEADER_H - content;
-  const gaps=Math.max(0,rowCount-1);
-  const gap=Math.max(4,(remain*0.33)/gaps);
-  const pad=(remain-(gap*gaps))/2;
+function adjustSpacing(rowCount) {
+  const contentH = ROW_H * rowCount;
+  const remain = CARD_H - TITLE_TOTAL - HEADER_TOTAL - contentH;
+  const gaps = Math.max(0, rowCount - 1);
 
-  document.getElementById("resultsList").style.gap=`${gap}px`;
-  const c=document.getElementById("card");
-  c.style.paddingTop=`${32+pad}px`;
-  c.style.paddingBottom=`${40+pad}px`;
+  const gap = Math.max(4, (remain * 0.33) / gaps);
+  const pad = (remain - (gap * gaps)) / 2;
+
+  const list = document.getElementById("resultsList");
+  const card = document.getElementById("card");
+
+  list.style.gap = `${gap}px`;
+  card.style.paddingTop = `${32 + pad}px`;
+  card.style.paddingBottom = `${40 + pad}px`;
 }
 
-function render(list){
-  const el=document.getElementById("resultsList");
-  el.innerHTML="";
-  list.forEach(p=>{
-    const r=document.createElement("div");
-    r.className="entry";
+function render(list) {
+  const el = document.getElementById("resultsList");
+  el.innerHTML = "";
 
-    const c=p.rank===1?"gold":p.rank===2?"silver":p.rank===3?"bronze":"";
-    if(String(p.id)===String(PLAYER_ID)){
-      r.classList.add(
-        p.rank===1?"highlight-gold":
-        p.rank===2?"highlight-silver":
-        p.rank===3?"highlight-bronze":
+  list.forEach(p => {
+    const row = document.createElement("div");
+    row.className = "entry";
+    const color =
+      p.rank === 1 ? "gold" :
+      p.rank === 2 ? "silver" :
+      p.rank === 3 ? "bronze" : "";
+
+    if (String(p.id) === String(PLAYER_ID)) {
+      row.classList.add(
+        p.rank === 1 ? "highlight-gold" :
+        p.rank === 2 ? "highlight-silver" :
+        p.rank === 3 ? "highlight-bronze" :
         "highlight-default"
       );
     }
 
-    r.innerHTML=`
-      <span class="place ${c}">${p.rank}</span>
+    row.innerHTML = `
+      <span class="place ${color}">${p.rank}</span>
       <span class="player-name">${p.name}</span>
       <span class="elo-value">${p.elo}</span>
       <span class="stat-value">${p.wins}</span>
-      <span class="stat-value">${p.winRate!=null?p.winRate+"%":"—"}</span>
+      <span class="stat-value">${p.winRate != null ? p.winRate + "%" : "—"}</span>
     `;
-    el.appendChild(r);
+
+    el.appendChild(row);
   });
-  adjust(list.length);
+
+  adjustSpacing(list.length);
 }
 
-function normalize(data){
-  return data.map((e,i)=>{
-    const id=e.team[0];
-    const wins=e.count_placement_1??0;
-    const m=e.matches??0;
-    return{
-      rank:i+1,
+function mapLeaderboard(data, resolved) {
+  return data.map((e, i) => {
+    const id = e.team[0];
+    const rp = resolved[id] || {};
+    const wins = e.count_placement_1 ?? 0;
+    const m = e.matches ?? 0;
+    return {
+      rank: i + 1,
       id,
-      name:data.resolved?.players?.[id]?.display_name || `Player ${id}`,
-      elo:Math.round(e.elo??0),
+      name: rp.display_name || rp.username || `Player ${id}`,
+      elo: Math.round(e.elo ?? 0),
       wins,
-      winRate:m>0?Math.round((wins/m)*100):null
+      winRate: m > 0 ? Math.round((wins / m) * 100) : null
     };
   });
 }
 
-function subset(list){
-  const idx=list.findIndex(p=>String(p.id)===PLAYER_ID);
-  if(idx<0) return list.slice(0,MAX_ROWS);
-  if(list[idx].rank<=MAX_ROWS) return list.slice(0,MAX_ROWS);
+function selectSlice(list) {
+  const idx = list.findIndex(p => String(p.id) === PLAYER_ID);
+  if (idx === -1) return list.slice(0, MAX_ROWS);
+  if (list[idx].rank <= MAX_ROWS) return list.slice(0, MAX_ROWS);
 
-  const start=Math.min(
-    Math.max(idx-Math.floor(SLICE_ROWS/2),0),
-    list.length-SLICE_ROWS
+  const start = Math.min(
+    Math.max(idx - Math.floor(SLICE_ROWS / 2), 0),
+    list.length - SLICE_ROWS
   );
-  return list.slice(start,start+SLICE_ROWS);
+  return list.slice(start, start + SLICE_ROWS);
 }
 
-async function tick(){
-  try{
-    const r=await fetch(LB_URL,{
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body:JSON.stringify({
-        leaderboard:"season_10",
-        rating_type:"player_global_all",
-        client_id:CLIENT_ID
+async function update() {
+  try {
+    const res = await fetch(LB_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        leaderboard: "season_10",
+        rating_type: "player_global_all",
+        client_id: CLIENT_ID
       })
     });
-    const j=await r.json();
-    const sorted=[...j.leaderboard].sort((a,b)=>(b.elo??0)-(a.elo??0));
-    sorted.resolved=j.resolved;
 
-    const mapped=normalize(sorted);
-    const view=subset(mapped);
+    const data = await res.json();
+    const sorted = [...data.leaderboard].sort((a,b)=>(b.elo??0)-(a.elo??0));
+    const mapped = mapLeaderboard(sorted, data.resolved?.players || {});
+    const view = selectSlice(mapped);
 
-    if(!last || JSON.stringify(view)!==JSON.stringify(last)){
-      const el=document.getElementById("resultsList");
-      el.style.opacity="0";
-      setTimeout(()=>{
+    const el = document.getElementById("resultsList");
+
+    if (!lastState || JSON.stringify(view) !== JSON.stringify(lastState)) {
+      el.style.opacity = "0";
+      setTimeout(() => {
         render(view);
-        last=view;
-        requestAnimationFrame(()=>el.style.opacity="1");
-      },250);
+        lastState = view;
+        requestAnimationFrame(() => el.style.opacity = "1");
+      }, 250);
     }
 
-  }catch(e){
-    document.getElementById("resultsList").innerHTML=
-      `<div class="error">${e.message}</div>`;
+  } catch (err) {
+    document.getElementById("resultsList").innerHTML =
+      `<div class='error'>${err.message}</div>`;
   }
 }
 
-tick();
-setInterval(tick,REFRESH_MS);
+update();
+setInterval(update, REFRESH_MS);
 </script>
 </body>
 </html>
