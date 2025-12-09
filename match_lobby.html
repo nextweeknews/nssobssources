@@ -200,12 +200,12 @@ function display(rows, tracked){
     // 🔥 Conditional formatting (added)
     let color = "#d3d3d3";
     if(winRate !== null){
-      if(winRate <= 15){
+      if(winRate <= 10){
         color = "#ff4d4d"; // red
-      } else if(winRate >= 50){
+      } else if(winRate >= 40){
         color = "#4ade80"; // green
       } else {
-        const t = (winRate - 15) / (50 - 15);
+        const t = (winRate - 10) / (40 - 10);
         const rCol = Math.round(255 - (255 - 250) * t);
         const gCol = Math.round(77 + (218 - 77) * t);
         const bCol = Math.round(77 - (128 * t));
