@@ -1,329 +1,312 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Season 10 Rankings</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Match Lobby</title>
 
-  <style>
-    html, body {
-      margin: 0; padding: 0;
-      width: 100%; height: 100%;
-      background: transparent;
-      font-family: Inter, system-ui, sans-serif;
-      display: flex; justify-content: center; align-items: center;
-      overflow: hidden;
-    }
+<style>
+  html, body {
+    margin: 0; padding: 0;
+    width: 100%; height: 100%;
+    background: transparent;
+    font-family: Inter, system-ui, sans-serif;
+    display: flex; justify-content: center; align-items: center;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
 
-    .card {
-      width: 1100px;
-      height: 880px;
-      background: rgba(15,23,42,1);
-      border-radius: 20px;
-      padding: 32px 40px;
-      display: flex;
-      flex-direction: column;
-      color: #e9eef8;
-      box-shadow: 0 32px 32px rgba(0,0,0,0.65);
-      box-sizing: border-box;
-    }
+  .card {
+    width: 1720px;
+    background: rgba(15, 23, 42, 1);
+    border-radius: 24px;
+    padding: 48px 50px;
+    display: flex;
+    flex-direction: column;
+    transition: height 0.4s ease;
+    align-items: stretch;
+    color: #e9eef8;
+    box-shadow: 0 32px 32px rgba(0,0,0,0.65);
+    box-sizing: border-box;
+  }
 
-    .title {
-      font-size: 46px;
-      font-weight: 900;
-      color: #c7d7ff;
-      text-align: center;
-      margin-bottom: 16px;
-      text-transform: uppercase;
-      letter-spacing: .035em;
-      flex-shrink: 0;
-    }
+  .title {
+    font-size: 56px;
+    color: #c7d7ff;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: .035em;
+    margin-bottom: 24px;
+    text-align: center;
+  }
 
-    .header-row, .entry {
-      display: grid;
-      grid-template-columns: 120px 1fr 150px 100px 140px;
-      align-items: center;
-    }
+  .header-row,
+  .entry {
+    display: grid;
+    grid-template-columns: 150px 1fr 200px 170px 200px;
+    align-items: center;
+  }
 
-    .header-row {
-      height: 46px;
-      margin-bottom: 10px;
-      background: rgba(148,163,184,0.12);
-      border-radius: 10px;
-      font-size: 20px;
-      font-weight: 700;
-      text-transform: uppercase;
-      color: #9ca3c7;
-      flex-shrink: 0;
-    }
+  .header-row {
+    height: 60px;
+    margin-bottom: 14px;
+    background: rgba(148, 163, 184, 0.12);
+    font-size: 24px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #9ca3c7;
+    border-radius: 12px;
+  }
 
-    /* Header gets invisible borders to match row grid widths */
-    .header-row span {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0 12px;
-      border-right: 2px solid transparent;
-      box-sizing: border-box;
-    }
+  .header-row .col {
+    border-right: none !important;
+    text-align: center;
+    justify-content: center;
+    padding-left: 0;
+  }
 
-    /* Rows get visible borders (except last column) */
-    .entry > span {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0 12px;
-      border-right: 2px solid rgba(255,255,255,0.12);
-      box-sizing: border-box;
-    }
+  .header-row .col.col-name {
+    text-align: left !important;
+    justify-content: flex-start !important;
+    padding-left: 24px;
+  }
 
-    /* Player column alignment for both */
-    .header-row span:nth-child(2),
-    .entry > span:nth-child(2) {
-      justify-content: flex-start;
-      padding-left: 24px;
-    }
+  .entry .col {
+    height: 45px;
+    display: flex;
+    justify-content: center;
+    padding: 0 12px;
+    font-size: 42px;
+    font-weight: 600;
+    border-right: 2px solid rgba(255,255,255,0.14);
+  }
+  .entry .col:last-child {
+    border-right: none;
+  }
 
-    /* No border on last column for both */
-    .header-row span:last-child,
-    .entry > span:last-child {
-      border-right: none;
-    }
+  .entry .col-rank {
+    font-weight: 900;
+    text-align: center;
+    align-items: center;
+    line-height: 1;
+    color: #c7d7ff;
+  }
 
-    #resultsList {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      flex-shrink: 1;
-      transition: opacity .3s ease, gap .3s ease;
-      overflow: hidden;
-    }
+  .entry .col-name {
+    font-size: 36px;
+    font-weight: 600;
+    justify-content: flex-start;
+    text-align: left;
+    padding-left: 24px;
+  }
 
-    .entry {
-      height: 56px;
-      background: rgba(255,255,255,0.06);
-      border-radius: 10px;
-      font-size: 24px;
-      font-weight: 600;
-      transition: background .25s ease, box-shadow .25s ease;
-    }
+  .entry .col-elo {
+    font-weight: 900;
+    text-align: center;
+    align-items: center;
+    line-height: 1;
+  }
 
-    .place {
-      font-size: 24px;
-      font-weight: 750;
-      text-align: center;
-    }
+  .entry .col-wins {
+    font-size: 36px;
+    color: #98fb98;
+    text-align: center;
+    align-items: center;
+  }
 
-    .player-name {
-      font-size: 20px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
+  .entry .col-winrate {
+    font-size: 36px;
+    text-align: center;
+    align-items: center;
+    color: inherit !important;
+  }
 
-    .elo-col {
-      font-size: 24px;
-      font-weight: 750;
-      text-align: center;
-      color: #ffffff;
-    }
+  #resultsList {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    opacity: 1;
+    transition: opacity .3s ease;
+  }
 
-    .wins-col {
-      font-size: 20px;
-      font-weight: 500;
-      text-align: center;
-      color: #98fb98;
-    }
+  .entry {
+    height: 90px;
+    background: rgba(255,255,255,0.07);
+    border-radius: 14px;
+    transition: background .3s ease, box-shadow .3s ease;
+  }
 
-    .wr-col {
-      font-size: 20px;
-      font-weight: 500;
-      text-align: center;
-      color: #d3d3d3;
-    }
+  .entry.highlight-default {
+    background: rgba(52,211,153,0.30);
+    box-shadow: 0 0 18px rgba(16,185,129,0.3);
+  }
 
-    .gold { color: #ffd700; }
-    .silver { color: #c0c0c0; }
-    .bronze { color: #cd7f32; }
+  .col-rank.rank-1 { color: #ffd700; }
+  .col-rank.rank-2 { color: #c0c0c0; }
+  .col-rank.rank-3 { color: #cd7f32; }
 
-    .entry.highlight-gold     { background: rgba(255,215,0,0.18); }
-    .entry.highlight-silver   { background: rgba(192,192,192,0.18); }
-    .entry.highlight-bronze   { background: rgba(205,127,50,0.18); }
-    .entry.highlight-default  { background: rgba(52,211,153,0.20); }
-
-    .loading, .error {
-      width: 100%;
-      text-align: center;
-      font-size: 28px;
-    }
-  </style>
+  .loading, .error {
+    font-size: 36px;
+    text-align: center;
+    width: 100%;
+  }
+</style>
 </head>
 
 <body>
 <div class="card" id="card">
-  <div class="title">Season 10 Rankings</div>
+  <div class="title">Match Lobby</div>
 
   <div class="header-row">
-    <span>Rank</span>
-    <span>Player</span>
-    <span>Elo</span>
-    <span>Wins</span>
-    <span>Win Rate</span>
+    <span class="col col-rank">Rank</span>
+    <span class="col col-name">Player</span>
+    <span class="col col-elo">Elo</span>
+    <span class="col col-wins">Wins</span>
+    <span class="col col-winrate">Win Rate</span>
   </div>
 
-  <div id="resultsList">
-    <div class="loading">Loading…</div>
-  </div>
+  <div id="resultsList"><div class="loading">Waiting for players…</div></div>
 </div>
 
 <script>
-const LB_URL="https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
-const CLIENT_ID="DISCORD|1069003073311211601";
-const REFRESH_MS=15000;
-const PLAYER_ID=new URLSearchParams(location.search).get("player_id");
+const API_URL = "https://blue-dust-07fa.nextweekmedia.workers.dev/lobby";
+const LB_URL  = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
+const CLIENT_ID = "DISCORD|1069003073311211601";
 
-const ROW_H=56;
-const TITLE_H=46+16;
-const HEADER_H=46+10;
-const CARD_H=880;
+const resultsListEl = document.getElementById("resultsList");
+const cardEl = document.getElementById("card");
 
-let lastState=null;
+let lastHash = "";
+let lastRefreshVersion = 0;
 
-function getWinRateColor(rate) {
-  if (rate == null) return "#d3d3d3";
-  if (rate <= 10) return "#f87171";
-  if (rate >= 40) return "#4ade80";
-  const mid = 25;
-  if (rate < mid) {
-    const t = (rate - 15) / (mid - 10);
-    return interpolateColor("#f87171", "#facc15", t);
-  } else {
-    const t = (rate - mid) / (40 - mid);
-    return interpolateColor("#facc15", "#4ade80", t);
-  }
+function resizeCard(count) {
+  const h = 56 + 24 + 60 + 14 + 48 + 50 + (90 * count) + (10 * (count - 1));
+  cardEl.style.height = `${h}px`;
 }
 
-function interpolateColor(c1, c2, t) {
-  const a = parseInt(c1.slice(1), 16),
-        b = parseInt(c2.slice(1), 16);
-  const ar = (a >> 16) & 0xff,
-        ag = (a >> 8) & 0xff,
-        ab = a & 0xff;
-  const br = (b >> 16) & 0xff,
-        bg = (b >> 8) & 0xff,
-        bb = b & 0xff;
-  const rr = Math.round(ar + t * (br - ar)),
-        rg = Math.round(ag + t * (bg - ag)),
-        rb = Math.round(ab + t * (bb - ab));
-  return `rgb(${rr},${rg},${rb})`;
-}
+function fadeOut(cb){resultsListEl.style.opacity=0;setTimeout(cb,400);}
+function fadeIn(){resultsListEl.style.opacity=1;}
+function formatWinRate(w,m){return !m?"—":((w/m)*100).toFixed(1)+"%";}
 
-function adjustSpacing(rowCount){
-  const content=rowCount*ROW_H;
-  const remain=CARD_H - TITLE_H - HEADER_H - content;
-  const gaps=Math.max(0,rowCount-1);
-  const gap=Math.max(4,(remain*0.33)/gaps);
-  const pad=(remain-(gap*gaps))/2;
-  resultsList.style.gap=`${gap}px`;
-  card.style.paddingTop=`${32+pad}px`;
-  card.style.paddingBottom=`${40+pad}px`;
-}
+function display(rows, tracked){
+  resultsListEl.innerHTML="";
+  rows.forEach(r=>{
+    const row=document.createElement("div");
+    row.className="entry";
+    if(String(r.id)===String(tracked)) row.classList.add("highlight-default");
 
-function render(list){
-  const el=document.getElementById("resultsList");
-  el.innerHTML="";
+    const winRate = r.matches ? (r.wins / r.matches) * 100 : null;
+    const winRateText = winRate === null ? "—" : winRate.toFixed(1) + "%";
 
-  list.forEach(p=>{
-    const r=document.createElement("div");
-    r.className="entry";
+   let color = "#d3d3d3";
 
-    const clr=p.rank===1?"gold":p.rank===2?"silver":p.rank===3?"bronze":"";
+    if (Number.isFinite(winRate)) {
+  
+      if (winRate <= 10) {
+        color = "#ff4d4d"; // red
+    
+      } else if (winRate >= 40) {
+        color = "#4ade80"; // green
+    
+      } else {
+        const low = 10;
+        const mid = 25;
+        const high = 40;
 
-    if(String(p.id)===String(PLAYER_ID)){
-      r.classList.add(
-        p.rank===1?"highlight-gold":
-        p.rank===2?"highlight-silver":
-        p.rank===3?"highlight-bronze":
-        "highlight-default"
-      );
+        const red  = { r: 255, g: 77,  b: 77  }; // red
+        const yellow = { r: 250, g: 204, b: 21 }; // yellow (#facc15)
+        const green = { r: 74,  g: 222, b: 128 }; // green
+
+        let c1, c2, t;
+
+        if (winRate <= mid) {
+          // Red → Yellow
+          t = (winRate - low) / (mid - low);
+          c1 = red;
+          c2 = yellow;
+        } else {
+          // Yellow → Green
+          t = (winRate - mid) / (high - mid);
+          c1 = yellow;
+          c2 = green;
+        }
+  
+        const r = Math.round(c1.r + (c2.r - c1.r) * t);
+        const g = Math.round(c1.g + (c2.g - c1.g) * t);
+        const b = Math.round(c1.b + (c2.b - c1.b) * t);
+        color = `rgb(${r},${g},${b})`;
+      }
     }
 
-    r.innerHTML=`
-      <span class="place ${clr}">${p.rank}</span>
-      <span class="player-name">${p.name}</span>
-      <span class="elo-col">${p.elo}</span>
-      <span class="wins-col">${p.wins}</span>
-      <span class="wr-col" style="color:${getWinRateColor(p.winRate)}">
-        ${p.winRate != null ? p.winRate.toFixed(1) + "%" : "—"}
-      </span>
+    row.innerHTML=`
+      <span class="col col-rank rank-${r.rank}">${r.rank}</span>
+      <span class="col col-name">${r.name}</span>
+      <span class="col col-elo">${Math.round(r.elo)}</span>
+      <span class="col col-wins">${r.wins}</span>
+      <span class="col col-winrate" style="color:${color} !important;">${winRateText}</span>
     `;
-
-    el.appendChild(r);
+    resultsListEl.appendChild(row);
   });
-
-  adjustSpacing(list.length);
+  resizeCard(rows.length);
 }
 
-function normalize(list,res){
-  return list.map((e,i)=>{
-    const id=e.team[0];
-    const rp=res[id]||{};
-    const wins=e.count_placement_1??0;
-    const m=e.matches??0;
-    return {
-      rank:i+1,
-      id,
-      name:rp.display_name || rp.username || `Player ${id}`,
-      elo:Math.round(e.elo??0.0),
-      wins,
-      winRate:m>0?((wins/m)*100):null
-    };
-  });
-}
-
-function pickSlice(list){
-  const idx=list.findIndex(p=>String(p.id)===PLAYER_ID);
-  if(idx<0) return list.slice(0,16);
-  if(list[idx].rank<=16) return list.slice(0,16);
-  const start=Math.min(Math.max(idx-Math.floor(15/2),0), list.length-15);
-  return list.slice(start,start+15);
-}
-
-async function update(){
-  try{
-    const r=await fetch(LB_URL,{
+async function updateLobby(){
+  try {
+    const lobby = await (await fetch(API_URL)).json();
+    const lb = await (await fetch(LB_URL,{
       method:"POST",
-      headers:{ "Content-Type":"application/json" },
+      headers:{"Content-Type":"application/json"},
       body:JSON.stringify({
         leaderboard:"season_10",
         rating_type:"player_global_all",
         client_id:CLIENT_ID
       })
-    });
-    const d=await r.json();
+    })).json();
 
-    const sorted=[...d.leaderboard].sort((a,b)=>(b.elo??0)-(a.elo??0));
-    const mapped=normalize(sorted, d.resolved?.players||{});
-    const view=pickSlice(mapped);
+    const res = lb.resolved?.players || {};
+    const leaderboard = lb.leaderboard || [];
 
-    if(!lastState || JSON.stringify(view)!==JSON.stringify(lastState)){
-      const el=document.getElementById("resultsList");
-      el.style.opacity="0";
-      setTimeout(()=>{
-        render(view);
-        lastState=view;
-        requestAnimationFrame(()=>el.style.opacity="1");
-      },250);
+    if(!Array.isArray(lobby.players)||lobby.players.length<2){
+      resultsListEl.innerHTML = `<div class='loading'>Add 2+ players</div>`;
+      return;
     }
 
-  }catch(err){
-    document.getElementById("resultsList").innerHTML=
-      `<div class="error">${err.message}</div>`;
+    const sorted=[...leaderboard].sort((a,b)=>(b.elo??0)-(a.elo??0));
+    const rankMap={}; sorted.forEach((e,i)=>rankMap[e.team?.[0]]=i+1);
+
+    const rows = lobby.players.map(id=>{
+      const e=leaderboard.find(x=>String(x.team?.[0])===String(id))||{};
+      return{
+        id,
+        rank:rankMap[id]??"—",
+        name:res[id]?.display_name||res[id]?.username||`Player ${id}`,
+        elo:e.elo??0,
+        wins:e.count_placement_1??0,
+        matches:e.matches??0
+      };
+    }).sort((a,b)=>(a.rank??99999)-(b.rank??99999));
+
+    const hash = rows.map(r => `${r.id}:${r.rank}:${r.elo}:${r.wins}:${r.matches}`).join("|");
+
+    if(hash!==lastHash){
+      lastHash = hash;
+      fadeOut(()=>{display(rows,lobby.tracked);fadeIn();});
+    }
+
+    lastRefreshVersion = lobby.refresh_version;
+  } catch(err){
+    resultsListEl.innerHTML = `<div class='error'>API Error</div>`;
   }
 }
 
-update();
-setInterval(update,REFRESH_MS);
+updateLobby();
+
+setInterval(async ()=>{
+  const lobby = await (await fetch(API_URL)).json();
+  if(lobby.refresh_version !== lastRefreshVersion){
+    await updateLobby();
+  }
+}, 1500);
 </script>
 </body>
 </html>
