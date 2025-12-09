@@ -81,7 +81,6 @@
   }
   .entry > span:last-child { border-right: none; }
 
-  /* Highlight tracked */
   .entry.highlight-default {
     background: rgba(52,211,153,0.30);
     box-shadow: 0 0 18px rgba(16,185,129,0.3);
@@ -99,14 +98,12 @@
     text-align: center;
   }
 
-  /* Player name left aligned with padding */
   .entry span:nth-child(2),
   .header-row span:nth-child(2) {
     text-align: left;
     padding-left: 24px;
   }
 
-  /* Medal rank colors */
   .col-rank.rank-1 { color: #ffd700; }
   .col-rank.rank-2 { color: #c0c0c0; }
   .col-rank.rank-3 { color: #cd7f32; }
@@ -134,7 +131,6 @@
 const API_URL = "https://blue-dust-07fa.nextweekmedia.workers.dev/lobby";
 const LB_URL  = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
 const CLIENT_ID = "DISCORD|1069003073311211601";
-const REFRESH_MS = 8000;
 
 const resultsListEl = document.getElementById("resultsList");
 const cardEl = document.getElementById("card");
@@ -149,28 +145,26 @@ function resizeCard(count) {
 
 function fadeOut(cb){resultsListEl.style.opacity=0;setTimeout(cb,400);}
 function fadeIn(){resultsListEl.style.opacity=1;}
+function formatWinRate(w,m){return !m?"—":((w/m)*100).toFixed(1)+"%";}
 
-function formatWinRate(w, m){return !m ? "—" : ((w / m) * 100).toFixed(1) + "%";}
-
-function display(rows, tracked) {
-  resultsListEl.innerHTML = "";
-  rows.forEach(r => {
-    const row = document.createElement("div");
-    row.className = "entry";
-    if (String(r.id) === String(tracked)) row.classList.add("highlight-default");
-
-    row.innerHTML = `
+function display(rows, tracked){
+  resultsListEl.innerHTML="";
+  rows.forEach(r=>{
+    const row=document.createElement("div");
+    row.className="entry";
+    if(String(r.id)===String(tracked)) row.classList.add("highlight-default");
+    row.innerHTML=`
       <span class="col-rank rank-${r.rank}">${r.rank}</span>
       <span>${r.name}</span>
       <span>${Math.round(r.elo)}</span>
       <span>${r.wins}</span>
-      <span>${formatWinRate(r.wins, r.matches)}</span>`;
+      <span>${formatWinRate(r.wins,r.matches)}</span>`;
     resultsListEl.appendChild(row);
   });
   resizeCard(rows.length);
 }
 
-async function fetchData(){
+async function updateLobby(){
   try {
     const lobby = await (await fetch(API_URL)).json();
     const lb = await (await fetch(LB_URL,{
@@ -183,24 +177,23 @@ async function fetchData(){
       })
     })).json();
 
+    const res = lb.resolved?.players || {};
     const leaderboard = lb.leaderboard || [];
-    const resolved = lb.resolved?.players || {};
 
-    if (!Array.isArray(lobby.players) || lobby.players.length < 2)
-      return resultsListEl.innerHTML =
-        `<div class='loading'>Add 2+ players</div>`;
+    if(!Array.isArray(lobby.players)||lobby.players.length<2){
+      resultsListEl.innerHTML = `<div class='loading'>Add 2+ players</div>`;
+      return;
+    }
 
-    const sorted = [...leaderboard]
-      .sort((a,b)=>(b.elo??0)-(a.elo??0));
-    const rankMap = {};
-    sorted.forEach((e,i)=>rankMap[e.team?.[0]]=i+1);
+    const sorted=[...leaderboard].sort((a,b)=>(b.elo??0)-(a.elo??0));
+    const rankMap={}; sorted.forEach((e,i)=>rankMap[e.team?.[0]]=i+1);
 
     const rows = lobby.players.map(id=>{
       const e=leaderboard.find(x=>String(x.team?.[0])===String(id))||{};
       return{
         id,
         rank:rankMap[id]??"—",
-        name:resolved[id]?.display_name||resolved[id]?.username||`Player ${id}`,
+        name:res[id]?.display_name||res[id]?.username||`Player ${id}`,
         elo:e.elo??0,
         wins:e.count_placement_1??0,
         matches:e.matches??0
@@ -209,26 +202,29 @@ async function fetchData(){
 
     const hash = rows.map(r => `${r.id}:${r.rank}:${r.elo}:${r.wins}:${r.matches}`).join("|");
 
-    // Instant update for manual refresh version changes
-    if (lobby.refresh_version !== lastRefreshVersion) {
-      lastRefreshVersion = lobby.refresh_version;
-      display(rows, lobby.tracked);
-      return;
-    }
-
-    // Animate only real data changes
-    if (hash !== lastHash) {
+    // Only animate when visible content changed
+    if(hash!==lastHash){
       lastHash = hash;
       fadeOut(()=>{display(rows,lobby.tracked);fadeIn();});
     }
 
-  } catch(err) {
+    lastRefreshVersion = lobby.refresh_version;
+
+  } catch(err){
     resultsListEl.innerHTML = `<div class='error'>API Error</div>`;
   }
 }
 
-fetchData();
-setInterval(fetchData, REFRESH_MS);
+// Load once on startup
+updateLobby();
+
+// Poll ONLY for refresh_version changes
+setInterval(async ()=>{
+  const lobby = await (await fetch(API_URL)).json();
+  if(lobby.refresh_version !== lastRefreshVersion){
+    await updateLobby();
+  }
+}, 1500);
 </script>
 </body>
 </html>
