@@ -6,63 +6,97 @@
 <title>Match Lobby Control</title>
 
 <style>
-  body { background:#0f172a; font-family:Inter, system-ui, sans-serif; color:#e9eef8; padding:22px; }
-  h1 { font-size:38px; text-align:center; margin-bottom:18px; }
-  button,input { font-size:24px; padding:14px; border-radius:12px; border:none; cursor:pointer; }
-  input { width:100%; margin-bottom:8px; }
-  .player-row,.result-row { background:rgba(255,255,255,0.08); border-radius:12px; margin-bottom:10px; padding:12px 16px; font-size:22px; display:flex; justify-content:space-between; align-items:center; }
-  .tracked { background:rgba(52,211,153,0.30); box-shadow:0 0 18px rgba(16,185,129,0.3); }
-  .remove-btn { background:#ef4444!important; padding:10px 20px!important; font-weight:700; }
-  .refresh-btn { background:#10b981; width:100%; margin-top:10px; font-size:26px; }
-  .error-msg { color:#f87171; font-size:20px; margin-top:8px; }
-
-  /* Default button text styling (optional override for clarity) */
-  button {
-    color:#ffffff;
+  body {
+    background:#0f172a;
+    font-family:Inter, system-ui, sans-serif;
+    color:#e9eef8;
+    padding:22px;
   }
 
-  /* REMOVE "X" button — red with white text */
-  .remove-btn {
-    background:#dc2626 !important; /* Strong red */
+  h1 {
+    font-size:38px;
+    text-align:center;
+    margin-bottom:18px;
+  }
+
+  button,input {
+    font-size:24px;
+    padding:14px;
+    border-radius:12px;
+    border:none;
+    cursor:pointer;
+  }
+
+  input {
+    width:100%;
+    margin-bottom:8px;
+  }
+
+  .player-row,
+  .result-row {
+    background:rgba(255,255,255,0.08);
+    border-radius:12px;
+    margin-bottom:10px;
+    padding:12px 16px;
+    font-size:22px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    cursor:pointer;
+    transition:background 0.22s ease, box-shadow 0.22s ease;
+  }
+
+  .player-row:hover {
+    background:rgba(255,255,255,0.12);
+  }
+
+  /* Tracked highlight */
+  .tracked {
+    background:rgba(52, 211, 153, 0.35) !important;
+    box-shadow:0 0 20px rgba(16,185,129,0.4);
+  }
+
+  .shared-btn {
+    padding:10px 20px !important;
+    font-weight:700;
+    min-width:60px;
     color:#ffffff !important;
+  }
+
+  /* REMOVE BUTTON (X) */
+  .remove-btn {
+    background:#dc2626 !important;
   }
   .remove-btn:hover {
     background:#ef4444 !important;
   }
 
-  /* REFRESH OVERLAY — pale green with white text */
+  /* ADD BUTTON (+) */
+  .add-btn {
+    background:#0f5132 !important;
+  }
+  .add-btn:hover {
+    background:#0c4027 !important;
+  }
+
+  /* REFRESH BUTTON */
   .refresh-btn {
-    background:#86efac; /* Light pale green */
+    background:#00643c;
     color:#ffffff;
+    width:100%;
+    margin-top:10px;
+    font-size:26px;
   }
   .refresh-btn:hover {
-    background:#65d39e;
+    background:#008c50;
   }
 
-  /* Style for Add "+" button */
-  .result-row button {
-    background: #0f5132 !important;
-    color: #ffffff !important;
-    padding: 10px 20px !important;
-    font-weight: 700;
-    border-radius: 12px;
-    min-width: 60px; /* Ensures similar width to X button */
+  .error-msg {
+    color:#f87171;
+    font-size:20px;
+    margin-top:8px;
+    text-align:center;
   }
-
-  /* Hover effect */
-  .result-row button:hover {
-    background: #0c4027 !important;
-  }
- 
-  .player-row {
-    cursor: pointer;
-    transition: background 0.15s ease;
-  }
-
-  .player-row:hover {
-    background: rgba(255,255,255,0.12);
-  }
-  
 </style>
 </head>
 
@@ -88,13 +122,11 @@ const CLIENT_ID="DISCORD|1069003073311211601";
 let leaderboard=[];
 let resolvedPlayers={};
 
-async function init(){
-  await loadLeaderboard();
-  await refreshLobby();
-}
+// Initialize
+(async()=>{ await loadLeaderboard(); await refreshLobby(); })();
 
 async function loadLeaderboard(){
-  const data=await(await fetch(LB_URL,{
+  const res = await fetch(LB_URL,{
     method:"POST",
     headers:{"Content-Type":"application/json"},
     body:JSON.stringify({
@@ -102,23 +134,26 @@ async function loadLeaderboard(){
       rating_type:"player_global_all",
       client_id:CLIENT_ID
     })
-  })).json();
+  });
+  
+  const data = await res.json();
   leaderboard=data.leaderboard||[];
   resolvedPlayers=data.resolved?.players||{};
 }
 
 function nameOf(id){
-  const p=resolvedPlayers[id]||{};
-  return p.display_name||p.username||`Player ${id}`;
+  const p = resolvedPlayers[id] || {};
+  return p.display_name || p.username || `Player ${id}`;
 }
 
 function showError(m){
-  document.getElementById("error").textContent=m;
-  setTimeout(()=>document.getElementById("error").textContent="",2000);
+  const e=document.getElementById("error");
+  e.textContent=m;
+  setTimeout(()=>e.textContent="",2000);
 }
 
 async function refreshLobby(){
-  const state=await(await fetch(API_URL)).json();
+  const state = await(await fetch(API_URL)).json();
   renderLobby(state);
 }
 
@@ -126,21 +161,27 @@ function renderLobby(state){
   const box=document.getElementById("lobbyList");
   box.innerHTML="";
 
-  const rows=state.players.map(id=>{
-    const e=leaderboard.find(x=>String(x.team?.[0])===String(id))||{};
-    return{ id, name:nameOf(id), elo:e?.elo??0, tracked:state.tracked===String(id) };
-  }).sort((a,b)=>(b.elo??0)-(a.elo??0));
+  const rows = state.players.map(id=>{
+    const entry = leaderboard.find(x=>String(x.team?.[0])===String(id)) || {};
+    return {
+      id,
+      name:nameOf(id),
+      elo:entry?.elo ?? 0,
+      tracked:String(state.tracked)===String(id)
+    };
+  }).sort((a,b)=>b.elo - a.elo);
 
   rows.forEach(r=>{
     const row=document.createElement("div");
-    row.className=`player-row${r.tracked?" tracked":""}`;
+    row.className=`player-row ${r.tracked?"tracked":""}`;
     row.innerHTML=`
       <span>${r.name} (${Math.round(r.elo)})</span>
-      <span style="display:flex;gap:6px">
-        <button class="remove-btn" onclick="event.stopPropagation();removePlayer('${r.id}')">X</button>
-      </span>`;
+      <button class="remove-btn shared-btn" onclick="event.stopPropagation();removePlayer('${r.id}')">X</button>
+    `;
 
-    row.onclick = () => setTracked(r.id);
+    // Support both mouse + touch input
+    row.addEventListener("click",()=>setTracked(r.id));
+    row.addEventListener("touchstart",()=>setTracked(r.id),{passive:true});
 
     box.appendChild(row);
   });
@@ -156,14 +197,14 @@ async function postState(players,tracked,{refresh}={}){
 }
 
 async function removePlayer(id){
-  const state=await(await fetch(API_URL)).json();
-  const players=state.players.filter(x=>x!==id);
+  const state = await(await fetch(API_URL)).json();
+  const players = state.players.filter(x=>x!==id);
   await postState(players,state.tracked,{refresh:true});
 }
 
 async function setTracked(id){
-  const state=await(await fetch(API_URL)).json();
-  const newTracked = (state.tracked===id?"":id);
+  const state = await(await fetch(API_URL)).json();
+  const newTracked = (String(state.tracked)===String(id) ? "" : id);
   await postState(state.players,newTracked,{refresh:true});
 }
 
@@ -171,38 +212,46 @@ async function searchPlayers(){
   const q=document.getElementById("search").value.trim();
   const s=document.getElementById("searchResults");
   s.innerHTML="";
-  if(!q)return;
-  if(/^\d+$/.test(q))return addSearchResult(q,s);
-  const results = leaderboard.filter(e=>nameOf(e.team?.[0]).toLowerCase().includes(q.toLowerCase())).slice(0,10);
+  if(!q) return;
+
+  // ID-only search
+  if(/^\d+$/.test(q)) return addSearchResult(q,s);
+
+  const results = leaderboard
+    .filter(e=>nameOf(e.team?.[0]).toLowerCase().includes(q.toLowerCase()))
+    .slice(0,10);
+
   results.forEach(e=>addSearchResult(e.team?.[0],s));
 }
 
 function addSearchResult(id,box){
-  const e=leaderboard.find(x=>String(x.team?.[0])===String(id))||{};
-  const elo=e.elo!=null?Math.round(e.elo):"—";
+  const entry=leaderboard.find(x=>String(x.team?.[0])===String(id))||{};
+  const elo = entry.elo!=null ? Math.round(entry.elo) : "—";
+
   const div=document.createElement("div");
   div.className="result-row";
   div.innerHTML=`
     <span>${nameOf(id)} (${elo})</span>
-    <button onclick="addPlayer('${id}')">+</button>`;
+    <button class="add-btn shared-btn" onclick="addPlayer('${id}')">+</button>
+  `;
   box.appendChild(div);
 }
 
 async function addPlayer(id){
-  const state=await(await fetch(API_URL)).json();
-  if(state.players.includes(id))return;
-  if(state.players.length>=8)return showError("Max 8 players");
+  const state = await(await fetch(API_URL)).json();
+
+  if(state.players.includes(id)) return;
+  if(state.players.length >= 8) return showError("Max 8 players");
+
   state.players.push(id);
   await postState(state.players,state.tracked,{refresh:true});
 }
 
 async function refreshOverlay(){
-  const state=await(await fetch(API_URL)).json();
+  const state = await(await fetch(API_URL)).json();
   await postState(state.players,state.tracked,{refresh:true});
   showError("Overlay refreshed");
 }
-
-init();
 </script>
 </body>
 </html>
