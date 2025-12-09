@@ -183,15 +183,15 @@ let lastState=null;
 
 function getWinRateColor(rate) {
   if (rate == null) return "#d3d3d3";
-  if (rate <= 15) return "#f87171"; // red
-  if (rate >= 50) return "#4ade80"; // green
+  if (rate <= 10) return "#f87171"; // red
+  if (rate >= 40) return "#4ade80"; // green
 
-  const mid = 32.5;
+  const mid = 25;
   if (rate < mid) {
-    const t = (rate - 15) / (mid - 15);
+    const t = (rate - 15) / (mid - 10);
     return interpolateColor("#f87171", "#facc15", t);
   } else {
-    const t = (rate - mid) / (50 - mid);
+    const t = (rate - mid) / (40 - mid);
     return interpolateColor("#facc15", "#4ade80", t);
   }
 }
