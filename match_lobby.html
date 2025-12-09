@@ -75,20 +75,17 @@
     transition: background .3s ease, box-shadow .3s ease;
   }
 
-  /* Tracked highlight */
   .entry.highlight-default {
     background: rgba(52,211,153,0.30);
     box-shadow: 0 0 18px rgba(16,185,129,0.3);
   }
 
-  /* Border styling */
   .entry > span {
     border-right: 2px solid rgba(255,255,255,0.14);
     height: 45px;
   }
   .entry > span:last-child { border-right: none; }
 
-  /* Center-align stat columns */
   .entry span:nth-child(1),
   .entry span:nth-child(3),
   .entry span:nth-child(4),
@@ -100,14 +97,12 @@
     text-align: center;
   }
 
-  /* Player column left */
   .entry span:nth-child(2),
   .header-row span:nth-child(2) {
     text-align: left;
     padding-left: 24px;
   }
 
-  /* Medal rank colors */
   .col-rank.rank-1 { color: #ffd700; }
   .col-rank.rank-2 { color: #c0c0c0; }
   .col-rank.rank-3 { color: #cd7f32; }
@@ -137,8 +132,8 @@ const resultsListEl=document.getElementById("resultsList");
 let lastHash="";
 let lastRefreshVersion=0;
 
-function resizeCard(c){
-  const h=56+24+60+14+48+50+(90*c)+(10*(c-1));
+function resizeCard(count){
+  const h=56+24+60+14+48+50+(90*count)+(10*(count-1));
   cardEl.style.height=h+"px";
 }
 
@@ -166,17 +161,19 @@ function display(rows,tracked){
 
 async function fetchData(){
   try{
-    const lobby=await(await fetch(API_URL)).json();
+    const lobby=await (await fetch(API_URL)).json();
 
-    if(lobby.refresh_version!==lastRefreshVersion){
+    if(typeof lobby.refresh_version==="number" && lobby.refresh_version!==lastRefreshVersion){
       lastRefreshVersion=lobby.refresh_version;
       fadeOut(()=>fadeIn());
     }
 
-    if(!Array.isArray(lobby.players)||lobby.players.length<2)
-      return resultsListEl.innerHTML=`<div class='loading'>Add 2+ players</div>`;
+    if(!Array.isArray(lobby.players) || lobby.players.length<2){
+      resultsListEl.innerHTML=`<div class='loading'>Add 2+ players</div>`;
+      return;
+    }
 
-    const lb=await(await fetch(LB_URL,{
+    const lb=await (await fetch(LB_URL,{
       method:"POST",
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({
@@ -190,7 +187,7 @@ async function fetchData(){
     const resolved=lb.resolved?.players||{};
     const sorted=[...leaderboard].sort((a,b)=>(b.elo??0)-(a.elo??0));
     const rankMap={};
-    sorted.forEach((e,i)=>rankMap[e.team?.[0]]=i+1);
+    sorted.forEach((e,i)=>{rankMap[e.team?.[0]]=i+1;});
 
     const rows=lobby.players.map(id=>{
       const e=leaderboard.find(x=>String(x.team?.[0])===String(id))||{};
@@ -209,7 +206,9 @@ async function fetchData(){
       lastHash=hash;
       fadeOut(()=>{display(rows,lobby.tracked);fadeIn();});
     }
-  }catch{}
+  }catch(e){
+    // optionally log or ignore for overlay
+  }
 }
 
 fetchData();
