@@ -15,6 +15,39 @@
   .remove-btn { background:#ef4444!important; padding:10px 20px!important; font-weight:700; }
   .refresh-btn { background:#10b981; width:100%; margin-top:10px; font-size:26px; }
   .error-msg { color:#f87171; font-size:20px; margin-top:8px; }
+
+  /* Default button text styling (optional override for clarity) */
+  button {
+    color:#ffffff;
+  }
+
+  /* TRACK / UNTRACK button — darker blue with white text */
+  .player-row button:not(.remove-btn) {
+    background:#1e40af; /* Darker blue */
+    color:#ffffff;
+  }
+  .player-row button:not(.remove-btn):hover {
+    background:#1d4ed8; /* Slightly brighter on hover */
+  }
+
+  /* REMOVE "X" button — red with white text */
+  .remove-btn {
+    background:#dc2626 !important; /* Strong red */
+    color:#ffffff !important;
+  }
+  .remove-btn:hover {
+    background:#ef4444 !important;
+  }
+
+  /* REFRESH OVERLAY — pale green with white text */
+  .refresh-btn {
+    background:#86efac; /* Light pale green */
+    color:#ffffff;
+  }
+  .refresh-btn:hover {
+    background:#65d39e;
+  }
+
 </style>
 </head>
 
