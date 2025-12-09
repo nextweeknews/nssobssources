@@ -46,6 +46,7 @@
     align-items: center;
   }
 
+  /* Header fully restored to original */
   .header-row {
     height: 60px;
     margin-bottom: 14px;
@@ -57,7 +58,7 @@
     border-radius: 12px;
   }
 
-  /* Divider lines restored */
+  /* Divider lines */
   .col {
     height: 45px;
     display: flex;
@@ -69,19 +70,28 @@
     border-right: none;
   }
 
-  /* Original color & weight restored */
-  .col-rank,
-  .col-name,
-  .col-elo,
-  .col-wins,
-  .col-winrate {
+  /* HEADER TEXT ALIGNMENT ORIGINAL */
+  .header-row .col:nth-child(1),
+  .header-row .col:nth-child(3),
+  .header-row .col:nth-child(4),
+  .header-row .col:nth-child(5) {
+    justify-content: center;
+  }
+
+  .header-row .col:nth-child(2) {
+    justify-content: flex-start;
+    padding-left: 24px;
+  }
+
+  /* ROW COLUMN STYLE (independent control preserved) */
+  .entry .col {
     font-size: 42px;
     font-weight: 600;
     color: #fff;
     justify-content: center;
   }
 
-  .col-name {
+  .entry .col-name {
     justify-content: flex-start;
     padding-left: 24px;
   }
@@ -98,9 +108,6 @@
     height: 90px;
     background: rgba(255,255,255,0.07);
     border-radius: 14px;
-    font-size: 42px;
-    font-weight: 600;
-    color: #fff;
     transition: background .3s ease, box-shadow .3s ease;
   }
 
@@ -235,4 +242,3 @@ setInterval(async ()=>{
 </script>
 </body>
 </html>
-
