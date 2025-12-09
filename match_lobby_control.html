@@ -86,22 +86,32 @@ async function init(){
     hidePWBox();
     await loadLeaderboard();
     await refreshLobby();
-  }else showPWBox();
+  }else{
+    showPWBox();
+  }
 }
 
-function showPWBox(){document.getElementById("passwordBox").style.display="block";document.getElementById("ui").style.display="none";}
-function hidePWBox(){document.getElementById("passwordBox").style.display="none";document.getElementById("ui").style.display="block";}
+function showPWBox(){
+  document.getElementById("passwordBox").style.display="block";
+  document.getElementById("ui").style.display="none";
+}
+function hidePWBox(){
+  document.getElementById("passwordBox").style.display="none";
+  document.getElementById("ui").style.display="block";
+}
 
 async function submitPW(){
   const v=document.getElementById("pw").value.trim();
   if(!v)return;
-  password=v; sessionStorage.setItem("lobbyPIN",password);
+  password=v;
+  sessionStorage.setItem("lobbyPIN",password);
   hidePWBox();
-  await loadLeaderboard();await refreshLobby();
+  await loadLeaderboard();
+  await refreshLobby();
 }
 
 async function loadLeaderboard(){
-  const data=await(await fetch(LB_URL,{
+  const res = await fetch(LB_URL,{
     method:"POST",
     headers:{"Content-Type":"application/json"},
     body:JSON.stringify({
@@ -109,8 +119,9 @@ async function loadLeaderboard(){
       rating_type:"player_global_all",
       client_id:CLIENT_ID
     })
-  })).json();
-  leaderboard=data.leaderboard;
+  });
+  const data = await res.json();
+  leaderboard=data.leaderboard||[];
   resolvedPlayers=data.resolved?.players||{};
 }
 
@@ -119,10 +130,14 @@ function nameOf(id){
   return p.display_name||p.username||`Player ${id}`;
 }
 
-function showError(m){const e=document.getElementById("error");e.textContent=m;setTimeout(()=>e.textContent="",3000);}
+function showError(m){
+  const e=document.getElementById("error");
+  e.textContent=m;
+  setTimeout(()=>e.textContent="",3000);
+}
 
 async function refreshLobby(){
-  const state=await(await fetch(API_URL)).json();
+  const state=await (await fetch(API_URL)).json();
   renderLobby(state);
 }
 
@@ -130,7 +145,9 @@ function renderLobby(state){
   const box=document.getElementById("lobbyList");
   box.innerHTML="";
 
-  const rows=state.players.map(id=>{
+  const players = Array.isArray(state.players) ? state.players : [];
+
+  const rows = players.map(id=>{
     const e=leaderboard.find(x=>String(x.team?.[0])===String(id))||{};
     return{
       id,
@@ -153,12 +170,20 @@ function renderLobby(state){
   });
 }
 
-async function saveState(players,tracked){
-  const res=await fetch(API_URL,{
+async function postState(newPlayers,newTracked,{doRefresh}={doRefresh:true}){
+  const body = {
+    password,
+    players: newPlayers,
+    tracked: newTracked ?? "",
+    refresh: doRefresh
+  };
+
+  const res = await fetch(API_URL,{
     method:"POST",
     headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({password,players,tracked})
+    body:JSON.stringify(body)
   });
+
   if(!res.ok){
     sessionStorage.removeItem("lobbyPIN");
     password="";
@@ -166,18 +191,23 @@ async function saveState(players,tracked){
     showError("PIN expired — re-enter");
     return;
   }
+
   await refreshLobby();
 }
 
 async function removePlayer(id){
-  const state=await(await fetch(API_URL)).json();
-  const list=state.players.filter(x=>String(x)!==String(id));
-  await saveState(list,state.tracked===id?"":state.tracked);
+  const state=await (await fetch(API_URL)).json();
+  const players = Array.isArray(state.players) ? state.players.slice() : [];
+  const newPlayers = players.filter(x=>String(x)!==String(id));
+  const newTracked = (state.tracked===id ? "" : state.tracked);
+  await postState(newPlayers,newTracked,{doRefresh:true});
 }
 
 async function setTracked(id){
-  const state=await(await fetch(API_URL)).json();
-  await saveState(state.players,state.tracked===id?"":id);
+  const state=await (await fetch(API_URL)).json();
+  const players = Array.isArray(state.players) ? state.players.slice() : [];
+  const newTracked = (state.tracked===id ? "" : id);
+  await postState(players,newTracked,{doRefresh:true});
 }
 
 async function searchPlayers(){
@@ -185,13 +215,17 @@ async function searchPlayers(){
   const s=document.getElementById("searchResults");
   s.innerHTML="";
   if(!q)return;
-  if(/^\d+$/.test(q))return addResult(q,s);
+
+  // Direct ID search
+  if(/^\d+$/.test(q)) {
+    return addResult(q,s);
+  }
 
   const lc=q.toLowerCase();
   leaderboard
-  .filter(e=>nameOf(e.team?.[0]).toLowerCase().includes(lc))
-  .slice(0,10)
-  .forEach(e=>addResult(e.team?.[0],s));
+    .filter(e=>nameOf(e.team?.[0]).toLowerCase().includes(lc))
+    .slice(0,10)
+    .forEach(e=>addResult(e.team?.[0],s));
 }
 
 function addResult(id,box){
@@ -206,20 +240,20 @@ function addResult(id,box){
 }
 
 async function addPlayer(id){
-  const state=await(await fetch(API_URL)).json();
-  if(state.players.includes(id))return;
-  if(state.players.length>=8)return showError("Max 8 players");
-  state.players.push(id);
-  await saveState(state.players,state.tracked);
+  const state=await (await fetch(API_URL)).json();
+  const players = Array.isArray(state.players) ? state.players.slice() : [];
+
+  if(players.includes(id)) return;
+  if(players.length>=8) return showError("Max 8 players");
+
+  players.push(id);
+  await postState(players,state.tracked,{doRefresh:true});
 }
 
 async function refreshOverlay(){
-  const state=await(await fetch(API_URL)).json();
-  await fetch(API_URL,{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({password,players:state.players,tracked:state.tracked,refresh:true})
-  });
+  const state=await (await fetch(API_URL)).json();
+  const players = Array.isArray(state.players) ? state.players.slice() : [];
+  await postState(players,state.tracked,{doRefresh:true});
   showError("Overlay refresh ✔");
 }
 
