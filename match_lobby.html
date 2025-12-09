@@ -24,10 +24,9 @@
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    transition: height 0.4s ease;
     color: #e9eef8;
     box-shadow: 0 32px 32px rgba(0,0,0,0.65);
-    box-sizing: border-box;
+    transition: height 0.4s ease;
   }
 
   .title {
@@ -56,14 +55,14 @@
     text-transform: uppercase;
     color: #9ca3c7;
     border-radius: 12px;
-    text-align: center;
   }
 
   #resultsList {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    transition: opacity .3s ease;
+    opacity: 1;
+    transition: opacity .4s ease;
   }
 
   .entry {
@@ -73,104 +72,36 @@
     font-size: 42px;
     font-weight: 600;
     color: #fff;
-    align-items: center;
     transition: background .3s ease, box-shadow .3s ease;
-
   }
 
-  .highlight-default {
-    background: rgba(52, 211, 153, 0.30);
-    box-shadow: 0 0 18px rgba(16, 185, 129, 0.3);
+  /* Tracked highlight */
+  .entry.highlight-default {
+    background: rgba(52,211,153,0.30);
+    box-shadow: 0 0 18px rgba(16,185,129,0.3);
   }
 
-  .entry > span {
-    border-right: 2px solid rgba(255,255,255,0.14);
-    height: 45px;
-    right: -1px;
-    position: relative;
-    vertical-align: middle;
-  }
-  .entry > span:last-child { border-right: none; }
-
-  .loading, .error {
-    font-size: 36px;
-    width: 100%;
-    text-align: center;
-  }
-
-  /* Center-align numeric/stat columns */
-  .col-rank,
-  .col-elo,
-  .col-wins,
-  .col-winrate {
-    text-align: center;
-    line-height: 1;
-  }
-
-  /* Rank column */
-  .col-rank {
-    font-weight: 900;
-    color: #c7d7ff;
-
-  }
-
-  /* Player column */
-  .col-player {
-    font-size: 36px;
-    font-weight: 600;
-    padding-left: 24px;
-    text-align: left;
-    text-transform: none;
-
-  }
-
-  /* Elo column */
-  .col-elo {
-    font-weight: 900;
-    position: relative;
-    vertical-align: middle;
-  }
-
-  /* Wins column */
-  .col-wins {
-    color: #98fb98;
-    font-weight: 600;
-  }
-
-  /* Win Rate column */
-  .col-winrate {
-    color: #d3d3d3;
-    font-weight: 600;
-  }
-
-  /* Header center for numeric/stat columns */
+  /* Center-align columns except player */
+  .entry span:nth-child(1),
+  .entry span:nth-child(3),
+  .entry span:nth-child(4),
+  .entry span:nth-child(5),
   .header-row span:nth-child(1),
   .header-row span:nth-child(3),
   .header-row span:nth-child(4),
-  .header-row span:nth-child(5) {
-    text-align: center;
-  }
+  .header-row span:nth-child(5) { text-align: center; }
 
-  /* Player column left w/ padding */
-  .col-player {
-    text-align: left;
-    padding-left: 24px;
-  }
+  .entry span:nth-child(2),
   .header-row span:nth-child(2) {
     text-align: left;
     padding-left: 24px;
   }
 
-  /* Rank medals */
-  .col-rank.rank-1 {
-    color: #ffd700; /* Gold */
-  }
-  .col-rank.rank-2 {
-    color: #c0c0c0; /* Silver */
-  }
-  .col-rank.rank-3 {
-    color: #cd7f32; /* Bronze */
-  }
+  /* Medal rank colors */
+  .col-rank.rank-1 { color: #ffd700; }
+  .col-rank.rank-2 { color: #c0c0c0; }
+  .col-rank.rank-3 { color: #cd7f32; }
+
 </style>
 </head>
 
@@ -179,56 +110,54 @@
   <div class="title">Match Lobby</div>
 
   <div class="header-row">
-    <span>Rank</span>
-    <span>Player</span>
-    <span>Elo</span>
-    <span>Wins</span>
-    <span>Win Rate</span>
+    <span>Rank</span><span>Player</span><span>Elo</span><span>Wins</span><span>Win Rate</span>
   </div>
 
-  <div id="resultsList"><div class="loading">Waiting for players…</div></div>
+  <div id="resultsList">
+    <div class="loading" style="font-size:36px;text-align:center;">Waiting for players…</div>
+  </div>
 </div>
 
 <script>
 const API_URL = "https://blue-dust-07fa.nextweekmedia.workers.dev/lobby";
 const LB_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
 const CLIENT_ID = "DISCORD|1069003073311211601";
-const REFRESH_MS = 10000;
-const resultsListEl = document.getElementById("resultsList");
+const REFRESH_MS = 8000;
+
 const cardEl = document.getElementById("card");
+const resultsListEl = document.getElementById("resultsList");
+
 let lastHash = "";
+let lastRefreshVersion = 0;
 
 function resizeCard(count) {
   const h = 56 + 24 + 60 + 14 + 48 + 50 + (90 * count) + (10 * (count - 1));
   cardEl.style.height = `${h}px`;
 }
 
-function hashState(rows) {
-  return rows.map(r => `${r.id}:${r.rank}:${r.elo}:${r.wins}:${r.matches}`).join("|");
+function fadeOut(cb) {
+  resultsListEl.style.opacity = 0;
+  setTimeout(cb, 400);
+}
+function fadeIn() {
+  resultsListEl.style.opacity = 1;
 }
 
-function formatWinRate(wins, matches) {
-  if (!matches) return "—";
-  return `${((wins / matches) * 100).toFixed(1)}%`;
-}
+function formatWinRate(w,m){return !m?"—":((w/m)*100).toFixed(1)+"%";}
 
 function display(rows, tracked) {
-  resultsListEl.innerHTML = "";
-  rows.forEach(r => {
-    const div = document.createElement("div");
-    div.className = "entry";
-    if (tracked && String(r.id) === String(tracked)) {
-      div.classList.add("highlight-default");
-    }
-
-    div.innerHTML = `
+  resultsListEl.innerHTML="";
+  rows.forEach(r=>{
+    const row=document.createElement("div");
+    row.className="entry";
+    if(String(r.id)===String(tracked)) row.classList.add("highlight-default");
+    row.innerHTML = `
       <span class="col-rank rank-${r.rank}">${r.rank}</span>
-      <span class="col-player">${r.name}</span>
-      <span class="col-elo">${Math.round(r.elo)}</span>
-      <span class="col-wins">${r.wins}</span>
-      <span class="col-winrate">${formatWinRate(r.wins, r.matches)}</span>`;
-
-    resultsListEl.appendChild(div);
+      <span>${r.name}</span>
+      <span>${Math.round(r.elo)}</span>
+      <span>${r.wins}</span>
+      <span>${formatWinRate(r.wins, r.matches)}</span>`;
+    resultsListEl.appendChild(row);
   });
   resizeCard(rows.length);
 }
@@ -236,50 +165,50 @@ function display(rows, tracked) {
 async function fetchData() {
   try {
     const lobby = await (await fetch(API_URL)).json();
-    if (!Array.isArray(lobby.players) || lobby.players.length < 2)
-      return resultsListEl.innerHTML = `<div class='loading'>Add 2+ players</div>`;
+
+    if (lobby.refresh_version !== lastRefreshVersion) {
+      lastRefreshVersion = lobby.refresh_version;
+      fadeOut(()=>fadeIn()); // manual refresh = fade touch
+    }
+
+    if (!Array.isArray(lobby.players) || lobby.players.length < 2) {
+      return resultsListEl.innerHTML=`<div class='loading'>Add 2+ players</div>`;
+    }
 
     const lb = await (await fetch(LB_URL, {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({
-        leaderboard: "season_10",
-        rating_type: "player_global_all",
-        client_id: CLIENT_ID
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        leaderboard:"season_10",
+        rating_type:"player_global_all",
+        client_id:CLIENT_ID
       })
     })).json();
 
-    const leaderboard = lb.leaderboard || [];
-    const resolved = lb.resolved?.players || {};
+    const leaderboard=lb.leaderboard||[];
+    const resolved=lb.resolved?.players||{};
+    const sorted=[...leaderboard].sort((a,b)=>(b.elo??0)-(a.elo??0));
+    const rankMap={};
+    sorted.forEach((e,i)=>rankMap[e.team?.[0]]=i+1);
 
-    const sortedByElo = [...leaderboard].sort((a,b)=>(b.elo ?? 0)-(a.elo ?? 0));
-    const rankMap = {};
-    sortedByElo.forEach((e,i)=> rankMap[e.team?.[0]] = i+1 );
-
-    const rows = lobby.players.map(id => {
-      const entry = leaderboard.find(e => String(e.team?.[0]) === String(id)) || {};
-      return {
-        id,
-        name: resolved[id]?.display_name || resolved[id]?.username || `Player ${id}`,
-        elo: entry.elo ?? 0,
-        wins: entry.count_placement_1 ?? 0,
-        matches: entry.matches ?? 0,
-        rank: rankMap[id] ?? "—"
+    const rows=lobby.players.map(id=>{
+      const e=leaderboard.find(x=>String(x.team?.[0])===String(id))||{};
+      return { id, rank:rankMap[id]??"—",
+          name:resolved[id]?.display_name||resolved[id]?.username||`Player ${id}`,
+          elo:e.elo??0,
+          wins:e.count_placement_1??0,
+          matches:e.matches??0
       };
     }).sort((a,b)=>(a.rank ?? 99999)-(b.rank ?? 99999));
 
-    const hash = hashState(rows);
-    if (hash !== lastHash) {
-      lastHash = hash;
-      resultsListEl.style.opacity = 0;
-      setTimeout(()=>{
-        display(rows, lobby.tracked);
-        resultsListEl.style.opacity = 1;
-      },300);
+    const hash=rows.map(r=>`${r.id}:${r.rank}:${r.elo}:${r.wins}:${r.matches}`).join("|");
+    if(hash!==lastHash){
+      lastHash=hash;
+      fadeOut(()=>{
+        display(rows,lobby.tracked);
+        fadeIn();
+      });
     }
-  } catch {
-    resultsListEl.innerHTML = `<div class='error'>API Error</div>`;
-  }
+  } catch {}
 }
 
 fetchData();
