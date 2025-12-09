@@ -7,30 +7,20 @@
 
 <style>
   body {
-    background: #0f172a;
-    font-family: Inter, system-ui, sans-serif;
-    color: #e9eef8;
-    padding: 22px;
+    background:#0f172a;
+    font-family:Inter, system-ui, sans-serif;
+    color:#e9eef8;
+    padding:22px;
   }
-  h1 { font-size: 38px; text-align: center; margin-bottom: 18px; }
-  input,button {
-    font-size: 24px;
-    padding: 14px;
-    border-radius: 12px;
-    border: none;
+  h1 {font-size:38px;text-align:center;margin-bottom:18px;}
+  button,input {
+    font-size:24px;
+    padding:14px;
+    border-radius:12px;
+    border:none;
+    cursor:pointer;
   }
-  
-  button { background:#3b82f6;color:white; cursor:pointer; }
-  .remove-btn {
-    background: #ef4444 !important; /* bright red */
-    padding: 10px 20px !important;  /* wider */
-    font-weight: 700;
-  }
-  .remove-btn:hover {
-    background: #dc2626 !important; /* darker red hover */
-  }
-
-  input { width: 60%; margin-bottom: 8px; }
+  input {width:100%;margin-bottom:8px;}
   .player-row,.result-row {
     background:rgba(255,255,255,0.08);
     border-radius:12px;
@@ -42,12 +32,19 @@
     align-items:center;
   }
   .tracked {
-    background: rgba(52, 211, 153, 0.30);
-    box-shadow: 0 0 18px rgba(16, 185, 129, 0.3);
+    background:rgba(52,211,153,0.30);
+    box-shadow:0 0 18px rgba(16,185,129,0.3);
   }
-  .player-row button, .result-row button {
-    font-size:20px;
-    padding:10px 14px;
+  .remove-btn {
+    background:#ef4444!important;
+    padding:10px 20px!important;
+    font-weight:700;
+  }
+  .refresh-btn {
+    background:#10b981;
+    width:100%;
+    margin-top:10px;
+    font-size:26px;
   }
   .error-msg {color:#f87171;font-size:20px;margin-top:8px;}
 </style>
@@ -56,17 +53,14 @@
 <body>
 <h1>Match Lobby Control</h1>
 
-<!-- PASSWORD SCREEN -->
 <div id="passwordBox">
   <input id="pw" type="password" placeholder="Enter PIN (7466)">
   <button onclick="submitPW()">OK</button>
   <div id="pwError" class="error-msg"></div>
 </div>
 
-<!-- UI -->
 <div id="ui" style="display:none">
   <input id="search" placeholder="Search by ID or name…" oninput="searchPlayers()" autocomplete="off" />
-
   <div id="error" class="error-msg"></div>
 
   <h2>Results</h2>
@@ -74,52 +68,41 @@
 
   <h2>Lobby</h2>
   <div id="lobbyList"></div>
+
+  <button class="refresh-btn" onclick="refreshOverlay()">Refresh Overlay</button>
 </div>
 
 <script>
-const API_URL = "https://blue-dust-07fa.nextweekmedia.workers.dev/lobby";
-const LB_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
-const CLIENT_ID = "DISCORD|1069003073311211601";
+const API_URL="https://blue-dust-07fa.nextweekmedia.workers.dev/lobby";
+const LB_URL="https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
+const CLIENT_ID="DISCORD|1069003073311211601";
 
-let password = sessionStorage.getItem("lobbyPIN") || "";
-let leaderboard = [];
-let resolvedPlayers = {};
+let password=sessionStorage.getItem("lobbyPIN")||"";
+let leaderboard=[];
+let resolvedPlayers={};
 
-async function init() {
-  if (password) {
+async function init(){
+  if(password){
     hidePWBox();
     await loadLeaderboard();
     await refreshLobby();
-  } else {
-    showPWBox();
-  }
+  }else showPWBox();
 }
 
-function showPWBox() {
-  document.getElementById("passwordBox").style.display="block";
-  document.getElementById("ui").style.display="none";
-}
+function showPWBox(){document.getElementById("passwordBox").style.display="block";document.getElementById("ui").style.display="none";}
+function hidePWBox(){document.getElementById("passwordBox").style.display="none";document.getElementById("ui").style.display="block";}
 
-function hidePWBox() {
-  document.getElementById("passwordBox").style.display="none";
-  document.getElementById("ui").style.display="block";
-}
-
-async function submitPW() {
-  const inputVal = document.getElementById("pw").value.trim();
-  if (!inputVal) return;
-  password = inputVal;
-  sessionStorage.setItem("lobbyPIN", password);
-
+async function submitPW(){
+  const v=document.getElementById("pw").value.trim();
+  if(!v)return;
+  password=v; sessionStorage.setItem("lobbyPIN",password);
   hidePWBox();
-
-  await loadLeaderboard();
-  await refreshLobby();
+  await loadLeaderboard();await refreshLobby();
 }
 
-async function loadLeaderboard() {
-  const data = await (await fetch(LB_URL, {
-    method: "POST",
+async function loadLeaderboard(){
+  const data=await(await fetch(LB_URL,{
+    method:"POST",
     headers:{"Content-Type":"application/json"},
     body:JSON.stringify({
       leaderboard:"season_10",
@@ -127,123 +110,120 @@ async function loadLeaderboard() {
       client_id:CLIENT_ID
     })
   })).json();
-  leaderboard = data.leaderboard;
-  resolvedPlayers = data.resolved?.players || {};
+  leaderboard=data.leaderboard;
+  resolvedPlayers=data.resolved?.players||{};
 }
 
-function nameOf(id) {
-  const p = resolvedPlayers[id] || {};
-  return p.display_name || p.username || `Player ${id}`;
+function nameOf(id){
+  const p=resolvedPlayers[id]||{};
+  return p.display_name||p.username||`Player ${id}`;
 }
 
-function showError(msg) {
-  const el = document.getElementById("error");
-  el.textContent = msg;
-  setTimeout(()=> el.textContent="",3000);
-}
+function showError(m){const e=document.getElementById("error");e.textContent=m;setTimeout(()=>e.textContent="",3000);}
 
-async function refreshLobby() {
-  const state = await (await fetch(API_URL)).json();
+async function refreshLobby(){
+  const state=await(await fetch(API_URL)).json();
   renderLobby(state);
 }
 
-function renderLobby(state) {
-  const container = document.getElementById("lobbyList");
-  container.innerHTML="";
+function renderLobby(state){
+  const box=document.getElementById("lobbyList");
+  box.innerHTML="";
 
-  const rows = state.players
-    .map(id=>{
-      const e = leaderboard.find(x=>String(x.team?.[0])===String(id)) || {};
-      return {
-        id,
-        name:nameOf(id),
-        elo: e?.elo ?? 0,
-        tracked: state.tracked===String(id)
-      };
-    })
-    .sort((a,b)=>(b.elo ?? 0)-(a.elo ?? 0));
+  const rows=state.players.map(id=>{
+    const e=leaderboard.find(x=>String(x.team?.[0])===String(id))||{};
+    return{
+      id,
+      name:nameOf(id),
+      elo:e?.elo??0,
+      tracked:state.tracked===String(id)
+    };
+  }).sort((a,b)=>(b.elo??0)-(a.elo??0));
 
-  rows.forEach(x=>{
-    const row = document.createElement("div");
-    row.className="player-row" + (x.tracked ? " tracked" : "");
-    row.innerHTML = `
-      <span>${x.name} (${Math.round(x.elo)})</span>
+  rows.forEach(r=>{
+    const row=document.createElement("div");
+    row.className=`player-row${r.tracked?" tracked":""}`;
+    row.innerHTML=`
+      <span>${r.name} (Elo ${Math.round(r.elo)})</span>
       <span style="display:flex;gap:6px">
-        <button onclick="setTracked('${x.id}')">${x.tracked?'Untrack':'Track'}</button>
-        <button class="remove-btn" onclick="removePlayer('${x.id}')">X</button>
+        <button onclick="setTracked('${r.id}')">${r.tracked?"Untrack":"Track"}</button>
+        <button class="remove-btn" onclick="removePlayer('${r.id}')">X</button>
       </span>`;
-    container.appendChild(row);
+    box.appendChild(row);
   });
 }
 
-async function saveState(players, tracked) {
-  const res = await fetch(API_URL, {
+async function saveState(players,tracked){
+  const res=await fetch(API_URL,{
     method:"POST",
     headers:{"Content-Type":"application/json"},
     body:JSON.stringify({password,players,tracked})
   });
-
-  if (!res.ok) {
+  if(!res.ok){
     sessionStorage.removeItem("lobbyPIN");
-    password = "";
+    password="";
     showPWBox();
-    showError("PIN expired — please re-enter");
+    showError("PIN expired — re-enter");
     return;
   }
   await refreshLobby();
 }
 
-async function removePlayer(id) {
-  const state = await (await fetch(API_URL)).json();
-  const list = state.players.filter(x=>String(x)!==String(id));
-  await saveState(list, state.tracked===id?"":state.tracked);
+async function removePlayer(id){
+  const state=await(await fetch(API_URL)).json();
+  const list=state.players.filter(x=>String(x)!==String(id));
+  await saveState(list,state.tracked===id?"":state.tracked);
 }
 
-async function setTracked(id) {
-  const state = await (await fetch(API_URL)).json();
-  await saveState(state.players, state.tracked===id?"":id);
+async function setTracked(id){
+  const state=await(await fetch(API_URL)).json();
+  await saveState(state.players,state.tracked===id?"":id);
 }
 
-async function searchPlayers() {
-  const q = document.getElementById("search").value.trim();
-  const sr = document.getElementById("searchResults");
-  sr.innerHTML="";
+async function searchPlayers(){
+  const q=document.getElementById("search").value.trim();
+  const s=document.getElementById("searchResults");
+  s.innerHTML="";
+  if(!q)return;
+  if(/^\d+$/.test(q))return addResult(q,s);
 
-  if (!q) return;
-
-  if (/^\d+$/.test(q)) return addResult(q, sr);
-
-  const lc = q.toLowerCase();
-  const results = leaderboard
-    .filter(e=>{
-      const id=e.team?.[0];
-      return nameOf(id).toLowerCase().includes(lc);
-    })
-    .slice(0, 10);
-
-  results.forEach(e=> addResult(e.team?.[0], sr));
+  const lc=q.toLowerCase();
+  leaderboard
+  .filter(e=>nameOf(e.team?.[0]).toLowerCase().includes(lc))
+  .slice(0,10)
+  .forEach(e=>addResult(e.team?.[0],s));
 }
 
-function addResult(id, container) {
-  const e = leaderboard.find(x => String(x.team?.[0]) === String(id)) || {};
-  const elo = e.elo != null ? Math.round(e.elo) : "—";
-
+function addResult(id,box){
+  const e=leaderboard.find(x=>String(x.team?.[0])===String(id))||{};
+  const elo=e.elo!=null?Math.round(e.elo):"—";
   const div=document.createElement("div");
   div.className="result-row";
-  div.innerHTML = `<span>${nameOf(id)} (${elo})</span>
+  div.innerHTML=`
+    <span>${nameOf(id)} (Elo ${elo})</span>
     <button onclick="addPlayer('${id}')">Add</button>`;
-  container.appendChild(div);
+  box.appendChild(div);
 }
 
-async function addPlayer(id) {
-  const state = await (await fetch(API_URL)).json();
-  if (state.players.includes(id)) return;
-  if (state.players.length>=8) return showError("Max 8 players");
+async function addPlayer(id){
+  const state=await(await fetch(API_URL)).json();
+  if(state.players.includes(id))return;
+  if(state.players.length>=8)return showError("Max 8 players");
   state.players.push(id);
-  await saveState(state.players, state.tracked);
+  await saveState(state.players,state.tracked);
 }
 
-init(); 
+async function refreshOverlay(){
+  const state=await(await fetch(API_URL)).json();
+  await fetch(API_URL,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({password,players:state.players,tracked:state.tracked,refresh:true})
+  });
+  showError("Overlay refresh ✔");
+}
+
+init();
 </script>
 </body>
 </html>
