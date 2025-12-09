@@ -57,6 +57,40 @@
     border-radius: 12px;
   }
 
+  .col {
+    padding: 0 12px;
+    display: flex;
+    align-items: center;
+  }
+
+  /* Column-Specific Targeting */
+  .col-rank {
+    justify-content: center;
+    font-weight: 900;
+    font-size: 42px;
+  }
+
+  .col-name {
+    justify-content: flex-start;
+    padding-left: 24px;
+    font-size: 42px;
+    font-weight: 600;
+  }
+
+  .col-elo,
+  .col-wins,
+  .col-winrate {
+    justify-content: center;
+    font-size: 38px;
+    font-weight: 600;
+  }
+
+  .col-elo { color: #a6e3ff; }
+  .col-wins { color: #9af59a; }
+  .col-winrate {
+    color: #ffd78d;
+  }
+
   #resultsList {
     display: flex;
     flex-direction: column;
@@ -75,33 +109,9 @@
     transition: background .3s ease, box-shadow .3s ease;
   }
 
-  .entry > span {
-    border-right: 2px solid rgba(255,255,255,0.14);
-    height: 45px;
-  }
-  .entry > span:last-child { border-right: none; }
-
   .entry.highlight-default {
     background: rgba(52,211,153,0.30);
     box-shadow: 0 0 18px rgba(16,185,129,0.3);
-  }
-
-  /* Center-align numeric columns */
-  .entry span:nth-child(1),
-  .entry span:nth-child(3),
-  .entry span:nth-child(4),
-  .entry span:nth-child(5),
-  .header-row span:nth-child(1),
-  .header-row span:nth-child(3),
-  .header-row span:nth-child(4),
-  .header-row span:nth-child(5) {
-    text-align: center;
-  }
-
-  .entry span:nth-child(2),
-  .header-row span:nth-child(2) {
-    text-align: left;
-    padding-left: 24px;
   }
 
   .col-rank.rank-1 { color: #ffd700; }
@@ -121,7 +131,11 @@
   <div class="title">Match Lobby</div>
 
   <div class="header-row">
-    <span>Rank</span><span>Player</span><span>Elo</span><span>Wins</span><span>Win Rate</span>
+    <span class="col col-rank">Rank</span>
+    <span class="col col-name">Player</span>
+    <span class="col col-elo">Elo</span>
+    <span class="col col-wins">Wins</span>
+    <span class="col col-winrate">Win Rate</span>
   </div>
 
   <div id="resultsList"><div class="loading">Waiting for players…</div></div>
@@ -154,11 +168,12 @@ function display(rows, tracked){
     row.className="entry";
     if(String(r.id)===String(tracked)) row.classList.add("highlight-default");
     row.innerHTML=`
-      <span class="col-rank rank-${r.rank}">${r.rank}</span>
-      <span>${r.name}</span>
-      <span>${Math.round(r.elo)}</span>
-      <span>${r.wins}</span>
-      <span>${formatWinRate(r.wins,r.matches)}</span>`;
+      <span class="col col-rank rank-${r.rank}">${r.rank}</span>
+      <span class="col col-name">${r.name}</span>
+      <span class="col col-elo">${Math.round(r.elo)}</span>
+      <span class="col col-wins">${r.wins}</span>
+      <span class="col col-winrate">${formatWinRate(r.wins,r.matches)}</span>
+    `;
     resultsListEl.appendChild(row);
   });
   resizeCard(rows.length);
@@ -202,7 +217,6 @@ async function updateLobby(){
 
     const hash = rows.map(r => `${r.id}:${r.rank}:${r.elo}:${r.wins}:${r.matches}`).join("|");
 
-    // Only animate when visible content changed
     if(hash!==lastHash){
       lastHash = hash;
       fadeOut(()=>{display(rows,lobby.tracked);fadeIn();});
@@ -215,10 +229,8 @@ async function updateLobby(){
   }
 }
 
-// Load once on startup
 updateLobby();
 
-// Poll ONLY for refresh_version changes
 setInterval(async ()=>{
   const lobby = await (await fetch(API_URL)).json();
   if(lobby.refresh_version !== lastRefreshVersion){
