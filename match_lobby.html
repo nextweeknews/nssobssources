@@ -81,7 +81,14 @@
     box-shadow: 0 0 18px rgba(16,185,129,0.3);
   }
 
-  /* Center-align columns except player */
+  /* Border styling */
+  .entry > span {
+    border-right: 2px solid rgba(255,255,255,0.14);
+    height: 45px;
+  }
+  .entry > span:last-child { border-right: none; }
+
+  /* Center-align stat columns */
   .entry span:nth-child(1),
   .entry span:nth-child(3),
   .entry span:nth-child(4),
@@ -89,8 +96,11 @@
   .header-row span:nth-child(1),
   .header-row span:nth-child(3),
   .header-row span:nth-child(4),
-  .header-row span:nth-child(5) { text-align: center; }
+  .header-row span:nth-child(5) {
+    text-align: center;
+  }
 
+  /* Player column left */
   .entry span:nth-child(2),
   .header-row span:nth-child(2) {
     text-align: left;
@@ -101,7 +111,6 @@
   .col-rank.rank-1 { color: #ffd700; }
   .col-rank.rank-2 { color: #c0c0c0; }
   .col-rank.rank-3 { color: #cd7f32; }
-
 </style>
 </head>
 
@@ -113,9 +122,7 @@
     <span>Rank</span><span>Player</span><span>Elo</span><span>Wins</span><span>Win Rate</span>
   </div>
 
-  <div id="resultsList">
-    <div class="loading" style="font-size:36px;text-align:center;">Waiting for players…</div>
-  </div>
+  <div id="resultsList"><div class="loading" style="font-size:36px;text-align:center;">Waiting for players…</div></div>
 </div>
 
 <script>
@@ -124,59 +131,54 @@ const LB_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboar
 const CLIENT_ID = "DISCORD|1069003073311211601";
 const REFRESH_MS = 8000;
 
-const cardEl = document.getElementById("card");
-const resultsListEl = document.getElementById("resultsList");
+const cardEl=document.getElementById("card");
+const resultsListEl=document.getElementById("resultsList");
 
-let lastHash = "";
-let lastRefreshVersion = 0;
+let lastHash="";
+let lastRefreshVersion=0;
 
-function resizeCard(count) {
-  const h = 56 + 24 + 60 + 14 + 48 + 50 + (90 * count) + (10 * (count - 1));
-  cardEl.style.height = `${h}px`;
+function resizeCard(c){
+  const h=56+24+60+14+48+50+(90*c)+(10*(c-1));
+  cardEl.style.height=h+"px";
 }
 
-function fadeOut(cb) {
-  resultsListEl.style.opacity = 0;
-  setTimeout(cb, 400);
-}
-function fadeIn() {
-  resultsListEl.style.opacity = 1;
-}
+function fadeOut(cb){resultsListEl.style.opacity=0;setTimeout(cb,400);}
+function fadeIn(){resultsListEl.style.opacity=1;}
 
-function formatWinRate(w,m){return !m?"—":((w/m)*100).toFixed(1)+"%";}
+function formatWinRate(w,m){return!m?"—":((w/m)*100).toFixed(1)+"%";}
 
-function display(rows, tracked) {
+function display(rows,tracked){
   resultsListEl.innerHTML="";
   rows.forEach(r=>{
     const row=document.createElement("div");
     row.className="entry";
     if(String(r.id)===String(tracked)) row.classList.add("highlight-default");
-    row.innerHTML = `
+    row.innerHTML=`
       <span class="col-rank rank-${r.rank}">${r.rank}</span>
       <span>${r.name}</span>
       <span>${Math.round(r.elo)}</span>
       <span>${r.wins}</span>
-      <span>${formatWinRate(r.wins, r.matches)}</span>`;
+      <span>${formatWinRate(r.wins,r.matches)}</span>`;
     resultsListEl.appendChild(row);
   });
   resizeCard(rows.length);
 }
 
-async function fetchData() {
-  try {
-    const lobby = await (await fetch(API_URL)).json();
+async function fetchData(){
+  try{
+    const lobby=await(await fetch(API_URL)).json();
 
-    if (lobby.refresh_version !== lastRefreshVersion) {
-      lastRefreshVersion = lobby.refresh_version;
-      fadeOut(()=>fadeIn()); // manual refresh = fade touch
+    if(lobby.refresh_version!==lastRefreshVersion){
+      lastRefreshVersion=lobby.refresh_version;
+      fadeOut(()=>fadeIn());
     }
 
-    if (!Array.isArray(lobby.players) || lobby.players.length < 2) {
+    if(!Array.isArray(lobby.players)||lobby.players.length<2)
       return resultsListEl.innerHTML=`<div class='loading'>Add 2+ players</div>`;
-    }
 
-    const lb = await (await fetch(LB_URL, {
-      method:"POST", headers:{"Content-Type":"application/json"},
+    const lb=await(await fetch(LB_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
       body:JSON.stringify({
         leaderboard:"season_10",
         rating_type:"player_global_all",
@@ -192,27 +194,26 @@ async function fetchData() {
 
     const rows=lobby.players.map(id=>{
       const e=leaderboard.find(x=>String(x.team?.[0])===String(id))||{};
-      return { id, rank:rankMap[id]??"—",
-          name:resolved[id]?.display_name||resolved[id]?.username||`Player ${id}`,
-          elo:e.elo??0,
-          wins:e.count_placement_1??0,
-          matches:e.matches??0
+      return{
+        id,
+        rank:rankMap[id]??"—",
+        name:resolved[id]?.display_name||resolved[id]?.username||`Player ${id}`,
+        elo:e.elo??0,
+        wins:e.count_placement_1??0,
+        matches:e.matches??0
       };
-    }).sort((a,b)=>(a.rank ?? 99999)-(b.rank ?? 99999));
+    }).sort((a,b)=>(a.rank??99999)-(b.rank??99999));
 
     const hash=rows.map(r=>`${r.id}:${r.rank}:${r.elo}:${r.wins}:${r.matches}`).join("|");
     if(hash!==lastHash){
       lastHash=hash;
-      fadeOut(()=>{
-        display(rows,lobby.tracked);
-        fadeIn();
-      });
+      fadeOut(()=>{display(rows,lobby.tracked);fadeIn();});
     }
-  } catch {}
+  }catch{}
 }
 
 fetchData();
-setInterval(fetchData, REFRESH_MS);
+setInterval(fetchData,REFRESH_MS);
 </script>
 </body>
 </html>
