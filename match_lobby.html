@@ -59,10 +59,13 @@
   }
 
   .header-row .col {
-    border-right: none !important;
     text-align: center;
     justify-content: center;
     padding-left: 0;
+    border-right: 2px solid rgba(255,255,255,0);
+  }
+  .header-row .col:last-child {
+    border-right: none;
   }
 
   .header-row .col.col-name {
