@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Season 10 Rankings</title>
+
+  <style>
+    html, body {
+      margin: 0; padding: 0;
+      width: 100%; height: 100%;
+      background: transparent;
+      font-family: Inter, system-ui, sans-serif;
+      display: flex; justify-content: center; align-items: center;
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+    }
+      
+    .card {
+      width: 1720px;
+      background: rgba(15, 23, 42, 1);
+      border-radius: 24px;
+      padding: 48px 50px;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      transition: height 0.4s ease;
+      color: #e9eef8;
+      box-shadow: 0 32px 32px rgba(0,0,0,0.65);
+      box-sizing: border-box;
+    }
+
+    .title {
+      font-size: 56px;
+      color: #c7d7ff;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: .035em;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    /* Column structure – now 5 columns: Rank, Player, Elo, Wins, Win Rate */
+    .header-row,
+    .entry {
+      display: grid;
+      grid-template-columns: 150px 1fr 200px 180px 180px;
+      align-items: center;
+    }
+
+    .header-row {
+      height: 60px;
+      margin-bottom: 14px;
+      background: rgba(148, 163, 184, 0.12);
+      font-size: 24px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #9ca3c7;
+      border-radius: 12px;
+      text-align: center;
+    }
+
+    .header-row span:nth-child(2) {
+      text-align: left;
+      padding-left: 24px;
+    }
+
+    #resultsList {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      opacity: 1;
+      transition: opacity .3s ease;
+    }
+
+    .entry {
+      height: 70px; /* more condensed than 90px */
+      background: rgba(255,255,255,0.07);
+      border-radius: 14px;
+      font-size: 32px;
+      font-weight: 600;
+      color: #fff;
+      align-items: center;
+      transition: background .3s ease, box-shadow .3s ease;
+    }
+
+    .place {
+      font-size: 34px;
+      font-weight: 900;
+      text-align: center;
+      line-height: 1;
+      color: #c7d7ff;
+    }
+
+    .player-name {
+      font-size: 28px;
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: left;
+      padding-left: 36px;
+      padding-right: 36px;
+    }
+
+    .elo-value,
+    .stat-value {
+      font-size: 30px;
+      font-weight: 800;
+      text-align: center;
+      line-height: 1;
+    }
+
+    .gold { color: #ffd700; }
+    .silver { color: #c0c0c0; }
+    .bronze { color: #cd7f32; }
+
+    /* Column borders */
+    .entry > span {
+      border-right: 2px solid rgba(255,255,255,0.14);
+      right: -1px;
+      height: 38px;
+      position: relative;
+      vertical-align: middle;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .entry > span:nth-child(2) {
+      justify-content: flex-start;
+    }
+
+    .entry > span:last-child {
+      border-right: none;
+    }
+
+    /* Placement-based highlighting (for the tracked player) */
+    .entry.highlight-gold {
+      background: rgba(255, 215, 0, 0.28);
+      box-shadow: 0 0 18px rgba(255, 215, 0, 0.3);
+    }
+
+    .entry.highlight-silver {
+      background: rgba(192, 192, 192, 0.28);
+      box-shadow: 0 0 18px rgba(192, 192, 192, 0.3);
+    }
+
+    .entry.highlight-bronze {
+      background: rgba(205, 127, 50, 0.28);
+      box-shadow: 0 0 18px rgba(205, 127, 50, 0.3);
+    }
+
+    .entry.highlight-default {
+      background: rgba(52, 211, 153, 0.30);
+      box-shadow: 0 0 18px rgba(16, 185, 129, 0.3);
+    }
+
+    .loading, .error {
+      font-size: 36px;
+      width: 100%;
+      text-align: center;
+    }
+  </style>
+</head>
+
+<body>
+<div class="card" id="card">
+  <div class="title">Season 10 Rankings</div>
+
+  <div class="header-row">
+    <span>Rank</span>
+    <span>Player</span>
+    <span>Elo</span>
+    <span>Wins</span>
+    <span>Win Rate</span>
+  </div>
+
+  <div id="resultsList">
+    <div class="loading">Loading…</div>
+  </div>
+</div>
+
+<script>
+const LB_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
+const CLIENT_ID = "DISCORD|1069003073311211601";
+const REFRESH_MS = 15000;
+
+const cardEl = document.getElementById("card");
+const resultsListEl = document.getElementById("resultsList");
+
+const PLAYER_ID = new URLSearchParams(location.search).get("player_id");
+
+const TOTAL_DISPLAY_SLICE = 15; // when player is outside top 16
+
+let lastRenderedState = null;
+let initialLoad = true;
+
+if (!PLAYER_ID) {
+  resultsListEl.innerHTML = "<div class='error'>Missing player_id</div>";
+  throw new Error("player_id required");
+}
+
+function resizeCard(count) {
+  if (!count || count < 1) count = 1;
+  const titleHeight = 56;
+  const titleMargin = 24;
+  const headerHeight = 60;
+  const headerMargin = 14;
+  const paddingTop = 48;
+  const paddingBottom = 50;
+  const rowHeight = 70;
+  const rowGap = 8;
+
+  const h = titleHeight + titleMargin +
+            headerHeight + headerMargin +
+            paddingTop + paddingBottom +
+            (rowHeight * count) +
+            (rowGap * (count - 1));
+
+  cardEl.style.height = `${h}px`;
+}
+
+function setError(msg) {
+  resultsListEl.innerHTML = `<div class="error">${msg}</div>`;
+  console.error(msg);
+  resizeCard(1);
+}
+
+function statesEqual(a, b) {
+  if (!a || !b || a.length !== b.length) return false;
+  return a.every((row, i) =>
+    row.id === b[i].id &&
+    row.rank === b[i].rank &&
+    row.name === b[i].name &&
+    row.elo === b[i].elo &&
+    row.wins === b[i].wins &&
+    row.winRate === b[i].winRate
+  );
+}
+
+function renderList(state, highlightId) {
+  resultsListEl.innerHTML = "";
+
+  state.forEach(player => {
+    const row = document.createElement("div");
+    row.className = "entry";
+
+    // Rank text color
+    let rankTextClass = "";
+    if (player.rank === 1) rankTextClass = "gold";
+    else if (player.rank === 2) rankTextClass = "silver";
+    else if (player.rank === 3) rankTextClass = "bronze";
+
+    // Highlight row for selected player
+    if (String(player.id) === String(highlightId)) {
+      if (player.rank === 1) row.classList.add("highlight-gold");
+      else if (player.rank === 2) row.classList.add("highlight-silver");
+      else if (player.rank === 3) row.classList.add("highlight-bronze");
+      else row.classList.add("highlight-default");
+    }
+
+    const winRateDisplay = player.winRate != null
+      ? `${player.winRate}%`
+      : "—";
+
+    row.innerHTML = `
+      <span class="place ${rankTextClass}">${player.rank}</span>
+      <span class="player-name">${player.name}</span>
+      <span class="elo-value">${player.elo}</span>
+      <span class="stat-value">${player.wins}</span>
+      <span class="stat-value">${winRateDisplay}</span>
+    `;
+
+    resultsListEl.appendChild(row);
+  });
+
+  resizeCard(state.length);
+}
+
+function buildDisplayState(entries, resolvedPlayers) {
+  // Sort by Elo descending (just in case)
+  const sorted = [...entries].sort((a, b) => (b.elo ?? 0) - (a.elo ?? 0));
+
+  const mapped = [];
+  for (let i = 0; i < sorted.length; i++) {
+    const e = sorted[i];
+    const id = e.team?.[0];
+    if (id == null) continue;
+
+    const playerInfo = resolvedPlayers?.[id] || {};
+    const name =
+      playerInfo.display_name ||
+      playerInfo.username ||
+      `Player ${id}`;
+
+    const elo = Math.round(e.elo ?? 0);
+    const wins = e.count_placement_1 ?? 0;
+    const matches = e.matches ?? 0;
+
+    let winRate = null;
+    if (matches > 0) {
+      winRate = Math.round((wins / matches) * 100);
+    }
+
+    mapped.push({
+      rank: i + 1,
+      id,
+      name,
+      elo,
+      wins,
+      winRate
+    });
+  }
+
+  return mapped;
+}
+
+function pickSliceForPlayer(list, playerId) {
+  const idx = list.findIndex(p => String(p.id) === String(playerId));
+  if (idx === -1) {
+    return { slice: null, playerRank: null };
+  }
+
+  const playerRank = list[idx].rank;
+
+  // If player is top 16: show top 16
+  if (playerRank <= 16) {
+    const slice = list.slice(0, 16);
+    return { slice, playerRank };
+  }
+
+  // Otherwise: show 15-player centered slice around player
+  const total = list.length;
+  const half = Math.floor(TOTAL_DISPLAY_SLICE / 2);
+  let startIndex = idx - half;
+
+  if (startIndex < 0) startIndex = 0;
+  if (startIndex > total - TOTAL_DISPLAY_SLICE) {
+    startIndex = Math.max(0, total - TOTAL_DISPLAY_SLICE);
+  }
+
+  const slice = list.slice(startIndex, startIndex + TOTAL_DISPLAY_SLICE);
+  return { slice, playerRank };
+}
+
+async function fetchLeaderboard() {
+  try {
+    const resp = await fetch(LB_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        leaderboard: "season_10",
+        rating_type: "player_global_all",
+        client_id: CLIENT_ID
+      })
+    });
+
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+    const data = await resp.json();
+    const entries = data.leaderboard || [];
+    const resolvedPlayers = data.resolved?.players || {};
+
+    if (!entries.length) {
+      setError("No leaderboard data");
+      return;
+    }
+
+    const fullState = buildDisplayState(entries, resolvedPlayers);
+    const { slice, playerRank } = pickSliceForPlayer(fullState, PLAYER_ID);
+
+    if (!slice || playerRank == null) {
+      setError("Player not found in leaderboard");
+      return;
+    }
+
+    const changed = !statesEqual(lastRenderedState, slice);
+    if (!changed && !initialLoad) return;
+
+    initialLoad = false;
+    resultsListEl.style.opacity = "0";
+
+    setTimeout(() => {
+      renderList(slice, PLAYER_ID);
+      lastRenderedState = slice;
+      requestAnimationFrame(() => {
+        resultsListEl.style.opacity = "1";
+      });
+    }, 300);
+
+  } catch (err) {
+    setError(err.message);
+  }
+}
+
+fetchLeaderboard();
+setInterval(fetchLeaderboard, REFRESH_MS);
+</script>
+</body>
+</html>
