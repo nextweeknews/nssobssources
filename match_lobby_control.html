@@ -18,7 +18,7 @@
 
   /* Default button text styling (optional override for clarity) */
   button {
-    color:#ffffff;
+    color:#0f5132;
   }
 
   /* REMOVE "X" button — red with white text */
@@ -169,7 +169,7 @@ function addSearchResult(id,box){
   div.className="result-row";
   div.innerHTML=`
     <span>${nameOf(id)} (${elo})</span>
-    <button onclick="addPlayer('${id}')">Add</button>`;
+    <button onclick="addPlayer('${id}')">+</button>`;
   box.appendChild(div);
 }
 
