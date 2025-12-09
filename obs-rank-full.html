@@ -12,16 +12,15 @@
       background: transparent;
       font-family: Inter, system-ui, sans-serif;
       display: flex; justify-content: center; align-items: center;
-      -webkit-font-smoothing: antialiased;
       overflow: hidden;
     }
 
     .card {
       width: 1720px;
       height: 880px; /* Fixed */
-      background: rgba(15, 23, 42, 1);
-      border-radius: 24px;
-      padding: 48px 50px; /* Will adjust dynamically */
+      background: rgba(15,23,42,1);
+      border-radius: 20px;
+      padding: 32px 40px;
       display: flex;
       flex-direction: column;
       color: #e9eef8;
@@ -30,93 +29,85 @@
     }
 
     .title {
-      font-size: 56px;
-      color: #c7d7ff;
+      font-size: 46px;
       font-weight: 900;
+      color: #c7d7ff;
+      text-align: center;
+      margin-bottom: 16px;
       text-transform: uppercase;
       letter-spacing: .035em;
-      margin-bottom: 24px;
-      text-align: center;
       flex-shrink: 0;
     }
 
-    .header-row,
-    .entry {
+    .header-row, .entry {
       display: grid;
-      grid-template-columns: 150px 1fr 200px 180px 180px;
+      grid-template-columns: 120px 1fr 160px 150px 150px;
       align-items: center;
     }
 
     .header-row {
-      height: 60px;
-      margin-bottom: 14px;
-      background: rgba(148, 163, 184, 0.12);
-      font-size: 24px;
+      height: 46px;
+      margin-bottom: 10px;
+      border-radius: 10px;
+      background: rgba(148,163,184,0.12);
+      font-size: 20px;
       font-weight: 700;
-      text-transform: uppercase;
       color: #9ca3c7;
-      border-radius: 12px;
-      text-align: center;
+      text-transform: uppercase;
       flex-shrink: 0;
     }
 
     .header-row span:nth-child(2) {
       text-align: left;
-      padding-left: 24px;
+      padding-left: 18px;
     }
 
     #resultsList {
+      flex-shrink: 1;
       display: flex;
       flex-direction: column;
-      gap: 8px; /* Will adjust dynamically */
-      flex-shrink: 1; /* Allow row area to compress inside card */
-      opacity: 1;
+      gap: 6px;
       transition: opacity .3s ease, gap .3s ease;
-      overflow: hidden; /* Prevent visual overflow */
+      overflow: hidden;
     }
 
     .entry {
-      height: 68px; /* Keep constant */
-      background: rgba(255,255,255,0.07);
-      border-radius: 14px;
-      font-size: 32px;
-      font-weight: 600;
-      color: #fff;
-      align-items: center;
-      transition: background .3s ease, box-shadow .3s ease;
+      height: 56px;
+      font-size: 26px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 10px;
+      transition: background .25s ease, box-shadow .25s ease;
     }
 
     .place {
-      font-size: 34px;
+      font-size: 28px;
       font-weight: 900;
       text-align: center;
-      color: #c7d7ff;
     }
 
     .player-name {
-      font-size: 28px;
+      font-size: 24px;
+      white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      white-space: nowrap;
-      padding-left: 36px;
-      padding-right: 36px;
+      padding-left: 24px;
+      padding-right: 24px;
     }
 
-    .elo-value,
-    .stat-value {
-      font-size: 30px;
+    .elo-value, .stat-value {
+      font-size: 26px;
       font-weight: 800;
       text-align: center;
     }
 
-    .gold   { color: #ffd700; }
+    .gold { color: #ffd700; }
     .silver { color: #c0c0c0; }
     .bronze { color: #cd7f32; }
 
-    /* Column borders */
+    /* Subtle 1px column borders */
     .entry > span {
-      border-right: 2px solid rgba(255,255,255,0.14);
-      height: 38px;
+      border-right: 1px solid rgba(255,255,255,0.12);
+      height: 32px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -124,28 +115,31 @@
     .entry > span:nth-child(2) { justify-content: flex-start; }
     .entry > span:last-child { border-right: none; }
 
-    /* Highlight */
+    /* Tracked player highlight */
     .entry.highlight-gold {
-      background: rgba(255, 215, 0, 0.28);
-      box-shadow: 0 0 18px rgba(255, 215, 0, 0.3);
+      background: rgba(255,215,0,0.23);
+      box-shadow: 0 0 14px rgba(255,215,0,0.25);
     }
+
     .entry.highlight-silver {
-      background: rgba(192, 192, 192, 0.28);
-      box-shadow: 0 0 18px rgba(192, 192, 192, 0.3);
+      background: rgba(192,192,192,0.23);
+      box-shadow: 0 0 14px rgba(192,192,192,0.25);
     }
+
     .entry.highlight-bronze {
-      background: rgba(205, 127, 50, 0.28);
-      box-shadow: 0 0 18px rgba(205, 127, 50, 0.3);
+      background: rgba(205,127,50,0.23);
+      box-shadow: 0 0 14px rgba(205,127,50,0.25);
     }
+
     .entry.highlight-default {
-      background: rgba(52, 211, 153, 0.30);
-      box-shadow: 0 0 18px rgba(16, 185, 129, 0.3);
+      background: rgba(52,211,153,0.23);
+      box-shadow: 0 0 14px rgba(16,185,129,0.25);
     }
 
     .loading, .error {
-      font-size: 36px;
       width: 100%;
       text-align: center;
+      font-size: 28px;
     }
   </style>
 </head>
@@ -168,138 +162,126 @@
 </div>
 
 <script>
-const LB_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
-const CLIENT_ID = "DISCORD|1069003073311211601";
-const REFRESH_MS = 15000;
+const LB_URL="https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
+const CLIENT_ID="DISCORD|1069003073311211601";
+const REFRESH_MS=15000;
+const PLAYER_ID=new URLSearchParams(location.search).get("player_id");
 
-const cardEl = document.getElementById("card");
-const resultsListEl = document.getElementById("resultsList");
-const PLAYER_ID = new URLSearchParams(location.search).get("player_id");
+const MAX_ROWS=16;
+const SLICE_ROWS=15;
+const ROW_H=56;
+const TITLE_H=46+16;
+const HEADER_H=46+10;
+const CARD_H=880;
 
-const MAX_ROWS = 16;
-const SLICE_ROWS = 15;
-const ROW_HEIGHT = 68;
-const HEADER_HEIGHT = 60 + 14;
-const TITLE_HEIGHT = 56 + 24;
-const CARD_HEIGHT = 880;
-const BASE_PADDING = 48 + 50;
+let last=null;
 
-let lastRenderedState = null;
+function adjust(rowCount){
+  const content=rowCount*ROW_H;
+  const remain=CARD_H - TITLE_H - HEADER_H - content;
+  const gaps=Math.max(0,rowCount-1);
+  const gap=Math.max(4,(remain*0.33)/gaps);
+  const pad=(remain-(gap*gaps))/2;
 
-function adjustSpacing(rowCount) {
-  if (!rowCount) return;
-  const contentHeight = (ROW_HEIGHT * rowCount);
-
-  // available = card height - fixed elements
-  const remainingSpace = CARD_HEIGHT - TITLE_HEIGHT - HEADER_HEIGHT - contentHeight;
-
-  // divide leftover space: top+bottom padding + gaps
-  const gapCount = rowCount - 1;
-  const idealGap = Math.max(8, (remainingSpace * 0.25) / gapCount);
-  const newPadding = (remainingSpace - (idealGap * gapCount)) / 2;
-
-  resultsListEl.style.gap = `${idealGap}px`;
-  cardEl.style.paddingTop = `${48 + newPadding}px`;
-  cardEl.style.paddingBottom = `${50 + newPadding}px`;
+  document.getElementById("resultsList").style.gap=`${gap}px`;
+  const c=document.getElementById("card");
+  c.style.paddingTop=`${32+pad}px`;
+  c.style.paddingBottom=`${40+pad}px`;
 }
 
-function render(list) {
-  resultsListEl.innerHTML = "";
-  list.forEach(p => {
-    const row = document.createElement("div");
-    row.className = "entry";
+function render(list){
+  const el=document.getElementById("resultsList");
+  el.innerHTML="";
+  list.forEach(p=>{
+    const r=document.createElement("div");
+    r.className="entry";
 
-    const c = p.rank === 1 ? "gold" :
-              p.rank === 2 ? "silver" :
-              p.rank === 3 ? "bronze" : "";
-
-    if (String(p.id) === String(PLAYER_ID)) {
-      row.classList.add(
-        p.rank === 1 ? "highlight-gold" :
-        p.rank === 2 ? "highlight-silver" :
-        p.rank === 3 ? "highlight-bronze" :
+    const c=p.rank===1?"gold":p.rank===2?"silver":p.rank===3?"bronze":"";
+    if(String(p.id)===String(PLAYER_ID)){
+      r.classList.add(
+        p.rank===1?"highlight-gold":
+        p.rank===2?"highlight-silver":
+        p.rank===3?"highlight-bronze":
         "highlight-default"
       );
     }
 
-    row.innerHTML = `
+    r.innerHTML=`
       <span class="place ${c}">${p.rank}</span>
       <span class="player-name">${p.name}</span>
       <span class="elo-value">${p.elo}</span>
       <span class="stat-value">${p.wins}</span>
-      <span class="stat-value">${p.winRate != null ? p.winRate + "%" : "—"}</span>
+      <span class="stat-value">${p.winRate!=null?p.winRate+"%":"—"}</span>
     `;
-
-    resultsListEl.appendChild(row);
+    el.appendChild(r);
   });
-
-  adjustSpacing(list.length);
+  adjust(list.length);
 }
 
-function parse(data) {
-  return data.map((e, i) => {
-    const id = e.team?.[0];
-    const rp = e.resolved || {};
-    const wins = e.count_placement_1 ?? 0;
-    const matches = e.matches ?? 0;
-    return {
-      rank: i + 1,
+function normalize(data){
+  return data.map((e,i)=>{
+    const id=e.team[0];
+    const wins=e.count_placement_1??0;
+    const m=e.matches??0;
+    return{
+      rank:i+1,
       id,
-      name: rp.display_name || rp.username || `Player ${id}`,
-      elo: Math.round(e.elo ?? 0),
+      name:data.resolved?.players?.[id]?.display_name || `Player ${id}`,
+      elo:Math.round(e.elo??0),
       wins,
-      winRate: matches > 0 ? Math.round((wins / matches) * 100) : null
+      winRate:m>0?Math.round((wins/m)*100):null
     };
   });
 }
 
-function sliceForPlayer(list) {
-  const i = list.findIndex(p => String(p.id) === PLAYER_ID);
-  if (i < 0) return list.slice(0, MAX_ROWS);
+function subset(list){
+  const idx=list.findIndex(p=>String(p.id)===PLAYER_ID);
+  if(idx<0) return list.slice(0,MAX_ROWS);
+  if(list[idx].rank<=MAX_ROWS) return list.slice(0,MAX_ROWS);
 
-  if (list[i].rank <= MAX_ROWS) return list.slice(0, MAX_ROWS);
-
-  const start = Math.min(
-    Math.max(i - Math.floor(SLICE_ROWS/2), 0),
-    list.length - SLICE_ROWS
+  const start=Math.min(
+    Math.max(idx-Math.floor(SLICE_ROWS/2),0),
+    list.length-SLICE_ROWS
   );
-  return list.slice(start, start + SLICE_ROWS);
+  return list.slice(start,start+SLICE_ROWS);
 }
 
-async function tick() {
-  try {
-    const r = await fetch(LB_URL,{
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+async function tick(){
+  try{
+    const r=await fetch(LB_URL,{
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify({
         leaderboard:"season_10",
         rating_type:"player_global_all",
         client_id:CLIENT_ID
       })
     });
-    const j = await r.json();
-    const players = j.resolved?.players || {};
-    const sorted = [...j.leaderboard].sort((a,b)=> (b.elo??0)-(a.elo??0));
+    const j=await r.json();
+    const sorted=[...j.leaderboard].sort((a,b)=>(b.elo??0)-(a.elo??0));
+    sorted.resolved=j.resolved;
 
-    sorted.forEach(x => x.resolved = players[x.team?.[0]]);
-    const list = parse(sorted);
-    const view = sliceForPlayer(list);
+    const mapped=normalize(sorted);
+    const view=subset(mapped);
 
-    if (!lastRenderedState || JSON.stringify(view) !== JSON.stringify(lastRenderedState)) {
-      resultsListEl.style.opacity = "0";
-      setTimeout(() => {
+    if(!last || JSON.stringify(view)!==JSON.stringify(last)){
+      const el=document.getElementById("resultsList");
+      el.style.opacity="0";
+      setTimeout(()=>{
         render(view);
-        lastRenderedState = view;
-        requestAnimationFrame(()=>resultsListEl.style.opacity = "1");
-      }, 300);
+        last=view;
+        requestAnimationFrame(()=>el.style.opacity="1");
+      },250);
     }
-  } catch(e) {
-    resultsListEl.innerHTML = `<div class="error">${e.message}</div>`;
+
+  }catch(e){
+    document.getElementById("resultsList").innerHTML=
+      `<div class="error">${e.message}</div>`;
   }
 }
 
 tick();
-setInterval(tick, REFRESH_MS);
+setInterval(tick,REFRESH_MS);
 </script>
 </body>
 </html>
