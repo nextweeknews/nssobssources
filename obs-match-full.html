@@ -1,403 +1,287 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Previous Match Results - Rank + Inline Deltas</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Match Lobby</title>
 
-  <style>
-    html, body {
-      margin: 0; padding: 0;
-      width: 100%; height: 100%;
-      background: transparent;
-      font-family: Inter, system-ui, sans-serif;
-      display: flex; justify-content: center; align-items: center;
-      -webkit-font-smoothing: antialiased;
-      overflow: hidden;
-    }
-      
-    .card {
-      width: 1720px;
-      background: rgba(15, 23, 42, 1);
-      border-radius: 24px;
-      padding: 48px 50px;
-      display: flex;
-      flex-direction: column;
-      align-items: stretch;
-      transition: height 0.4s ease;
-      color: #e9eef8;
-      box-shadow: 0 32px 32px rgba(0,0,0,0.65);
-      box-sizing: border-box;
-    }
+<style>
+  html, body {
+    margin: 0; padding: 0;
+    width: 100%; height: 100%;
+    background: transparent;
+    font-family: Inter, system-ui, sans-serif;
+    display: flex; justify-content: center; align-items: center;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
 
-    .title {
-      font-size: 56px;
-      color: #c7d7ff;
-      font-weight: 900;
-      text-transform: uppercase;
-      letter-spacing: .035em;
-      margin-bottom: 24px;
-      text-align: center;
-    }
+  .card {
+    width: 1720px;
+    background: rgba(15, 23, 42, 1);
+    border-radius: 24px;
+    padding: 48px 50px;
+    display: flex;
+    flex-direction: column;
+    transition: height 0.4s ease;
+    align-items: stretch;
+    color: #e9eef8;
+    box-shadow: 0 32px 32px rgba(0,0,0,0.65);
+    box-sizing: border-box;
+  }
 
-    /* Column structure */
-    .header-row,
-    .entry {
-      display: grid;
-      grid-template-columns: 150px 1fr 200px 130px 180px 130px;
-      align-items: center;
-    }
+  .title {
+    font-size: 56px;
+    color: #c7d7ff;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: .035em;
+    margin-bottom: 24px;
+    text-align: center;
+  }
 
-    .header-row {
-      height: 60px;
-      margin-bottom: 14px;
-      background: rgba(148, 163, 184, 0.12);
-      font-size: 24px;
-      font-weight: 700;
-      text-transform: uppercase;
-      color: #9ca3c7;
-      border-radius: 12px;
-      text-align: center;
-    }
+  .header-row,
+  .entry {
+    display: grid;
+    grid-template-columns: 150px 1fr 200px 170px 200px;
+    align-items: center;
+  }
 
-    .header-row span:nth-child(2) {
-      text-align: left;
-      padding-left: 24px;
-    }
+  .header-row {
+    height: 60px;
+    margin-bottom: 14px;
+    background: rgba(148, 163, 184, 0.12);
+    font-size: 24px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #9ca3c7;
+    border-radius: 12px;
+  }
 
-    #resultsList {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      opacity: 1;
-      transition: opacity .3s ease;
-    }
+  .header-row .col {
+    border-right: none !important;
+    text-align: center;
+    justify-content: center;
+    padding-left: 0;
+  }
 
-    .entry {
-      height: 90px;
-      background: rgba(255,255,255,0.07);
-      border-radius: 14px;
-      font-size: 42px;
-      font-weight: 600;
-      color: #fff;
-      align-items: center;
-      transition: background .3s ease, box-shadow .3s ease;
-    }
+  .header-row .col.col-name {
+    text-align: left !important;
+    justify-content: flex-start !important;
+    padding-left: 24px;
+  }
 
-    .place {
-      font-size: 42px;
-      font-weight: 900;
-      text-align: center;
-      line-height: 1;
-      color: #c7d7ff;
-    }
+  .entry .col {
+    height: 45px;
+    display: flex;
+    justify-content: center;
+    padding: 0 12px;
+    font-size: 42px;
+    font-weight: 600;
+    color: #fff;
+    border-right: 2px solid rgba(255,255,255,0.14);
+  }
+  .entry .col:last-child {
+    border-right: none;
+  }
 
-    .player-name {
-      font-size: 36px;
-      font-weight: 600;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      text-align: left;
-      padding-left: 36px;
-      padding-right: 36px;
-    }
+  .entry .col-rank {
+    font-weight: 900;
+    text-align: center;
+    align-items: center;
+    line-height: 1;
+  }
 
-    .elo-value, .rank-value {
-      font-size: 42px;
-      font-weight: 900;
-      text-align: center;
-      line-height: 1;
-    }
+  .entry .col-name {
+    font-size: 36px;
+    font-weight: 600;
+    justify-content: flex-start;
+    text-align: left;
+    padding-left: 24px;
+  }
 
-    .elo-delta, .rank-delta {
-      font-size: 36px;
-      text-align: center;
-      position: relative;
-    }
+  .entry .col-elo {
+    font-weight: 900;
+    text-align: center;
+    align-items: center;
+    line-height: 1;
+  }
 
-    .delta-arrow {
-      margin-right: 4px;
-      font-size: 0.6em;
-      vertical-align: middle;
-      position: relative;
-      top: -0.2em;
-    }
+  .entry .col-wins {
+    font-size: 36px;
+    color: #98fb98;
+    text-align: center;
+    align-items: center;
+  }
 
-    .gold { color: #ffd700; }
-    .silver { color: #c0c0c0; }
-    .bronze { color: #cd7f32; }
+  .entry .col-winrate {
+    font-size: 36px;
+    text-align: center;
+    align-items: center;
+  }
 
-    .delta-positive { color: #4ade80; }
-    .delta-negative { color: #f87171; }
+  #resultsList {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    opacity: 1;
+    transition: opacity .3s ease;
+  }
 
-    /* Column borders */
-    .entry > span {
-      border-right: 2px solid rgba(255,255,255,0.14);
-      right: -1px;
-      height: 45px;
-      position: relative;
-      vertical-align: middle;
-    }
+  .entry {
+    height: 90px;
+    background: rgba(255,255,255,0.07);
+    border-radius: 14px;
+    transition: background .3s ease, box-shadow .3s ease;
+  }
 
-    .entry > span:last-child {
-      border-right: none;
-    }
+  .entry.highlight-default {
+    background: rgba(52,211,153,0.30);
+    box-shadow: 0 0 18px rgba(16,185,129,0.3);
+  }
 
-    /* Placement-based highlighting (for the tracked player) */
-    .entry.highlight-gold {
-      background: rgba(255, 215, 0, 0.28);
-      box-shadow: 0 0 18px rgba(255, 215, 0, 0.3);
-    }
+  .col-rank.rank-1 { color: #ffd700; }
+  .col-rank.rank-2 { color: #c0c0c0; }
+  .col-rank.rank-3 { color: #cd7f32; }
 
-    .entry.highlight-silver {
-      background: rgba(192, 192, 192, 0.28);
-      box-shadow: 0 0 18px rgba(192, 192, 192, 0.3);
-    }
-
-    .entry.highlight-bronze {
-      background: rgba(205, 127, 50, 0.28);
-      box-shadow: 0 0 18px rgba(205, 127, 50, 0.3);
-    }
-
-    .entry.highlight-default {
-      background: rgba(52, 211, 153, 0.30);
-      box-shadow: 0 0 18px rgba(16, 185, 129, 0.3);
-    }
-
-    .loading, .error {
-      font-size: 36px;
-      width: 100%;
-      text-align: center;
-    }
-
-  </style>
+  .loading, .error {
+    font-size: 36px;
+    text-align: center;
+    width: 100%;
+  }
+</style>
 </head>
 
 <body>
 <div class="card" id="card">
-  <div class="title">Previous Match Results</div>
+  <div class="title">Match Lobby</div>
 
   <div class="header-row">
-    <span>Place</span>
-    <span>Player</span>
-    <span>Elo</span>
-    <span>+/-</span>
-    <span>Rank</span>
-    <span>+/-</span>
+    <span class="col col-rank">Rank</span>
+    <span class="col col-name">Player</span>
+    <span class="col col-elo">Elo</span>
+    <span class="col col-wins">Wins</span>
+    <span class="col col-winrate">Win Rate</span>
   </div>
 
-  <div id="resultsList">
-  <div class="loading">Loading…</div>
-  </div>
+  <div id="resultsList"><div class="loading">Waiting for players…</div></div>
 </div>
 
 <script>
-const API_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_rating_history";
-const LB_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
+const API_URL = "https://blue-dust-07fa.nextweekmedia.workers.dev/lobby";
+const LB_URL  = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
 const CLIENT_ID = "DISCORD|1069003073311211601";
-const REFRESH_MS = 15000;
 
-const cardEl = document.getElementById("card");
 const resultsListEl = document.getElementById("resultsList");
-const PLAYER_ID = new URLSearchParams(location.search).get("player_id");
+const cardEl = document.getElementById("card");
 
-let lastMatchHash = "";
-let initialLoad = true;
-
-// snapshot of ranks for *all* players from the previous refresh
-let lastRanks = {};
-
-if (!PLAYER_ID) {
-  resultsListEl.innerHTML = "<div class='error'>Missing player_id</div>";
-  throw new Error("player_id required");
-}
+let lastHash = "";
+let lastRefreshVersion = 0;
 
 function resizeCard(count) {
   const h = 56 + 24 + 60 + 14 + 48 + 50 + (90 * count) + (10 * (count - 1));
   cardEl.style.height = `${h}px`;
 }
 
-function hashMatch(match) {
-  // Hash only the match participants + ratings. Rank changes are handled separately.
-  return match.ratingResults[0].newRatings
-    .map(p => `${p.id}:${p.place}:${p.elo}:${p.delta}`)
-    .join("|");
-}
+function fadeOut(cb){resultsListEl.style.opacity=0;setTimeout(cb,400);}
+function fadeIn(){resultsListEl.style.opacity=1;}
+function formatWinRate(w,m){return !m?"—":((w/m)*100).toFixed(1)+"%";}
 
-function computeRankDelta(id, current) {
-  const old = lastRanks[id];
-  if (typeof old !== "number" || typeof current !== "number") return null;
-  const diff = old - current; // lower rank number = better rank
-  return {
-    diff,
-    arrow: diff > 0 ? "▲" : diff < 0 ? "▼" : "",
-    class: diff > 0 ? "delta-positive" : diff < 0 ? "delta-negative" : ""
-  };
-}
+function display(rows, tracked){
+  resultsListEl.innerHTML="";
+  rows.forEach(r=>{
+    const row=document.createElement("div");
+    row.className="entry";
+    if(String(r.id)===String(tracked)) row.classList.add("highlight-default");
 
-// Fetch full leaderboard and build rank map for ALL players
-async function getRanks() {
-  const resp = await fetch(LB_URL, {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({
-      leaderboard: "season_10",
-      rating_type: "player_global_all",
-      client_id: CLIENT_ID
-    })
-  });
+    const winRate = r.matches ? (r.wins / r.matches) * 100 : null;
+    const winRateText = winRate === null ? "—" : winRate.toFixed(1) + "%";
 
-  const data = await resp.json();
-  const sorted = [...(data.leaderboard || [])]
-    .sort((a, b) => (b.elo ?? 0) - (a.elo ?? 0));
-
-  const ranks = {};
-  sorted.forEach((p, i) => {
-    const id = p.team?.[0];
-    if (id != null) {
-      ranks[id] = i + 1; // 1-based rank
-    }
-  });
-
-  return ranks;
-}
-
-function display(match, players, ranks) {
-  const rows = match.ratingResults[0].newRatings.slice(0, 8);
-  resultsListEl.innerHTML = "";
-
-  // Determine whether we should show the rank delta column at all
-  const showRankDelta = rows.some(p => {
-    const r = ranks[p.id];
-    const rd = computeRankDelta(p.id, r);
-    return rd && rd.diff !== 0;
-  });
-
-  rows.forEach(p => {
-    const row = document.createElement("div");
-    row.className = "entry";
-
-    // Highlight tracked player
-    if (String(p.id) === String(PLAYER_ID)) {
-      if (p.place === 1) row.classList.add("highlight-gold");
-      else if (p.place === 2) row.classList.add("highlight-silver");
-      else if (p.place === 3) row.classList.add("highlight-bronze");
-      else row.classList.add("highlight-default");
+    // 🔥 Conditional formatting (added)
+    let color = "#d3d3d3";
+    if(winRate !== null){
+      if(winRate <= 15){
+        color = "#ff4d4d"; // red
+      } else if(winRate >= 50){
+        color = "#4ade80"; // green
+      } else {
+        const t = (winRate - 15) / (50 - 15);
+        const rCol = Math.round(255 - (255 - 250) * t);
+        const gCol = Math.round(77 + (218 - 77) * t);
+        const bCol = Math.round(77 - (128 * t));
+        color = `rgb(${rCol},${gCol},${Math.max(bCol,0)})`;
+      }
     }
 
-    const placeClass =
-      p.place === 1 ? "gold" :
-      p.place === 2 ? "silver" :
-      p.place === 3 ? "bronze" :
-      "";
-
-    const name = players[p.id]?.display_name || "Unknown";
-
-    // Ensure integers for Elo + Δ
-    const elo = Math.round(p.elo ?? 0);
-    const delta = Math.round(p.delta ?? 0);
-
-    const dC = delta > 0 ? "delta-positive" : delta < 0 ? "delta-negative" : "";
-    const eloDeltaHTML = delta !== 0 ? `
-      <span class="elo-delta ${dC}">
-        <span class="delta-arrow">${delta > 0 ? "▲" : "▼"}</span>${Math.abs(delta)}
-      </span>` : `<span></span>`;
-
-    // Rank + Rank Δ
-    const r = ranks[p.id] ?? "—";
-    const rd = computeRankDelta(p.id, r);
-    const rankDeltaHTML = (showRankDelta && rd && rd.diff !== 0) ? `
-      <span class="rank-delta ${rd.class}">
-        <span class="delta-arrow">${rd.arrow}</span>${Math.abs(Math.round(rd.diff))}
-      </span>` : `<span></span>`;
-
-    row.innerHTML = `
-      <span class="place ${placeClass}">${p.place}</span>
-      <span class="player-name">${name}</span>
-
-      <span class="elo-value">${elo}</span>
-      ${eloDeltaHTML}
-
-      <span class="rank-value">${r}</span>
-      ${rankDeltaHTML}
+    row.innerHTML=`
+      <span class="col col-rank rank-${r.rank}">${r.rank}</span>
+      <span class="col col-name">${r.name}</span>
+      <span class="col col-elo">${Math.round(r.elo)}</span>
+      <span class="col col-wins">${r.wins}</span>
+      <span class="col col-winrate" style="color:${color};">${winRateText}</span>
     `;
-
     resultsListEl.appendChild(row);
   });
-
   resizeCard(rows.length);
 }
 
-async function fetchData() {
+async function updateLobby(){
   try {
-    const resp = await fetch(API_URL, {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({
-        player_id: PLAYER_ID,
-        client_id: CLIENT_ID,
-        limit: 10
+    const lobby = await (await fetch(API_URL)).json();
+    const lb = await (await fetch(LB_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        leaderboard:"season_10",
+        rating_type:"player_global_all",
+        client_id:CLIENT_ID
       })
-    });
+    })).json();
 
-    const data = await resp.json();
-    const players = data.resolved?.players || {};
+    const res = lb.resolved?.players || {};
+    const leaderboard = lb.leaderboard || [];
 
-    const match = (data.matches || [])
-      .sort((a, b) => b.ts - a.ts)
-      .find(m =>
-        m.ratingResults.some(r =>
-          r.newRatings.some(p => String(p.id) === String(PLAYER_ID))
-        )
-      );
-
-    if (!match) {
-      resultsListEl.innerHTML = "<div class='loading'>No match</div>";
+    if(!Array.isArray(lobby.players)||lobby.players.length<2){
+      resultsListEl.innerHTML = `<div class='loading'>Add 2+ players</div>`;
       return;
     }
 
-    const newHash = hashMatch(match);
+    const sorted=[...leaderboard].sort((a,b)=>(b.elo??0)-(a.elo??0));
+    const rankMap={}; sorted.forEach((e,i)=>rankMap[e.team?.[0]]=i+1);
 
-    // Fetch current global ranks (all players)
-    const currentRanks = await getRanks();
+    const rows = lobby.players.map(id=>{
+      const e=leaderboard.find(x=>String(x.team?.[0])===String(id))||{};
+      return{
+        id,
+        rank:rankMap[id]??"—",
+        name:res[id]?.display_name||res[id]?.username||`Player ${id}`,
+        elo:e.elo??0,
+        wins:e.count_placement_1??0,
+        matches:e.matches??0
+      };
+    }).sort((a,b)=>(a.rank??99999)-(b.rank??99999));
 
-    // Did any of the displayed players have a rank change?
-    const rows = match.ratingResults[0].newRatings.slice(0, 8);
-    const rankChanged = rows.some(p => {
-      const id = p.id;
-      const previousRank = lastRanks[id];
-      const currentRank = currentRanks[id];
-      return typeof previousRank === "number" &&
-             typeof currentRank === "number" &&
-             previousRank !== currentRank;
-    });
+    const hash = rows.map(r => `${r.id}:${r.rank}:${r.elo}:${r.wins}:${r.matches}`).join("|");
 
-  if (initialLoad || newHash !== lastMatchHash || rankChanged) {
-    lastMatchHash = newHash;
-    initialLoad = false;
+    if(hash!==lastHash){
+      lastHash = hash;
+      fadeOut(()=>{display(rows,lobby.tracked);fadeIn();});
+    }
 
-    resultsListEl.style.opacity = 0;
-    setTimeout(() => {
-      // Use previous lastRanks here
-      display(match, players, currentRanks);
-
-      // Now that we've rendered deltas based on the old snapshot,
-      // update lastRanks to the latest ranks for the *next* refresh.
-      lastRanks = currentRanks;
-
-      requestAnimationFrame(() => (resultsListEl.style.opacity = 1));
-    }, 300);
-  }
-
-
-  } catch (err) {
-    resultsListEl.innerHTML = `<div class="error">${err.message}</div>`;
+    lastRefreshVersion = lobby.refresh_version;
+  } catch(err){
+    resultsListEl.innerHTML = `<div class='error'>API Error</div>`;
   }
 }
 
-fetchData();
-setInterval(fetchData, REFRESH_MS);
+updateLobby();
+
+setInterval(async ()=>{
+  const lobby = await (await fetch(API_URL)).json();
+  if(lobby.refresh_version !== lastRefreshVersion){
+    await updateLobby();
+  }
+}, 1500);
 </script>
 </body>
 </html>
