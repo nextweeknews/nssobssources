@@ -176,7 +176,7 @@ function renderLobby(state){
     row.className=`player-row ${r.tracked?"tracked":""}`;
     row.innerHTML=`
       <span>${r.name} (${Math.round(r.elo)})</span>
-      <button class="remove-btn shared-btn" onclick="event.stopPropagation();removePlayer('${r.id}')">X</button>
+      <button class="remove-btn shared-btn" onclick="event.stopPropagation();removePlayer('${r.id}')">-</button>
     `;
 
     // Support both mouse + touch input
