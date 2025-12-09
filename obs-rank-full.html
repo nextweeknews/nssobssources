@@ -85,13 +85,13 @@
       background: rgba(255,255,255,0.06);
       border-radius: 10px;
       font-size: 26px;
-      font-weight: 600;
+      font-weight: 500;
       transition: background .25s ease, box-shadow .25s ease;
     }
 
     .place {
       font-size: 28px;
-      font-weight: 900;
+      font-weight: 750;
       text-align: center;
     }
 
@@ -107,9 +107,8 @@
     .elo-value,
     .stat-value {
       font-size: 26px;
-      font-weight: 800;
+      font-weight: 7500;
       text-align: center;
-      font-variant-numeric: tabular-nums; /* Perfect number alignment */
     }
 
     .gold { color: #ffd700; }
@@ -118,11 +117,12 @@
 
     /* Slim column borders */
     .entry > span {
-      border-right: 1px solid rgba(255,255,255,0.12);
-      height: 32px;
+      border-right: 4px solid rgba(255,255,255,0.12);
+      height: 28px;
       display: flex;
       align-items: center;
       justify-content: center;
+      right: -2px;
     }
     .entry > span:nth-child(2) { justify-content: flex-start; }
     .entry > span:last-child { border-right: none; }
