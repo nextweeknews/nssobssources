@@ -23,10 +23,11 @@
     padding: 48px 50px;
     display: flex;
     flex-direction: column;
+    transition: height 0.4s ease;
     align-items: stretch;
     color: #e9eef8;
     box-shadow: 0 32px 32px rgba(0,0,0,0.65);
-    transition: height 0.4s ease;
+    box-sizing: border-box;
   }
 
   .title {
@@ -88,9 +89,33 @@
     border-right: none;
   }
 
+  .entry .col-rank {
+    font-weight: 900;
+    width: 100%;
+    text-align: center;
+  }
+
   .entry .col-name {
-    justify-content: flex-start;
+    font-size: 36px;
+    font-weight: 600;
+    text-align: left;
     padding-left: 24px;
+  }
+
+  .entry .col-elo {
+    font-weight: 900;
+    text-align: center;
+  }
+
+  .entry .col-wins {
+    color: #98fb98;
+    text-align: center;
+  }
+
+  .entry .col-winrate {
+    color: #d3d3d3;
+    text-align: center;
+
   }
 
   #resultsList {
@@ -98,7 +123,7 @@
     flex-direction: column;
     gap: 10px;
     opacity: 1;
-    transition: opacity .4s ease;
+    transition: opacity .3s ease;
   }
 
   .entry {
