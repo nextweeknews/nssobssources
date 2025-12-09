@@ -21,15 +21,6 @@
     color:#ffffff;
   }
 
-  /* TRACK / UNTRACK button — darker blue with white text */
-  .player-row button:not(.remove-btn) {
-    background:#1e40af; /* Darker blue */
-    color:#ffffff;
-  }
-  .player-row button:not(.remove-btn):hover {
-    background:#1d4ed8; /* Slightly brighter on hover */
-  }
-
   /* REMOVE "X" button — red with white text */
   .remove-btn {
     background:#dc2626 !important; /* Strong red */
@@ -48,6 +39,15 @@
     background:#65d39e;
   }
 
+  .player-row {
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+
+  .player-row:hover {
+    background: rgba(255,255,255,0.12);
+  }
+  
 </style>
 </head>
 
@@ -122,9 +122,11 @@ function renderLobby(state){
     row.innerHTML=`
       <span>${r.name} (${Math.round(r.elo)})</span>
       <span style="display:flex;gap:6px">
-        <button onclick="setTracked('${r.id}')">${r.tracked?"Untrack":"Track"}</button>
-        <button class="remove-btn" onclick="removePlayer('${r.id}')">X</button>
+        <button class="remove-btn" onclick="event.stopPropagation();removePlayer('${r.id}')">X</button>
       </span>`;
+
+    row.onclick = () => setTracked(r.id);
+
     box.appendChild(row);
   });
 }
