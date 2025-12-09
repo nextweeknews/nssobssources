@@ -41,7 +41,7 @@
 
     .header-row, .entry {
       display: grid;
-      grid-template-columns: 120px 1fr 150px 100px 140px;
+      grid-template-columns: 120px 1fr 130px 100px 120px;
       align-items: center;
     }
 
@@ -76,7 +76,16 @@
     }
 
     /* --- Unified Cell Styling Fix --- */
-    .header-row span,
+    .header-row span {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 12px;
+      box-sizing: border-box;
+      border-right: 2px solid rgba(255,255,255,0);
+      height: 20px;
+      right: -1
+    }
     .entry > span {
       display: flex;
       align-items: center;
@@ -84,6 +93,8 @@
       padding: 0 12px;
       box-sizing: border-box;
       border-right: 2px solid rgba(255,255,255,0.12);
+      height: 28px;
+      right: -1
     }
 
     /* Player name alignment */
