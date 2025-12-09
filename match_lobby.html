@@ -46,7 +46,7 @@
     align-items: center;
   }
 
-  /* Header fully restored to original */
+  /* Header style (no dividers here) */
   .header-row {
     height: 60px;
     margin-bottom: 14px;
@@ -58,33 +58,31 @@
     border-radius: 12px;
   }
 
-  /* Divider lines */
-  .col {
-    height: 45px;
-    display: flex;
-    align-items: center;
-    border-right: 2px solid rgba(255,255,255,0.14);
-    padding: 0 12px;
-  }
-  .col:last-child {
-    border-right: none;
-  }
-
-  /* HEADER TEXT ALIGNMENT ORIGINAL */
-  .header-row .col:nth-child(1),
-  .header-row .col:nth-child(3),
-  .header-row .col:nth-child(4),
-  .header-row .col:nth-child(5) {
+  /* HEADER ALIGNMENT restored */
+  .header-row .col {
+    border-right: none !important;
     justify-content: center;
+    padding-left: 0;
   }
-
   .header-row .col:nth-child(2) {
     justify-content: flex-start;
     padding-left: 24px;
   }
 
-  /* ROW COLUMN STYLE (independent control preserved) */
+  /* ROW DIVIDERS remain */
   .entry .col {
+    border-right: 2px solid rgba(255,255,255,0.14);
+  }
+  .entry .col:last-child {
+    border-right: none;
+  }
+
+  /* Column appearance for rows */
+  .entry .col {
+    height: 45px;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
     font-size: 42px;
     font-weight: 600;
     color: #fff;
@@ -116,7 +114,6 @@
     box-shadow: 0 0 18px rgba(16,185,129,0.3);
   }
 
-  /* Medal colors unchanged */
   .col-rank.rank-1 { color: #ffd700; }
   .col-rank.rank-2 { color: #c0c0c0; }
   .col-rank.rank-3 { color: #cd7f32; }
