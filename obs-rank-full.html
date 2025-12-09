@@ -18,14 +18,12 @@
 
     .card {
       width: 1720px;
-      height: 880px; /* Fixed display height */
+      height: 880px; /* Fixed */
       background: rgba(15, 23, 42, 1);
       border-radius: 24px;
-      padding: 48px 50px;
+      padding: 48px 50px; /* Will adjust dynamically */
       display: flex;
       flex-direction: column;
-      align-items: stretch;
-      transition: padding 0.4s ease, gap 0.4s ease;
       color: #e9eef8;
       box-shadow: 0 32px 32px rgba(0,0,0,0.65);
       box-sizing: border-box;
@@ -42,7 +40,6 @@
       flex-shrink: 0;
     }
 
-    /* Column structure */
     .header-row,
     .entry {
       display: grid;
@@ -53,7 +50,6 @@
     .header-row {
       height: 60px;
       margin-bottom: 14px;
-      flex-shrink: 0;
       background: rgba(148, 163, 184, 0.12);
       font-size: 24px;
       font-weight: 700;
@@ -61,6 +57,7 @@
       color: #9ca3c7;
       border-radius: 12px;
       text-align: center;
+      flex-shrink: 0;
     }
 
     .header-row span:nth-child(2) {
@@ -71,15 +68,15 @@
     #resultsList {
       display: flex;
       flex-direction: column;
-      gap: 8px; /* default, changed dynamically */
-      flex-grow: 1;
+      gap: 8px; /* Will adjust dynamically */
+      flex-shrink: 1; /* Allow row area to compress inside card */
       opacity: 1;
-      transition: opacity .3s ease;
+      transition: opacity .3s ease, gap .3s ease;
+      overflow: hidden; /* Prevent visual overflow */
     }
 
     .entry {
-      height: 68px;
-      flex-shrink: 0;
+      height: 68px; /* Keep constant */
       background: rgba(255,255,255,0.07);
       border-radius: 14px;
       font-size: 32px;
@@ -98,11 +95,9 @@
 
     .player-name {
       font-size: 28px;
-      font-weight: 600;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      text-align: left;
       padding-left: 36px;
       padding-right: 36px;
     }
@@ -112,10 +107,8 @@
       font-size: 30px;
       font-weight: 800;
       text-align: center;
-      line-height: 1;
     }
 
-    /* Place colors */
     .gold   { color: #ffd700; }
     .silver { color: #c0c0c0; }
     .bronze { color: #cd7f32; }
@@ -128,16 +121,10 @@
       align-items: center;
       justify-content: center;
     }
+    .entry > span:nth-child(2) { justify-content: flex-start; }
+    .entry > span:last-child { border-right: none; }
 
-    .entry > span:nth-child(2) {
-      justify-content: flex-start;
-    }
-
-    .entry > span:last-child {
-      border-right: none;
-    }
-
-    /* Highlight player */
+    /* Highlight */
     .entry.highlight-gold {
       background: rgba(255, 215, 0, 0.28);
       box-shadow: 0 0 18px rgba(255, 215, 0, 0.3);
@@ -191,65 +178,52 @@ const PLAYER_ID = new URLSearchParams(location.search).get("player_id");
 
 const MAX_ROWS = 16;
 const SLICE_ROWS = 15;
+const ROW_HEIGHT = 68;
+const HEADER_HEIGHT = 60 + 14;
+const TITLE_HEIGHT = 56 + 24;
+const CARD_HEIGHT = 880;
+const BASE_PADDING = 48 + 50;
 
 let lastRenderedState = null;
-let initialLoad = true;
 
-if (!PLAYER_ID) {
-  resultsListEl.innerHTML = "<div class='error'>Missing player_id</div>";
-  throw new Error("player_id required");
+function adjustSpacing(rowCount) {
+  if (!rowCount) return;
+  const contentHeight = (ROW_HEIGHT * rowCount);
+
+  // available = card height - fixed elements
+  const remainingSpace = CARD_HEIGHT - TITLE_HEIGHT - HEADER_HEIGHT - contentHeight;
+
+  // divide leftover space: top+bottom padding + gaps
+  const gapCount = rowCount - 1;
+  const idealGap = Math.max(8, (remainingSpace * 0.25) / gapCount);
+  const newPadding = (remainingSpace - (idealGap * gapCount)) / 2;
+
+  resultsListEl.style.gap = `${idealGap}px`;
+  cardEl.style.paddingTop = `${48 + newPadding}px`;
+  cardEl.style.paddingBottom = `${50 + newPadding}px`;
 }
 
-function adjustCardSpacing(playerCount) {
-  // Keep card 880px always → adjust internal padding + gaps
-  if (playerCount === SLICE_ROWS) {
-    resultsListEl.style.gap = "14px";
-    cardEl.style.paddingTop = "64px";
-    cardEl.style.paddingBottom = "64px";
-  } else {
-    resultsListEl.style.gap = "8px";
-    cardEl.style.paddingTop = "48px";
-    cardEl.style.paddingBottom = "50px";
-  }
-}
-
-function error(msg) {
-  resultsListEl.innerHTML = `<div class="error">${msg}</div>`;
-  console.error(msg);
-}
-
-function sameState(a, b) {
-  if (!a || !b || a.length !== b.length) return false;
-  return a.every((r, i) =>
-    r.id === b[i].id &&
-    r.rank === b[i].rank &&
-    r.name === b[i].name &&
-    r.elo === b[i].elo &&
-    r.wins === b[i].wins &&
-    r.winRate === b[i].winRate
-  );
-}
-
-function renderList(list) {
+function render(list) {
   resultsListEl.innerHTML = "";
   list.forEach(p => {
     const row = document.createElement("div");
     row.className = "entry";
 
-    const placeClass =
-      p.rank === 1 ? "gold" :
-      p.rank === 2 ? "silver" :
-      p.rank === 3 ? "bronze" : "";
+    const c = p.rank === 1 ? "gold" :
+              p.rank === 2 ? "silver" :
+              p.rank === 3 ? "bronze" : "";
 
     if (String(p.id) === String(PLAYER_ID)) {
-      if (p.rank === 1) row.classList.add("highlight-gold");
-      else if (p.rank === 2) row.classList.add("highlight-silver");
-      else if (p.rank === 3) row.classList.add("highlight-bronze");
-      else row.classList.add("highlight-default");
+      row.classList.add(
+        p.rank === 1 ? "highlight-gold" :
+        p.rank === 2 ? "highlight-silver" :
+        p.rank === 3 ? "highlight-bronze" :
+        "highlight-default"
+      );
     }
 
     row.innerHTML = `
-      <span class="place ${placeClass}">${p.rank}</span>
+      <span class="place ${c}">${p.rank}</span>
       <span class="player-name">${p.name}</span>
       <span class="elo-value">${p.elo}</span>
       <span class="stat-value">${p.wins}</span>
@@ -259,16 +233,15 @@ function renderList(list) {
     resultsListEl.appendChild(row);
   });
 
-  adjustCardSpacing(list.length);
+  adjustSpacing(list.length);
 }
 
-function mapLeaderboard(entries, resolved) {
-  return entries.map((e, i) => {
+function parse(data) {
+  return data.map((e, i) => {
     const id = e.team?.[0];
-    const rp = resolved?.[id] || {};
+    const rp = e.resolved || {};
     const wins = e.count_placement_1 ?? 0;
     const matches = e.matches ?? 0;
-
     return {
       rank: i + 1,
       id,
@@ -280,70 +253,53 @@ function mapLeaderboard(entries, resolved) {
   });
 }
 
-function chooseSlice(list) {
-  const idx = list.findIndex(p => String(p.id) === String(PLAYER_ID));
+function sliceForPlayer(list) {
+  const i = list.findIndex(p => String(p.id) === PLAYER_ID);
+  if (i < 0) return list.slice(0, MAX_ROWS);
 
-  if (idx === -1) return null;
-  const rank = list[idx].rank;
+  if (list[i].rank <= MAX_ROWS) return list.slice(0, MAX_ROWS);
 
-  if (rank <= MAX_ROWS) return list.slice(0, MAX_ROWS);
-
-  const half = Math.floor(SLICE_ROWS / 2);
-  let start = idx - half;
-
-  if (start < 0) start = 0;
-  if (start > list.length - SLICE_ROWS) {
-    start = Math.max(0, list.length - SLICE_ROWS);
-  }
-
+  const start = Math.min(
+    Math.max(i - Math.floor(SLICE_ROWS/2), 0),
+    list.length - SLICE_ROWS
+  );
   return list.slice(start, start + SLICE_ROWS);
 }
 
-async function fetchLeaderboard() {
+async function tick() {
   try {
-    const resp = await fetch(LB_URL, {
+    const r = await fetch(LB_URL,{
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        leaderboard: "season_10",
-        rating_type: "player_global_all",
-        client_id: CLIENT_ID
+        leaderboard:"season_10",
+        rating_type:"player_global_all",
+        client_id:CLIENT_ID
       })
     });
+    const j = await r.json();
+    const players = j.resolved?.players || {};
+    const sorted = [...j.leaderboard].sort((a,b)=> (b.elo??0)-(a.elo??0));
 
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    sorted.forEach(x => x.resolved = players[x.team?.[0]]);
+    const list = parse(sorted);
+    const view = sliceForPlayer(list);
 
-    const data = await resp.json();
-    const entries = data.leaderboard || [];
-    const resolved = data.resolved?.players || {};
-
-    if (!entries.length) return error("No leaderboard data");
-
-    const sorted = [...entries].sort((a, b) => (b.elo ?? 0) - (a.elo ?? 0));
-    const mapped = mapLeaderboard(sorted, resolved);
-
-    const slice = chooseSlice(mapped);
-    if (!slice) return error("Player not found in leaderboard");
-
-    const changed = !sameState(lastRenderedState, slice);
-    if (!changed && !initialLoad) return;
-
-    initialLoad = false;
-    resultsListEl.style.opacity = "0";
-
-    setTimeout(() => {
-      renderList(slice);
-      lastRenderedState = slice;
-      requestAnimationFrame(() => resultsListEl.style.opacity = "1");
-    }, 300);
-
-  } catch (err) {
-    error(err.message);
+    if (!lastRenderedState || JSON.stringify(view) !== JSON.stringify(lastRenderedState)) {
+      resultsListEl.style.opacity = "0";
+      setTimeout(() => {
+        render(view);
+        lastRenderedState = view;
+        requestAnimationFrame(()=>resultsListEl.style.opacity = "1");
+      }, 300);
+    }
+  } catch(e) {
+    resultsListEl.innerHTML = `<div class="error">${e.message}</div>`;
   }
 }
 
-fetchLeaderboard();
-setInterval(fetchLeaderboard, REFRESH_MS);
+tick();
+setInterval(tick, REFRESH_MS);
 </script>
 </body>
 </html>
