@@ -58,17 +58,26 @@
     border-radius: 12px;
   }
 
+  /* HEADER CELLS: invisible borders to match row layout */
   .header-row .col {
-    border-right: none !important;
-    text-align: center;
+    display: flex;
+    align-items: center;
     justify-content: center;
-    padding-left: 0;
+    padding: 0 12px;
+    border-right: 2px solid transparent; /* invisible, keeps column widths aligned */
+    text-align: center;
+    box-sizing: border-box;
   }
 
   .header-row .col.col-name {
     text-align: left !important;
     justify-content: flex-start !important;
     padding-left: 24px;
+  }
+
+  /* no border on last header column, matching rows */
+  .header-row .col:last-child {
+    border-right: none;
   }
 
   .entry .col {
