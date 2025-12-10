@@ -132,79 +132,65 @@ html, body {
 .delta-positive { color:#4ade80; }
 .delta-negative { color:#f87171; }
 
-/* Subtext */
+/* Subtext (disabled – replaced by session strip) */
 .subtext {
-  font-size: 24px;
-  opacity:0.85;
-  color:#bcd4ff;
-  margin-top: 6px;
-  font-weight:600;
+  display:none;
 }
-.session-delta {
-  font-weight:900;
-  font-size: 0.8em;
-  vertical-align:middle;
-}
-
-/* Divider */
-.section:after {
-  content:"";
-  position:absolute;
-  right:0;
-  top:50%;
-  transform:translateY(-50%);
-  width:4px;
-  height:140px;
-  background:rgba(255,255,255,0.14);
-  border-radius:2px;
-}
-.section:last-child:after { display:none; }
 
 /* SESSION STRIP AT BOTTOM */
 #sessionSection {
   width: 100%;
+  box-sizing: border-box;
+  padding: 4px 22px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+
+#sessionStrip {
+  width: 100%;
+  background: rgba(255,255,255,0.07);
+  border-radius: 16px;
+  padding: 4px 16px 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.session-col {
+  text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  margin-top: 4px;
-}
-
-#sessionBubble {
-  padding: 6px 20px;
-  border-radius: 999px;
-  background: rgba(255,255,255,0.07);
-  display: flex;
-  align-items: center;
   justify-content: center;
-  gap: 24px;
   font-size: 18px;
   font-weight: 700;
 }
 
-.session-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  text-transform: uppercase;
-}
+.session-col-rank { flex: 0 0 30%; }
+.session-col-elo  { flex: 0 0 40%; }
+.session-col-wins { flex: 0 0 30%; }
 
-.session-item-label {
-  font-size: 0.75em;
-  letter-spacing: 0.06em;
-  opacity: 0.85;
-}
-
-.session-delta-pill {
+.session-delta-value {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+#sessionRankDelta,
+#sessionEloDelta,
+#sessionWinsDelta {
+  min-width: 2ch;
 }
 
 .session-label-text {
-  font-size: 12px;
-  letter-spacing: 0.25em;
-  text-transform: uppercase;
-  opacity: 0.6;
+  text-align:center;
+  font-size:11px;
+  letter-spacing:0.28em;
+  text-transform:uppercase;
+  opacity:0.6;
 }
 </style>
 </head>
@@ -255,27 +241,24 @@ html, body {
 
   </div>
 
-  <!-- SESSION SUMMARY STRIP -->
+  <!-- SESSION SUMMARY STRIP (full width, aligned under values) -->
   <div id="sessionSection">
-    <div id="sessionBubble">
-      <div class="session-item">
-        <span class="session-item-label">Rank</span>
-        <span id="sessionRankContainer" class="session-delta-pill">
+    <div id="sessionStrip">
+      <div class="session-col session-col-rank">
+        <span id="sessionRankContainer" class="session-delta-value">
           <span id="sessionRankArrow" class="delta-arrow">—</span>
           <span id="sessionRankDelta">—</span>
         </span>
       </div>
-      <div class="session-item">
-        <span class="session-item-label">Elo</span>
-        <span id="sessionEloContainer" class="session-delta-pill">
+      <div class="session-col session-col-elo">
+        <span id="sessionEloContainer" class="session-delta-value">
           <span id="sessionEloArrow" class="delta-arrow">—</span>
           <span id="sessionEloDelta">—</span>
         </span>
       </div>
-      <div class="session-item">
-        <span class="session-item-label">Wins</span>
-        <span id="sessionWinsContainer" class="session-delta-pill">
-          <span id="sessionWinsArrow" class="delta-arrow">—</span>
+      <div class="session-col session-col-wins">
+        <span id="sessionWinsContainer" class="session-delta-value">
+          <!-- No arrow for wins – counter only -->
           <span id="sessionWinsDelta">—</span>
         </span>
       </div>
@@ -299,10 +282,6 @@ const winsDelta=document.getElementById("winsDelta");
 const tierText=document.getElementById("tierText");
 const tierContainer=document.getElementById("tierContainer");
 
-const rankSub=document.getElementById("rankSub");
-const eloSub=document.getElementById("eloSub");
-const winsSub=document.getElementById("winsSub");
-
 /* SESSION STRIP ELEMENTS */
 const sessionRankContainer=document.getElementById("sessionRankContainer");
 const sessionRankArrow=document.getElementById("sessionRankArrow");
@@ -313,7 +292,6 @@ const sessionEloArrow=document.getElementById("sessionEloArrow");
 const sessionEloDelta=document.getElementById("sessionEloDelta");
 
 const sessionWinsContainer=document.getElementById("sessionWinsContainer");
-const sessionWinsArrow=document.getElementById("sessionWinsArrow");
 const sessionWinsDelta=document.getElementById("sessionWinsDelta");
 
 let lastRank=null,lastElo=null,lastWins=null;
@@ -356,8 +334,8 @@ function animateDelta(valueEl, deltaEl, oldVal, newVal, reverse=false){
   },400);
 }
 
-/* Update helper for session strip */
-function updateSessionCell(containerEl, arrowEl, numEl, diff){
+/* For rank/elo session cells (with arrows) */
+function updateSessionDelta(containerEl, arrowEl, numEl, diff){
   containerEl.classList.remove("delta-positive","delta-negative");
   if(diff===0){
     arrowEl.textContent="—";
@@ -368,6 +346,18 @@ function updateSessionCell(containerEl, arrowEl, numEl, diff){
   containerEl.classList.add(positive ? "delta-positive" : "delta-negative");
   arrowEl.textContent = positive ? "▲" : "▼";
   numEl.textContent = Math.abs(diff);
+}
+
+/* For wins session cell (counter, no arrow) */
+function updateSessionCounter(containerEl, numEl, diff){
+  containerEl.classList.remove("delta-positive","delta-negative");
+  if(diff===0){
+    numEl.textContent="—";
+    return;
+  }
+  // Wins are monotonic, always treated as positive progress
+  containerEl.classList.add("delta-positive");
+  numEl.textContent = diff;
 }
 
 async function fetchData(){
@@ -394,7 +384,6 @@ async function fetchData(){
   const elo=p.elo??0;
   const wins=p.count_placement_1??0;
   const matches=p.matches??0;
-  const winRate = matches ? ((wins/matches)*100).toFixed(1) : "0.0";
 
   // Capture initial values on first successful fetch
   if(initialRank===null) initialRank=rank;
@@ -416,25 +405,6 @@ async function fetchData(){
   lastRank=rank;
   lastElo=elo;
   lastWins=wins;
-
-  // Subtext
-  rankSub.textContent = `out of ${sorted.length} players`;
-
-  const sessionDiff = elo - initialElo;
-
-  if(sessionDiff === 0) {
-    eloSub.textContent = `Session: —`;
-  } else {
-    const sessionArrow = sessionDiff > 0 ? "▲" : "▼";
-    const sessionClass = sessionDiff > 0 ? "delta-positive" : "delta-negative";
-
-    eloSub.innerHTML = `Session:
-      <span class="session-delta ${sessionClass}">
-        <span class="delta-arrow">${sessionArrow}</span>${Math.abs(sessionDiff)}
-      </span>`;
-  }
-
-  winsSub.textContent = `Matches: ${matches} (${winRate}%)`;
 
   // Tier handling
   const cfg=data.resolved?.leaderboards?.["Season_10"];
@@ -461,14 +431,14 @@ async function fetchData(){
   }
 
   // SESSION STRIP VALUES
-  // Rank: improvement is a LOWER numeric rank, so we flip the sign
+  // Rank: improvement is LOWER numeric rank, so flip sign
   const rankDiff = initialRank !== null ? (initialRank - rank) : 0;
-  const eloDiff = initialElo !== null ? (elo - initialElo) : 0;
-  const winsDiff = initialWins !== null ? (wins - initialWins) : 0;
+  const eloDiff  = initialElo  !== null ? (elo - initialElo)       : 0;
+  const winsDiff = initialWins !== null ? (wins - initialWins)     : 0;
 
-  updateSessionCell(sessionRankContainer, sessionRankArrow, sessionRankDelta, rankDiff);
-  updateSessionCell(sessionEloContainer, sessionEloArrow, sessionEloDelta, eloDiff);
-  updateSessionCell(sessionWinsContainer, sessionWinsArrow, sessionWinsDelta, winsDiff);
+  updateSessionDelta(sessionRankContainer, sessionRankArrow, sessionRankDelta, rankDiff);
+  updateSessionDelta(sessionEloContainer,  sessionEloArrow,  sessionEloDelta,  eloDiff);
+  updateSessionCounter(sessionWinsContainer, sessionWinsDelta, winsDiff);
 }
 
 fetchData();
