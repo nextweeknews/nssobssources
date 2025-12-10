@@ -176,7 +176,7 @@ html, body {
 }
 
 .session-col-rank { flex: 0 0 30%; }
-.session-col-elo  { flex: 0 0 40%; }
+session-col-elo  { flex: 0 0 40%; }
 .session-col-wins { flex: 0 0 30%; }
 
 .session-delta-value {
@@ -305,7 +305,7 @@ const sessionWinsDelta=document.getElementById("sessionWinsDelta");
 let lastRank=null,lastElo=null,lastWins=null;
 let initialElo=null, initialRank=null, initialWins=null;
 
-/* NEW: track fetch versions to avoid out-of-order updates */
+/* track fetch versions to avoid out-of-order updates */
 let fetchVersion = 0;
 let lastAppliedVersion = 0;
 
@@ -374,13 +374,10 @@ function updateSessionCounter(containerEl, numEl, diff){
 
 async function fetchData(){
   const pid=getPlayerId();
-
-  // Increment version for this fetch
   const myVersion = ++fetchVersion;
 
-  let resp;
   try {
-    resp = await fetch(WORKER_URL,{
+    const resp = await fetch(WORKER_URL,{
       method:"POST",
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({
@@ -389,95 +386,93 @@ async function fetchData(){
         client_id:"DISCORD|1069003073311211601"
       })
     });
+
+    if(myVersion < lastAppliedVersion) return;
+    if(!resp.ok) return;
+
+    const data = await resp.json();
+    if(myVersion < lastAppliedVersion) return;
+
+    lastAppliedVersion = myVersion;
+
+    const sorted=[...(data.leaderboard??[])].sort((a,b)=>(b.elo??0)-(a.elo??0));
+    const idx=sorted.findIndex(p=>p.team?.[0]===pid);
+    if(idx<0)return;
+
+    const p=sorted[idx];
+    const rank=idx+1;
+    const elo=p.elo??0;
+    const wins=p.count_placement_1??0;
+
+    // Capture initial values on first successful fetch
+    if(initialRank===null) initialRank=rank;
+    if(initialElo===null) initialElo=elo;
+    if(initialWins===null) initialWins=wins;
+
+    if(lastRank!==null && rank!==lastRank)
+      animateDelta(rankVal,rankDelta,lastRank,rank,true);
+    if(lastElo!==null && elo!==lastElo)
+      animateDelta(eloVal,eloDelta,lastElo,elo);
+    if(lastWins!==null && wins!==lastWins)
+      animateDelta(winsVal,winsDelta,lastWins,wins);
+
+    rankNum.textContent=rank;
+    rankSuffix.textContent=getOrdinalSuffix(rank);
+    eloVal.textContent=elo;
+    winsVal.textContent=wins;
+
+    lastRank=rank;
+    lastElo=elo;
+    lastWins=wins;
+
+    // Tier handling
+    const cfg=data.resolved?.leaderboards?.["Season_10"];
+    let tier = null;
+    if(cfg){
+      const tiers=cfg.player_global_all_tiers ?? [];
+      for(const t of tiers) if(elo>=t.required_elo) tier=t;
+      if(rank===1 && cfg.player_global_all_rank_tiers?.length)
+        tier = cfg.player_global_all_rank_tiers[0];
+    }
+
+    if(tier){
+      const c=tier.color;
+      tierText.textContent=tier.name.replace(/^Season\s+\d+\s+/i,"").toUpperCase();
+      const r=parseInt(c.slice(1,3),16),
+            g=parseInt(c.slice(3,5),16),
+            b=parseInt(c.slice(5,7),16);
+      tierText.style.textShadow=`0 0 10px ${c},0 0 18px ${c}`;
+      tierContainer.style.background=`rgba(${r},${g},${b},0.22)`;
+    } else {
+      tierText.textContent="UNRANKED";
+      tierText.style.textShadow="none";
+      tierContainer.style.background="rgba(255,255,255,0.08)";
+    }
+
+    // SESSION STRIP VALUES
+    // Rank: improvement is LOWER numeric rank, so flip sign
+    const rankDiff = initialRank !== null ? (initialRank - rank) : 0;
+    const eloDiff  = initialElo  !== null ? (elo - initialElo)       : 0;
+    const winsDiff = initialWins !== null ? (wins - initialWins)     : 0;
+
+    updateSessionDelta(sessionRankContainer, sessionRankArrow, sessionRankDelta, rankDiff);
+    updateSessionDelta(sessionEloContainer,  sessionEloArrow,  sessionEloDelta,  eloDiff);
+    updateSessionCounter(sessionWinsContainer, sessionWinsDelta, winsDiff);
   } catch(e) {
-    return; // network error, skip
+    // swallow errors; we'll try again on the next cycle
+  } finally {
+    // schedule the next refresh only after this fetch is completely done
+    setTimeout(fetchData, REFRESH_MS);
   }
-
-  // If a newer fetch started after this one, ignore this response
-  if(myVersion < lastAppliedVersion) return;
-  if(!resp.ok) return;
-
-  let data;
-  try {
-    data = await resp.json();
-  } catch(e) {
-    return;
-  }
-
-  // Again, ignore if a newer fetch has started/finished while we were parsing
-  if(myVersion < lastAppliedVersion) return;
-
-  // Mark this as the latest applied data
-  lastAppliedVersion = myVersion;
-
-  const sorted=[...(data.leaderboard??[])].sort((a,b)=>(b.elo??0)-(a.elo??0));
-  const idx=sorted.findIndex(p=>p.team?.[0]===pid);
-  if(idx<0)return;
-
-  const p=sorted[idx];
-  const rank=idx+1;
-  const elo=p.elo??0;
-  const wins=p.count_placement_1??0;
-
-  // Capture initial values on first successful fetch
-  if(initialRank===null) initialRank=rank;
-  if(initialElo===null) initialElo=elo;
-  if(initialWins===null) initialWins=wins;
-
-  if(lastRank!==null && rank!==lastRank)
-    animateDelta(rankVal,rankDelta,lastRank,rank,true);
-  if(lastElo!==null && elo!==lastElo)
-    animateDelta(eloVal,eloDelta,lastElo,elo);
-  if(lastWins!==null && wins!==lastWins)
-    animateDelta(winsVal,winsDelta,lastWins,wins);
-
-  rankNum.textContent=rank;
-  rankSuffix.textContent=getOrdinalSuffix(rank);
-  eloVal.textContent=elo;
-  winsVal.textContent=wins;
-
-  lastRank=rank;
-  lastElo=elo;
-  lastWins=wins;
-
-  // Tier handling
-  const cfg=data.resolved?.leaderboards?.["Season_10"];
-  let tier = null;
-  if(cfg){
-    const tiers=cfg.player_global_all_tiers ?? [];
-    for(const t of tiers) if(elo>=t.required_elo) tier=t;
-    if(rank===1 && cfg.player_global_all_rank_tiers?.length)
-      tier = cfg.player_global_all_rank_tiers[0];
-  }
-
-  if(tier){
-    const c=tier.color;
-    tierText.textContent=tier.name.replace(/^Season\s+\d+\s+/i,"").toUpperCase();
-    const r=parseInt(c.slice(1,3),16),
-          g=parseInt(c.slice(3,5),16),
-          b=parseInt(c.slice(5,7),16);
-    tierText.style.textShadow=`0 0 10px ${c},0 0 18px ${c}`;
-    tierContainer.style.background=`rgba(${r},${g},${b},0.22)`;
-  } else {
-    tierText.textContent="UNRANKED";
-    tierText.style.textShadow="none";
-    tierContainer.style.background="rgba(255,255,255,0.08)";
-  }
-
-  // SESSION STRIP VALUES
-  // Rank: improvement is LOWER numeric rank, so flip sign
-  const rankDiff = initialRank !== null ? (initialRank - rank) : 0;
-  const eloDiff  = initialElo  !== null ? (elo - initialElo)       : 0;
-  const winsDiff = initialWins !== null ? (wins - initialWins)     : 0;
-
-  updateSessionDelta(sessionRankContainer, sessionRankArrow, sessionRankDelta, rankDiff);
-  updateSessionDelta(sessionEloContainer,  sessionEloArrow,  sessionEloDelta,  eloDiff);
-  updateSessionCounter(sessionWinsContainer, sessionWinsDelta, winsDiff);
 }
 
+// kick off the loop
 fetchData();
-setInterval(fetchData,REFRESH_MS);
 </script>
+
+</body>
+</html>
+
 
 </body>
 </html>
