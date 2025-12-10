@@ -137,22 +137,21 @@ html, body {
   display:none;
 }
 
-/* SESSION STRIP AT BOTTOM (centered within card) */
+/* SESSION STRIP AT BOTTOM (aligned with main values) */
 #sessionSection {
   width: 100%;
   padding: 4px 0 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;  /* let children span full width */
   gap: 4px;
 }
 
 #sessionStrip {
-  width: 100%;
-  max-width: 640px;            /* keeps it inside the card visually */
+  width: 100%;          /* same width as the row above */
   background: rgba(255,255,255,0.07);
   border-radius: 16px;
-  padding: 4px 20px 6px;
+  padding: 4px 0 6px;   /* no horizontal padding so columns line up */
   box-sizing: border-box;
   display: flex;
   justify-content: space-between;
@@ -242,7 +241,7 @@ html, body {
 
   </div>
 
-  <!-- SESSION SUMMARY STRIP (full width of values, centered) -->
+  <!-- SESSION SUMMARY STRIP -->
   <div id="sessionSection">
     <div id="sessionStrip">
       <div class="session-col session-col-rank">
@@ -339,7 +338,7 @@ function animateDelta(valueEl, deltaEl, oldVal, newVal, reverse=false){
 function updateSessionDelta(containerEl, arrowEl, numEl, diff){
   containerEl.classList.remove("delta-positive","delta-negative");
   if(diff===0){
-    arrowEl.textContent="";
+    arrowEl.textContent="—";
     numEl.textContent="—";
     return;
   }
