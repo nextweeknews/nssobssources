@@ -338,7 +338,7 @@ function animateDelta(valueEl, deltaEl, oldVal, newVal, reverse=false){
 function updateSessionDelta(containerEl, arrowEl, numEl, diff){
   containerEl.classList.remove("delta-positive","delta-negative");
   if(diff===0){
-    arrowEl.textContent="—";
+    arrowEl.textContent="";
     numEl.textContent="—";
     return;
   }
