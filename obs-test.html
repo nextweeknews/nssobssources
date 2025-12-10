@@ -121,6 +121,8 @@
       font-size: 36px;
       text-align: center;
       position: relative;
+      /* subtle continuous pulse */
+      animation: pulseDelta 1.8s ease-in-out infinite;
     }
 
     .delta-arrow {
@@ -174,6 +176,18 @@
       font-size: 36px;
       width: 100%;
       text-align: center;
+    }
+
+    /* Subtle pulse animation for deltas */
+    @keyframes pulseDelta {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+      50% {
+        transform: scale(1.06);
+        opacity: 0.9;
+      }
     }
   </style>
 </head>
@@ -305,7 +319,7 @@ function displaySnapshot(players) {
     const name = players[p.id]?.display_name || "Unknown";
 
     const elo = Math.round(p.elo ?? 0);
-    const eloDisplay = elo === 0 ? "—" : elo; // <<<<<< NEW: 0 Elo → "-"
+    const eloDisplay = elo === 0 ? "-" : elo; // 0 Elo → "-"
     const delta = Math.round(p.delta ?? 0);
 
     const dC = delta > 0 ? "delta-positive" : delta < 0 ? "delta-negative" : "";
