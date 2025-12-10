@@ -121,7 +121,6 @@
       font-size: 36px;
       text-align: center;
       position: relative;
-      /* subtle continuous pulse */
       animation: pulseDelta 1.8s ease-in-out infinite;
     }
 
@@ -178,7 +177,6 @@
       text-align: center;
     }
 
-    /* Subtle pulse animation for deltas */
     @keyframes pulseDelta {
       0%, 100% {
         transform: scale(1);
@@ -222,7 +220,7 @@ const PLAYER_ID = new URLSearchParams(location.search).get("player_id");
 
 let initialLoad = true;
 
-// Global baseline ranks (pre-state for computing per-match deltas)
+// Global baseline ranks from last processed leaderboard
 let previousRanks = {};
 
 // Snapshot for the last fully-processed match of the tracked player
@@ -236,7 +234,7 @@ let lastGlobalMatchHash = "";
 
 // Async guard
 let requestCounter = 0;
-// For avoiding unnecessary DOM work
+// To avoid unnecessary DOM work
 let lastDisplayHash = "";
 
 if (!PLAYER_ID) {
@@ -358,6 +356,7 @@ async function fetchData() {
   const myRequestId = ++requestCounter;
 
   try {
+    // 1) Poll rating history every 15s
     const historyResp = await fetch(API_URL, {
       method: "POST",
       headers: {"Content-Type": "application/json"},
@@ -390,23 +389,6 @@ async function fetchData() {
 
     const hasSnapshot = !!snapshotMatch;
 
-    if (!latestMatchForPlayer && !hasSnapshot) {
-      const hash = "NO_MATCH";
-      if (!initialLoad && hash === lastDisplayHash) return;
-
-      lastDisplayHash = hash;
-      initialLoad = false;
-
-      resultsListEl.style.opacity = 0;
-      setTimeout(() => {
-        if (myRequestId !== requestCounter) return;
-        resultsListEl.innerHTML = "<div class='loading'>No match</div>";
-        resizeCard(1);
-        requestAnimationFrame(() => (resultsListEl.style.opacity = 1));
-      }, 300);
-      return;
-    }
-
     const globalLatestInvolvesPlayer = globalLatest
       ? globalLatest.ratingResults.some(r =>
           r.newRatings.some(p => String(p.id) === String(PLAYER_ID))
@@ -414,13 +396,17 @@ async function fetchData() {
       : false;
 
     const haveNewGlobalMatch =
-      globalLatest && globalLatestHash !== lastGlobalMatchHash;
+      globalLatestHash && globalLatestHash !== lastGlobalMatchHash;
 
     const playerHasNewerMatchThanSnapshot =
       latestMatchForPlayer &&
       (!hasSnapshot || latestMatchHash !== snapshotMatchHash);
 
-    const needLeaderboard = haveNewGlobalMatch || playerHasNewerMatchThanSnapshot;
+    // IMPORTANT: fetch leaderboard at least once (baseline),
+    // and thereafter whenever global or player state moves forward.
+    const needInitialBaseline = Object.keys(previousRanks).length === 0;
+    const needLeaderboard =
+      needInitialBaseline || haveNewGlobalMatch || playerHasNewerMatchThanSnapshot;
 
     if (needLeaderboard) {
       const lbResp = await fetch(LB_URL, {
@@ -439,35 +425,19 @@ async function fetchData() {
       const currentRanks = buildRanksFromLeaderboard(leaderboard);
       const leaderboardElos = buildEloMapFromLeaderboard(leaderboard);
 
-      const isInitialBaseline = Object.keys(previousRanks).length === 0;
-
-      // Initial snapshot when player has matches but snapshot not set yet
-      if (!hasSnapshot && latestMatchForPlayer) {
-        const participants = latestMatchForPlayer.ratingResults[0].newRatings;
-        const newSnapshotRanks = {};
-        const newSnapshotRankDeltas = {};
-
-        participants.forEach(p => {
-          const idKey = String(p.id);
-          const r = currentRanks[idKey];
-          if (typeof r === "number") {
-            newSnapshotRanks[idKey] = r;
-          }
-          newSnapshotRankDeltas[idKey] = { diff: 0, arrow: "", class: "" };
-        });
-
-        snapshotMatch = latestMatchForPlayer;
-        snapshotMatchHash = latestMatchHash;
-        snapshotRanks = newSnapshotRanks;
-        snapshotRankDeltas = newSnapshotRankDeltas;
-
+      // (A) Initialize baseline if we didn't have one yet
+      if (needInitialBaseline && Object.keys(currentRanks).length > 0) {
         previousRanks = currentRanks;
+        if (globalLatestHash) {
+          lastGlobalMatchHash = globalLatestHash;
+        }
       }
 
-      // New match for player after snapshot exists
-      if (hasSnapshot && latestMatchForPlayer && playerHasNewerMatchThanSnapshot) {
+      // (B) If player has a newer match than current snapshot, try to process it
+      if (latestMatchForPlayer && playerHasNewerMatchThanSnapshot) {
         const participants = latestMatchForPlayer.ratingResults[0].newRatings;
 
+        // Check Elo sync (±1 tolerance)
         const leaderboardSynced = participants.every(p => {
           const idKey = String(p.id);
           const lbElo = leaderboardElos[idKey];
@@ -495,7 +465,7 @@ async function fetchData() {
 
             if (typeof beforeRank === "number" &&
                 typeof afterRank === "number") {
-              diff = beforeRank - afterRank;
+              diff = beforeRank - afterRank; // positive = improved rank
               if (diff > 0) {
                 arrow = "▲";
                 cls = "delta-positive";
@@ -513,23 +483,23 @@ async function fetchData() {
           snapshotRanks = newSnapshotRanks;
           snapshotRankDeltas = newSnapshotRankDeltas;
 
+          // Baseline now advances to "after" this match
           previousRanks = currentRanks;
+          if (globalLatestHash) {
+            lastGlobalMatchHash = globalLatestHash;
+          }
         }
+        // If not synced, snapshot stays as-is; we'll try again on next poll.
       }
 
+      // (C) Any new global match not involving our player still advances baseline
       if (haveNewGlobalMatch && !globalLatestInvolvesPlayer) {
         previousRanks = currentRanks;
-      }
-
-      if (haveNewGlobalMatch && globalLatestHash) {
         lastGlobalMatchHash = globalLatestHash;
-      }
-
-      if (isInitialBaseline && Object.keys(currentRanks).length > 0) {
-        previousRanks = currentRanks;
       }
     }
 
+    // Build display hash from snapshot state
     let displayHash;
     if (!snapshotMatch) {
       displayHash = "NO_MATCH";
