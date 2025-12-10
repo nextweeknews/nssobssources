@@ -1,363 +1,439 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>ELO • RANK • WINS • TIER</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Previous Match Results - Rank + Inline Deltas</title>
 
-<style>
-html, body {
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  background: transparent;
-  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-  overflow: hidden;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
+  <style>
+    html, body {
+      margin: 0; padding: 0;
+      width: 100%; height: 100%;
+      background: transparent;
+      font-family: Inter, system-ui, sans-serif;
+      display: flex; justify-content: center; align-items: center;
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+    }
+      
+    .card {
+      width: 1720px;
+      background: rgba(15, 23, 42, 1);
+      border-radius: 24px;
+      padding: 48px 50px;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      transition: height 0.4s ease;
+      color: #e9eef8;
+      box-shadow: 0 32px 32px rgba(0,0,0,0.65);
+      box-sizing: border-box;
+    }
 
-:root {
-  --card-bg: rgba(28, 28, 28, 0.95);
-}
+    .title {
+      font-size: 56px;
+      color: #c7d7ff;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: .035em;
+      margin-bottom: 24px;
+      text-align: center;
+    }
 
-.card {
-  width: 800px;
-  height: 300px;
-  background: var(--card-bg);
-  border-radius: 28px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 14px 0px;
-  color: #e9eef8;
-}
+    /* Column structure */
+    .header-row,
+    .entry {
+      display: grid;
+      grid-template-columns: 150px 1fr 200px 130px 180px 130px;
+      align-items: center;
+    }
 
-/* Tier */
-#tierRow {
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:14px;
-  margin-bottom:8px;
-}
-#tierLabel {
-  font-size:40px;
-  font-weight:900;
-  color:#bcd4ff;
-  text-transform:uppercase;
-}
-#tierContainer {
-  padding:8px 26px;
-  border-radius:20px;
-  background:rgba(255,255,255,0.08);
-  transition:background 0.3s ease;
-}
-#tierText {
-  font-size:44px;
-  font-weight:900;
-  text-transform:uppercase;
-}
+    .header-row {
+      height: 60px;
+      margin-bottom: 14px;
+      background: rgba(148, 163, 184, 0.12);
+      font-size: 24px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #9ca3c7;
+      border-radius: 12px;
+      text-align: center;
+    }
 
-/* Layout */
-.row {
-  width:100%;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  flex:1;
-  padding-bottom:12px;
-}
-.section {
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  position:relative;
-  width:33%;
-}
-.section.rank { width:30%; }
-.section.elo { width:40%; }
-.section.wins { width:30%; }
+    .header-row span:nth-child(2) {
+      text-align: left;
+      padding-left: 36px;
+    }
 
-.label {
-  font-size:40px;
-  font-weight:900;
-  color:#bcd4ff;
-  margin-bottom:4px;
-}
+    .header-row > span {
+      border-right: 2px solid rgba(255,255,255,0);
+    }
 
-.metric {
-  position:relative;
-  width:100%;
-  height:94px;
-  font-size:94px;
-  font-weight:800;
-  line-height:1;
-  white-space:nowrap;
-}
-.metric-value,
-.delta {
-  position:absolute;
-  top:0;
-  left:50%;
-  transform:translateX(-50%);
-  transition:opacity .4s ease;
-}
-.delta {
-  opacity:0;
-  font-size:94px;
-  font-weight:900;
-}
+    .header-row > span:last-child {
+      border-right: none;
+    }
 
-/* UNIFIED small arrow styling */
-.delta-arrow {
-  font-size: 0.6em;
-  vertical-align: middle;
-  position: relative;
-  top: -0.2em;
-  margin-right: 2px;
-  display:inline-block;
-}
+    #resultsList {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      opacity: 1;
+      transition: opacity .3s ease;
+    }
 
-/* Rank suffix */
-#rankSuffix {
-  position:relative;
-  top:-8px;
-  font-size:36px;
-  font-weight:800;
-}
+    .entry {
+      height: 70px;
+      background: rgba(255,255,255,0.07);
+      border-radius: 14px;
+      font-size: 42px;
+      font-weight: 600;
+      color: #fff;
+      align-items: center;
+      transition: background .3s ease, box-shadow .3s ease;
+    }
 
-/* Colors */
-.delta-positive { color:#4ade80; }
-.delta-negative { color:#f87171; }
+    .place {
+      font-size: 42px;
+      font-weight: 900;
+      text-align: center;
+      line-height: 1;
+      color: #c7d7ff;
+    }
 
-/* Subtext */
-.subtext {
-  font-size: 24px;
-  opacity:0.85;
-  color:#bcd4ff;
-  margin-top: 6px;
-  font-weight:600;
-}
-.session-delta {
-  font-weight:900;
-  font-size: 0.8em;
-  vertical-align:middle;
-}
+    .player-name {
+      font-size: 36px;
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: left;
+      padding-left: 36px;
+      padding-right: 36px;
+    }
 
-/* Divider */
-.section:after {
-  content:"";
-  position:absolute;
-  right:0;
-  top:50%;
-  transform:translateY(-50%);
-  width:4px;
-  height:140px;
-  background:rgba(255,255,255,0.14);
-  border-radius:2px;
-}
-.section:last-child:after { display:none; }
-</style>
+    .elo-value, .rank-value {
+      font-size: 42px;
+      font-weight: 900;
+      text-align: center;
+      line-height: 1;
+    }
+
+    .elo-delta, .rank-delta {
+      font-size: 36px;
+      text-align: center;
+      position: relative;
+    }
+
+    .delta-arrow {
+      margin-right: 4px;
+      font-size: 0.6em;
+      vertical-align: middle;
+      position: relative;
+      top: -0.2em;
+    }
+
+    .gold { color: #ffd700; }
+    .silver { color: #c0c0c0; }
+    .bronze { color: #cd7f32; }
+
+    .delta-positive { color: #4ade80; }
+    .delta-negative { color: #f87171; }
+
+    /* Column borders */
+    .entry > span {
+      border-right: 2px solid rgba(255,255,255,0.14);
+      right: -1px;
+      height: 45px;
+      position: relative;
+      vertical-align: middle;
+    }
+
+    .entry > span:last-child {
+      border-right: none;
+    }
+
+    /* Placement-based highlighting (for the tracked player) */
+    .entry.highlight-gold {
+      background: rgba(255, 215, 0, 0.28);
+      box-shadow: 0 0 18px rgba(255, 215, 0, 0.3);
+    }
+
+    .entry.highlight-silver {
+      background: rgba(192, 192, 192, 0.28);
+      box-shadow: 0 0 18px rgba(192, 192, 192, 0.3);
+    }
+
+    .entry.highlight-bronze {
+      background: rgba(205, 127, 50, 0.28);
+      box-shadow: 0 0 18px rgba(205, 127, 50, 0.3);
+    }
+
+    .entry.highlight-default {
+      background: rgba(52, 211, 153, 0.30);
+      box-shadow: 0 0 18px rgba(16, 185, 129, 0.3);
+    }
+
+    .loading, .error {
+      font-size: 36px;
+      width: 100%;
+      text-align: center;
+    }
+
+  </style>
 </head>
 
 <body>
-<div class="card">
-  <div id="tierRow">
-    <div id="tierLabel">TIER</div>
-    <div id="tierContainer"><span id="tierText">—</span></div>
+<div class="card" id="card">
+  <div class="title">Previous Match Results</div>
+
+  <div class="header-row">
+    <span>Place</span>
+    <span>Player</span>
+    <span>Elo</span>
+    <span>+/-</span>
+    <span>Rank</span>
+    <span>+/-</span>
   </div>
 
-  <div class="row">
-
-    <div class="section rank">
-      <div class="label">RANK</div>
-      <span class="metric">
-        <span id="rankValue" class="metric-value">
-          <span id="rankNumber">—</span><sup id="rankSuffix"></sup>
-        </span>
-        <span id="rankDelta" class="delta">
-          <span class="delta-arrow"></span><span class="delta-number"></span>
-        </span>
-      </span>
-      <div class="subtext" id="rankSub">—</div>
-    </div>
-
-    <div class="section elo">
-      <div class="label">ELO</div>
-      <span class="metric">
-        <span id="eloValue" class="metric-value">—</span>
-        <span id="eloDelta" class="delta">
-          <span class="delta-arrow"></span><span class="delta-number"></span>
-        </span>
-      </span>
-      <div class="subtext" id="eloSub">—</div>
-    </div>
-
-    <div class="section wins">
-      <div class="label">WINS</div>
-      <span class="metric">
-        <span id="winsValue" class="metric-value">—</span>
-        <span id="winsDelta" class="delta">
-          <span class="delta-arrow"></span><span class="delta-number"></span>
-        </span>
-      </span>
-      <div class="subtext" id="winsSub">—</div>
-    </div>
-
+  <div id="resultsList">
+    <div class="loading">Loading…</div>
   </div>
 </div>
 
 <script>
-const WORKER_URL="https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
-const REFRESH_MS=15000;
+const API_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_rating_history";
+const LB_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
+const CLIENT_ID = "DISCORD|1069003073311211601";
+const REFRESH_MS = 15000;
 
-const rankVal=document.getElementById("rankValue");
-const rankNum=document.getElementById("rankNumber");
-const rankSuffix=document.getElementById("rankSuffix");
-const eloVal=document.getElementById("eloValue");
-const winsVal=document.getElementById("winsValue");
-const rankDelta=document.getElementById("rankDelta");
-const eloDelta=document.getElementById("eloDelta");
-const winsDelta=document.getElementById("winsDelta");
-const tierText=document.getElementById("tierText");
-const tierContainer=document.getElementById("tierContainer");
+const cardEl = document.getElementById("card");
+const resultsListEl = document.getElementById("resultsList");
+const PLAYER_ID = new URLSearchParams(location.search).get("player_id");
 
-const rankSub=document.getElementById("rankSub");
-const eloSub=document.getElementById("eloSub");
-const winsSub=document.getElementById("winsSub");
+let lastMatchHash = "";
+let initialLoad = true;
 
-let lastRank=null,lastElo=null,lastWins=null;
-let initialElo=null;
+// snapshot of ranks for *all* players from the previous refresh
+let lastRanks = {};
 
-function getOrdinalSuffix(n){
-  const j=n%10,k=n%100;
-  if(k>=11&&k<=13)return"th";
-  if(j===1)return"st";
-  if(j===2)return"nd";
-  if(j===3)return"rd";
-  return"th";
+// request id guard to avoid applying stale results
+let requestCounter = 0;
+
+if (!PLAYER_ID) {
+  resultsListEl.innerHTML = "<div class='error'>Missing player_id</div>";
+  throw new Error("player_id required");
 }
 
-function getPlayerId(){
-  const pid=new URLSearchParams(location.search).get("player_id");
-  return /^\d{17,20}$/.test(pid)?pid:"702730732220579950";
+function resizeCard(count) {
+  const h = 56 + 24 + 60 + 14 + 48 + 50 + (70 * count) + (10 * (count - 1));
+  cardEl.style.height = `${h}px`;
 }
 
-function animateDelta(valueEl, deltaEl, oldVal, newVal, reverse=false){
-  const diff=newVal-oldVal;
-  if(oldVal===null || diff===0) return;
-  
-  const arrow=deltaEl.querySelector(".delta-arrow");
-  const num=deltaEl.querySelector(".delta-number");
-
-  arrow.textContent = diff>0 ? (reverse?"▼":"▲") : (reverse?"▲":"▼");
-  num.textContent = Math.abs(diff);
-
-  deltaEl.classList.remove("delta-positive","delta-negative");
-  deltaEl.classList.add((diff>0 ^ reverse)?"delta-positive":"delta-negative");
-
-  valueEl.style.opacity="0";
-  setTimeout(()=>{
-    deltaEl.style.opacity="1";
-    setTimeout(()=>{
-      deltaEl.style.opacity="0";
-      setTimeout(()=>valueEl.style.opacity="1",400);
-    },5000);
-  },400);
+function hashMatch(match) {
+  // Hash only the match participants + ratings. Rank changes are handled separately.
+  return match.ratingResults[0].newRatings
+    .map(p => `${p.id}:${p.place}:${p.elo}:${p.delta}`)
+    .join("|");
 }
 
-async function fetchData(){
-  const pid=getPlayerId();
-  const resp=await fetch(WORKER_URL,{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({
-      leaderboard:"season_10",
-      rating_type:"player_global_all",
-      client_id:"DISCORD|1069003073311211601"
+function computeRankDelta(id, current) {
+  const old = lastRanks[id];
+  if (typeof old !== "number" || typeof current !== "number") return null;
+  const diff = old - current; // lower rank number = better rank
+  return {
+    diff,
+    arrow: diff > 0 ? "▲" : diff < 0 ? "▼" : "",
+    class: diff > 0 ? "delta-positive" : diff < 0 ? "delta-negative" : ""
+  };
+}
+
+// Fetch full leaderboard and build rank map for ALL players
+async function getRanks() {
+  const resp = await fetch(LB_URL, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      leaderboard: "season_10",
+      rating_type: "player_global_all",
+      client_id: CLIENT_ID
     })
   });
 
-  if(!resp.ok)return;
-  const data=await resp.json();
+  const data = await resp.json();
+  const sorted = [...(data.leaderboard || [])]
+    .sort((a, b) => (b.elo ?? 0) - (a.elo ?? 0));
 
-  const sorted=[...(data.leaderboard??[])].sort((a,b)=>(b.elo??0)-(a.elo??0));
-  const idx=sorted.findIndex(p=>p.team?.[0]===pid);
-  if(idx<0)return;
+  const ranks = {};
+  sorted.forEach((p, i) => {
+    const id = p.team?.[0];
+    if (id != null) {
+      ranks[id] = i + 1; // 1-based rank
+    }
+  });
 
-  const p=sorted[idx];
-  const rank=idx+1;
-  const elo=p.elo??0;
-  const wins=p.count_placement_1??0;
-  const matches=p.matches??0;
-  const winRate = matches ? ((wins/matches)*100).toFixed(1) : "0.0";
+  return ranks;
+}
 
-  if(initialElo===null) initialElo=elo;
+function display(match, players, ranks) {
+  const rows = match.ratingResults[0].newRatings.slice(0, 8);
+  resultsListEl.innerHTML = "";
 
-  if(lastRank!==null && rank!==lastRank)
-    animateDelta(rankVal,rankDelta,lastRank,rank,true);
-  if(lastElo!==null && elo!==lastElo)
-    animateDelta(eloVal,eloDelta,lastElo,elo);
-  if(lastWins!==null && wins!==lastWins)
-    animateDelta(winsVal,winsDelta,lastWins,wins);
+  // Determine whether we should show the rank delta column at all
+  const showRankDelta = rows.some(p => {
+    const r = ranks[p.id];
+    const rd = computeRankDelta(p.id, r);
+    return rd && rd.diff !== 0;
+  });
 
-  rankNum.textContent=rank;
-  rankSuffix.textContent=getOrdinalSuffix(rank);
-  eloVal.textContent=elo;
-  winsVal.textContent=wins;
+  rows.forEach(p => {
+    const row = document.createElement("div");
+    row.className = "entry";
 
-  lastRank=rank;
-  lastElo=elo;
-  lastWins=wins;
+    // Highlight tracked player
+    if (String(p.id) === String(PLAYER_ID)) {
+      if (p.place === 1) row.classList.add("highlight-gold");
+      else if (p.place === 2) row.classList.add("highlight-silver");
+      else if (p.place === 3) row.classList.add("highlight-bronze");
+      else row.classList.add("highlight-default");
+    }
 
-  // Subtext improvements
-  rankSub.textContent = `out of ${sorted.length} players`;
+    const placeClass =
+      p.place === 1 ? "gold" :
+      p.place === 2 ? "silver" :
+      p.place === 3 ? "bronze" :
+      "";
 
-  const sessionDiff = elo - initialElo;
+    const name = players[p.id]?.display_name || "Unknown";
 
-  if(sessionDiff === 0) {
-    eloSub.textContent = `Session: —`;
-  } else {
-    const sessionArrow = sessionDiff > 0 ? "▲" : "▼";
-    const sessionClass = sessionDiff > 0 ? "delta-positive" : "delta-negative";
+    // Ensure integers for Elo + Δ
+    const elo = Math.round(p.elo ?? 0);
+    const delta = Math.round(p.delta ?? 0);
 
-    eloSub.innerHTML = `Session:
-      <span class="session-delta ${sessionClass}">
-        <span class="delta-arrow">${sessionArrow}</span>${Math.abs(sessionDiff)}
-      </span>`;
-  }
+    const dC = delta > 0 ? "delta-positive" : delta < 0 ? "delta-negative" : "";
+    const eloDeltaHTML = delta !== 0 ? `
+      <span class="elo-delta ${dC}">
+        <span class="delta-arrow">${delta > 0 ? "▲" : "▼"}</span>${Math.abs(delta)}
+      </span>` : `<span></span>`;
 
-  winsSub.textContent = `Matches: ${matches} (${winRate}%)`;
+    // Rank + Rank Δ
+    const r = ranks[p.id] ?? "—";
+    const rd = computeRankDelta(p.id, r);
+    const rankDeltaHTML = (showRankDelta && rd && rd.diff !== 0) ? `
+      <span class="rank-delta ${rd.class}">
+        <span class="delta-arrow">${rd.arrow}</span>${Math.abs(Math.round(rd.diff))}
+      </span>` : `<span></span>`;
 
-  const cfg=data.resolved?.leaderboards?.["Season_10"];
-  let tier = null;
-  if(cfg){
-    const tiers=cfg.player_global_all_tiers ?? [];
-    for(const t of tiers) if(elo>=t.required_elo) tier=t;
-    if(rank===1 && cfg.player_global_all_rank_tiers?.length)
-      tier = cfg.player_global_all_rank_tiers[0];
-  }
+    row.innerHTML = `
+      <span class="place ${placeClass}">${p.place}</span>
+      <span class="player-name">${name}</span>
 
-  if(tier){
-    const c=tier.color;
-    tierText.textContent=tier.name.replace(/^Season\s+\d+\s+/i,"").toUpperCase();
-    const r=parseInt(c.slice(1,3),16),
-          g=parseInt(c.slice(3,5),16),
-          b=parseInt(c.slice(5,7),16);
-    tierText.style.textShadow=`0 0 10px ${c},0 0 18px ${c}`;
-    tierContainer.style.background=`rgba(${r},${g},${b},0.22)`;
-  } else {
-    tierText.textContent="UNRANKED";
-    tierText.style.textShadow="none";
-    tierContainer.style.background="rgba(255,255,255,0.08)";
+      <span class="elo-value">${elo}</span>
+      ${eloDeltaHTML}
+
+      <span class="rank-value">${r}</span>
+      ${rankDeltaHTML}
+    `;
+
+    resultsListEl.appendChild(row);
+  });
+
+  resizeCard(rows.length);
+}
+
+async function fetchData() {
+  const myRequestId = ++requestCounter;
+
+  try {
+    const resp = await fetch(API_URL, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        player_id: PLAYER_ID,
+        client_id: CLIENT_ID,
+        limit: 10
+      })
+    });
+
+    const data = await resp.json();
+    const players = data.resolved?.players || {};
+
+    const match = (data.matches || [])
+      .sort((a, b) => b.ts - a.ts)
+      .find(m =>
+        m.ratingResults.some(r =>
+          r.newRatings.some(p => String(p.id) === String(PLAYER_ID))
+        )
+      );
+
+    // If this response is already stale, bail early
+    if (myRequestId !== requestCounter) {
+      return;
+    }
+
+    if (!match) {
+      resultsListEl.innerHTML = "<div class='loading'>No match</div>";
+      return;
+    }
+
+    const newHash = hashMatch(match);
+
+    // Fetch current global ranks (all players)
+    const currentRanks = await getRanks();
+
+    // Guard again, in case a newer request started while awaiting getRanks
+    if (myRequestId !== requestCounter) {
+      return;
+    }
+
+    // Did any of the displayed players have a rank change?
+    const rows = match.ratingResults[0].newRatings.slice(0, 8);
+    const rankChanged = rows.some(p => {
+      const id = p.id;
+      const previousRank = lastRanks[id];
+      const currentRank = currentRanks[id];
+      return typeof previousRank === "number" &&
+             typeof currentRank === "number" &&
+             previousRank !== currentRank;
+    });
+
+    if (initialLoad || newHash !== lastMatchHash || rankChanged) {
+      lastMatchHash = newHash;
+      initialLoad = false;
+
+      resultsListEl.style.opacity = 0;
+      setTimeout(() => {
+        // Only apply this update if it's still the latest request
+        if (myRequestId !== requestCounter) return;
+
+        // Use previous lastRanks here for deltas
+        display(match, players, currentRanks);
+
+        // Now that we've rendered deltas based on the old snapshot,
+        // update lastRanks to the latest ranks for the *next* refresh.
+        lastRanks = currentRanks;
+
+        requestAnimationFrame(() => (resultsListEl.style.opacity = 1));
+      }, 300);
+    }
+
+  } catch (err) {
+    // Only show the error if this is still the latest request
+    if (myRequestId !== requestCounter) return;
+    resultsListEl.innerHTML = `<div class="error">${err.message}</div>`;
   }
 }
 
-fetchData();
-setInterval(fetchData,REFRESH_MS);
+// Sequential polling loop using setTimeout
+async function poll() {
+  await fetchData();
+  setTimeout(poll, REFRESH_MS);
+}
+
+poll();
 </script>
+</body>
+</html>
+
 
 </body>
 </html>
