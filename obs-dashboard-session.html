@@ -297,6 +297,10 @@ const sessionWinsDelta=document.getElementById("sessionWinsDelta");
 let lastRank=null,lastElo=null,lastWins=null;
 let initialElo=null, initialRank=null, initialWins=null;
 
+/* NEW: track fetch versions to avoid out-of-order updates */
+let fetchVersion = 0;
+let lastAppliedVersion = 0;
+
 function getOrdinalSuffix(n){
   const j=n%10,k=n%100;
   if(k>=11&&k<=13)return"th";
@@ -338,7 +342,7 @@ function animateDelta(valueEl, deltaEl, oldVal, newVal, reverse=false){
 function updateSessionDelta(containerEl, arrowEl, numEl, diff){
   containerEl.classList.remove("delta-positive","delta-negative");
   if(diff===0){
-    arrowEl.textContent="";
+    arrowEl.textContent="—";
     numEl.textContent="—";
     return;
   }
@@ -362,18 +366,41 @@ function updateSessionCounter(containerEl, numEl, diff){
 
 async function fetchData(){
   const pid=getPlayerId();
-  const resp=await fetch(WORKER_URL,{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({
-      leaderboard:"season_10",
-      rating_type:"player_global_all",
-      client_id:"DISCORD|1069003073311211601"
-    })
-  });
 
-  if(!resp.ok)return;
-  const data=await resp.json();
+  // Increment version for this fetch
+  const myVersion = ++fetchVersion;
+
+  let resp;
+  try {
+    resp = await fetch(WORKER_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        leaderboard:"season_10",
+        rating_type:"player_global_all",
+        client_id:"DISCORD|1069003073311211601"
+      })
+    });
+  } catch(e) {
+    return; // network error, skip
+  }
+
+  // If a newer fetch started after this one, ignore this response
+  if(myVersion < lastAppliedVersion) return;
+  if(!resp.ok) return;
+
+  let data;
+  try {
+    data = await resp.json();
+  } catch(e) {
+    return;
+  }
+
+  // Again, ignore if a newer fetch has started/finished while we were parsing
+  if(myVersion < lastAppliedVersion) return;
+
+  // Mark this as the latest applied data
+  lastAppliedVersion = myVersion;
 
   const sorted=[...(data.leaderboard??[])].sort((a,b)=>(b.elo??0)-(a.elo??0));
   const idx=sorted.findIndex(p=>p.team?.[0]===pid);
