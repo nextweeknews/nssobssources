@@ -175,7 +175,6 @@
       width: 100%;
       text-align: center;
     }
-
   </style>
 </head>
 
@@ -209,21 +208,21 @@ const PLAYER_ID = new URLSearchParams(location.search).get("player_id");
 
 let initialLoad = true;
 
-// Global baseline ranks snapshot from the last processed leaderboard
+// Global baseline ranks (pre-state for computing per-match deltas)
 let previousRanks = {};
 
-// Frozen snapshot for the last fully-processed match of the tracked player
+// Snapshot for the last fully-processed match of the tracked player
 let snapshotMatch = null;
 let snapshotMatchHash = "";
 let snapshotRanks = {};       // { [id]: rankAfterMatch }
 let snapshotRankDeltas = {};  // { [id]: { diff, arrow, class } }
 
-// Latest global match we've seen (from rating history)
+// Latest global match we've baseline'd
 let lastGlobalMatchHash = "";
 
-// Request guard
+// Async guard
 let requestCounter = 0;
-// Display hash to avoid unnecessary DOM work + animations
+// For avoiding unnecessary DOM work
 let lastDisplayHash = "";
 
 if (!PLAYER_ID) {
@@ -344,7 +343,7 @@ async function fetchData() {
   const myRequestId = ++requestCounter;
 
   try {
-    // --- Poll rating history every 15s ---
+    // 1) Poll rating history every 15s
     const historyResp = await fetch(API_URL, {
       method: "POST",
       headers: {"Content-Type": "application/json"},
@@ -360,7 +359,6 @@ async function fetchData() {
     const players = historyData.resolved?.players || {};
     const matches = historyData.matches || [];
 
-    // Sort matches newest → oldest
     const sortedMatches = [...matches].sort((a, b) => b.ts - a.ts);
 
     const globalLatest = sortedMatches[0] || null;
@@ -370,7 +368,7 @@ async function fetchData() {
       m.ratingResults.some(r =>
         r.newRatings.some(p => String(p.id) === String(PLAYER_ID))
       )
-    );
+    ) || null;
 
     const latestMatchHash = latestMatchForPlayer
       ? hashMatch(latestMatchForPlayer)
@@ -378,12 +376,23 @@ async function fetchData() {
 
     const hasSnapshot = !!snapshotMatch;
 
-    const playerHasNewerMatchThanSnapshot =
-      latestMatchForPlayer &&
-      (!hasSnapshot || latestMatchHash !== snapshotMatchHash);
+    // Case: no match at all yet and no snapshot
+    if (!latestMatchForPlayer && !hasSnapshot) {
+      const hash = "NO_MATCH";
+      if (!initialLoad && hash === lastDisplayHash) return;
 
-    const haveNewGlobalMatch =
-      globalLatest && globalLatestHash !== lastGlobalMatchHash;
+      lastDisplayHash = hash;
+      initialLoad = false;
+
+      resultsListEl.style.opacity = 0;
+      setTimeout(() => {
+        if (myRequestId !== requestCounter) return;
+        resultsListEl.innerHTML = "<div class='loading'>No match</div>";
+        resizeCard(1);
+        requestAnimationFrame(() => (resultsListEl.style.opacity = 1));
+      }, 300);
+      return;
+    }
 
     const globalLatestInvolvesPlayer = globalLatest
       ? globalLatest.ratingResults.some(r =>
@@ -391,9 +400,16 @@ async function fetchData() {
         )
       : false;
 
+    const haveNewGlobalMatch =
+      globalLatest && globalLatestHash !== lastGlobalMatchHash;
+
+    const playerHasNewerMatchThanSnapshot =
+      latestMatchForPlayer &&
+      (!hasSnapshot || latestMatchHash !== snapshotMatchHash);
+
     // We need leaderboard when:
-    // - there is any new global match, OR
-    // - the player has a newer match than our snapshot (to keep checking for sync)
+    //  - any new global match exists (to keep baseline fresh), OR
+    //  - the player has a newer match than our snapshot (to try to process it)
     const needLeaderboard = haveNewGlobalMatch || playerHasNewerMatchThanSnapshot;
 
     if (needLeaderboard) {
@@ -415,9 +431,33 @@ async function fetchData() {
 
       const isInitialBaseline = Object.keys(previousRanks).length === 0;
 
-      // If we have a player match newer than our snapshot, see if we can
-      // update the snapshot (Checkpoint 2 & 3).
-      if (latestMatchForPlayer && playerHasNewerMatchThanSnapshot) {
+      // --- Initial snapshot: we have a player match but no snapshot yet ---
+      if (!hasSnapshot && latestMatchForPlayer) {
+        const participants = latestMatchForPlayer.ratingResults[0].newRatings;
+        const newSnapshotRanks = {};
+        const newSnapshotRankDeltas = {};
+
+        participants.forEach(p => {
+          const idKey = String(p.id);
+          const r = currentRanks[idKey];
+          if (typeof r === "number") {
+            newSnapshotRanks[idKey] = r;
+          }
+          // First snapshot: no true "before" → deltas = 0
+          newSnapshotRankDeltas[idKey] = { diff: 0, arrow: "", class: "" };
+        });
+
+        snapshotMatch = latestMatchForPlayer;
+        snapshotMatchHash = latestMatchHash;
+        snapshotRanks = newSnapshotRanks;
+        snapshotRankDeltas = newSnapshotRankDeltas;
+
+        // For future per-match deltas, this leaderboard is our baseline
+        previousRanks = currentRanks;
+      }
+
+      // --- New match for the player, after we already have a snapshot ---
+      if (hasSnapshot && latestMatchForPlayer && playerHasNewerMatchThanSnapshot) {
         const participants = latestMatchForPlayer.ratingResults[0].newRatings;
 
         // Check if leaderboard Elo is in sync with match Elo (±1 tolerance)
@@ -442,14 +482,13 @@ async function fetchData() {
             }
 
             const beforeRank = previousRanks[idKey];
-
             let diff = 0;
             let arrow = "";
             let cls = "";
 
-            // On very first baseline, or if we don't know their prior rank,
-            // we treat delta as 0 (we can't know true previous rank).
-            if (!isInitialBaseline && typeof beforeRank === "number" && typeof afterRank === "number") {
+            // If we know their previous rank, we can compute a true delta
+            if (typeof beforeRank === "number" &&
+                typeof afterRank === "number") {
               diff = beforeRank - afterRank; // positive = improved
               if (diff > 0) {
                 arrow = "▲";
@@ -468,35 +507,29 @@ async function fetchData() {
           snapshotRanks = newSnapshotRanks;
           snapshotRankDeltas = newSnapshotRankDeltas;
 
-          // After processing this match, our new baseline is the current leaderboard
+          // Baseline now advances to after this match
           previousRanks = currentRanks;
         }
-        // If not synced yet: we keep the old snapshot and baseline; next poll
-        // will keep hitting leaderboard due to playerHasNewerMatchThanSnapshot.
+        // If not synced yet: we keep snapshot + baseline; will retry next poll.
       }
 
-      // Initialize baseline if it's the first time we ever saw leaderboard
-      if (isInitialBaseline && Object.keys(currentRanks).length > 0) {
-        previousRanks = currentRanks;
-      }
-
-      // For any new global match that does NOT involve the tracked player,
-      // we advance the global baseline so later deltas reflect exactly one match.
+      // --- Update baseline on global matches not involving our player ---
       if (haveNewGlobalMatch && !globalLatestInvolvesPlayer) {
         previousRanks = currentRanks;
       }
 
-      // Mark that we've processed up to this global match in rating-history space
       if (haveNewGlobalMatch && globalLatestHash) {
         lastGlobalMatchHash = globalLatestHash;
       }
+
+      // Also initialize baseline if this was the very first leaderboard fetch
+      if (isInitialBaseline && Object.keys(currentRanks).length > 0) {
+        previousRanks = currentRanks;
+      }
     }
 
-    // At this point, snapshotMatch / snapshotRanks / snapshotRankDeltas represent
-    // the last fully-processed match for the tracked player.
-    // Build display hash from snapshot state.
+    // Build display hash from snapshot
     let displayHash;
-
     if (!snapshotMatch) {
       displayHash = "NO_MATCH";
     } else {
