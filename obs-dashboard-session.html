@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>ELO • RANK • WINS • TIER</title>
+
+<style>
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background: transparent;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+:root {
+  --card-bg: rgba(28, 28, 28, 0.95);
+}
+
+.card {
+  width: 800px;
+  height: 300px;
+  background: var(--card-bg);
+  border-radius: 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 14px 0px 16px;
+  color: #e9eef8;
+}
+
+/* Tier */
+#tierRow {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:14px;
+  margin-bottom:8px;
+}
+#tierLabel {
+  font-size:40px;
+  font-weight:900;
+  color:#bcd4ff;
+  text-transform:uppercase;
+}
+#tierContainer {
+  padding:8px 26px;
+  border-radius:20px;
+  background:rgba(255,255,255,0.08);
+  transition:background 0.3s ease;
+}
+#tierText {
+  font-size:44px;
+  font-weight:900;
+  text-transform:uppercase;
+}
+
+/* Layout */
+.row {
+  width:100%;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  flex:1;
+  padding-bottom:4px;
+}
+.section {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  position:relative;
+  width:33%;
+}
+.section.rank { width:30%; }
+.section.elo { width:40%; }
+.section.wins { width:30%; }
+
+.label {
+  font-size:40px;
+  font-weight:900;
+  color:#bcd4ff;
+  margin-bottom:4px;
+}
+
+.metric {
+  position:relative;
+  width:100%;
+  height:94px;
+  font-size:94px;
+  font-weight:800;
+  line-height:1;
+  white-space:nowrap;
+}
+.metric-value,
+.delta {
+  position:absolute;
+  top:0;
+  left:50%;
+  transform:translateX(-50%);
+  transition:opacity .4s ease;
+}
+.delta {
+  opacity:0;
+  font-size:94px;
+  font-weight:900;
+}
+
+/* UNIFIED small arrow styling */
+.delta-arrow {
+  font-size: 0.6em;
+  vertical-align: middle;
+  position: relative;
+  top: -0.2em;
+  margin-right: 2px;
+  display:inline-block;
+}
+
+/* Rank suffix */
+#rankSuffix {
+  position:relative;
+  top:-8px;
+  font-size:36px;
+  font-weight:800;
+}
+
+/* Colors */
+.delta-positive { color:#4ade80; }
+.delta-negative { color:#f87171; }
+
+/* Subtext */
+.subtext {
+  font-size: 24px;
+  opacity:0.85;
+  color:#bcd4ff;
+  margin-top: 6px;
+  font-weight:600;
+}
+.session-delta {
+  font-weight:900;
+  font-size: 0.8em;
+  vertical-align:middle;
+}
+
+/* Divider */
+.section:after {
+  content:"";
+  position:absolute;
+  right:0;
+  top:50%;
+  transform:translateY(-50%);
+  width:4px;
+  height:140px;
+  background:rgba(255,255,255,0.14);
+  border-radius:2px;
+}
+.section:last-child:after { display:none; }
+
+/* SESSION STRIP AT BOTTOM */
+#sessionSection {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+#sessionBubble {
+  padding: 6px 20px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.07);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.session-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: uppercase;
+}
+
+.session-item-label {
+  font-size: 0.75em;
+  letter-spacing: 0.06em;
+  opacity: 0.85;
+}
+
+.session-delta-pill {
+  display: inline-flex;
+  align-items: center;
+}
+
+.session-label-text {
+  font-size: 12px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+</style>
+</head>
+
+<body>
+<div class="card">
+  <div id="tierRow">
+    <div id="tierLabel">TIER</div>
+    <div id="tierContainer"><span id="tierText">—</span></div>
+  </div>
+
+  <div class="row">
+
+    <div class="section rank">
+      <div class="label">RANK</div>
+      <span class="metric">
+        <span id="rankValue" class="metric-value">
+          <span id="rankNumber">—</span><sup id="rankSuffix"></sup>
+        </span>
+        <span id="rankDelta" class="delta">
+          <span class="delta-arrow"></span><span class="delta-number"></span>
+        </span>
+      </span>
+      <div class="subtext" id="rankSub">—</div>
+    </div>
+
+    <div class="section elo">
+      <div class="label">ELO</div>
+      <span class="metric">
+        <span id="eloValue" class="metric-value">—</span>
+        <span id="eloDelta" class="delta">
+          <span class="delta-arrow"></span><span class="delta-number"></span>
+        </span>
+      </span>
+      <div class="subtext" id="eloSub">—</div>
+    </div>
+
+    <div class="section wins">
+      <div class="label">WINS</div>
+      <span class="metric">
+        <span id="winsValue" class="metric-value">—</span>
+        <span id="winsDelta" class="delta">
+          <span class="delta-arrow"></span><span class="delta-number"></span>
+        </span>
+      </span>
+      <div class="subtext" id="winsSub">—</div>
+    </div>
+
+  </div>
+
+  <!-- SESSION SUMMARY STRIP -->
+  <div id="sessionSection">
+    <div id="sessionBubble">
+      <div class="session-item">
+        <span class="session-item-label">Rank</span>
+        <span id="sessionRankContainer" class="session-delta-pill">
+          <span id="sessionRankArrow" class="delta-arrow">—</span>
+          <span id="sessionRankDelta">—</span>
+        </span>
+      </div>
+      <div class="session-item">
+        <span class="session-item-label">Elo</span>
+        <span id="sessionEloContainer" class="session-delta-pill">
+          <span id="sessionEloArrow" class="delta-arrow">—</span>
+          <span id="sessionEloDelta">—</span>
+        </span>
+      </div>
+      <div class="session-item">
+        <span class="session-item-label">Wins</span>
+        <span id="sessionWinsContainer" class="session-delta-pill">
+          <span id="sessionWinsArrow" class="delta-arrow">—</span>
+          <span id="sessionWinsDelta">—</span>
+        </span>
+      </div>
+    </div>
+    <div class="session-label-text">THIS SESSION</div>
+  </div>
+</div>
+
+<script>
+const WORKER_URL="https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
+const REFRESH_MS=15000;
+
+const rankVal=document.getElementById("rankValue");
+const rankNum=document.getElementById("rankNumber");
+const rankSuffix=document.getElementById("rankSuffix");
+const eloVal=document.getElementById("eloValue");
+const winsVal=document.getElementById("winsValue");
+const rankDelta=document.getElementById("rankDelta");
+const eloDelta=document.getElementById("eloDelta");
+const winsDelta=document.getElementById("winsDelta");
+const tierText=document.getElementById("tierText");
+const tierContainer=document.getElementById("tierContainer");
+
+const rankSub=document.getElementById("rankSub");
+const eloSub=document.getElementById("eloSub");
+const winsSub=document.getElementById("winsSub");
+
+/* SESSION STRIP ELEMENTS */
+const sessionRankContainer=document.getElementById("sessionRankContainer");
+const sessionRankArrow=document.getElementById("sessionRankArrow");
+const sessionRankDelta=document.getElementById("sessionRankDelta");
+
+const sessionEloContainer=document.getElementById("sessionEloContainer");
+const sessionEloArrow=document.getElementById("sessionEloArrow");
+const sessionEloDelta=document.getElementById("sessionEloDelta");
+
+const sessionWinsContainer=document.getElementById("sessionWinsContainer");
+const sessionWinsArrow=document.getElementById("sessionWinsArrow");
+const sessionWinsDelta=document.getElementById("sessionWinsDelta");
+
+let lastRank=null,lastElo=null,lastWins=null;
+let initialElo=null, initialRank=null, initialWins=null;
+
+function getOrdinalSuffix(n){
+  const j=n%10,k=n%100;
+  if(k>=11&&k<=13)return"th";
+  if(j===1)return"st";
+  if(j===2)return"nd";
+  if(j===3)return"rd";
+  return"th";
+}
+
+function getPlayerId(){
+  const pid=new URLSearchParams(location.search).get("player_id");
+  return /^\d{17,20}$/.test(pid)?pid:"702730732220579950";
+}
+
+function animateDelta(valueEl, deltaEl, oldVal, newVal, reverse=false){
+  const diff=newVal-oldVal;
+  if(oldVal===null || diff===0) return;
+  
+  const arrow=deltaEl.querySelector(".delta-arrow");
+  const num=deltaEl.querySelector(".delta-number");
+
+  arrow.textContent = diff>0 ? (reverse?"▼":"▲") : (reverse?"▲":"▼");
+  num.textContent = Math.abs(diff);
+
+  deltaEl.classList.remove("delta-positive","delta-negative");
+  deltaEl.classList.add((diff>0 ^ reverse)?"delta-positive":"delta-negative");
+
+  valueEl.style.opacity="0";
+  setTimeout(()=>{
+    deltaEl.style.opacity="1";
+    setTimeout(()=>{
+      deltaEl.style.opacity="0";
+      setTimeout(()=>valueEl.style.opacity="1",400);
+    },5000);
+  },400);
+}
+
+/* Update helper for session strip */
+function updateSessionCell(containerEl, arrowEl, numEl, diff){
+  containerEl.classList.remove("delta-positive","delta-negative");
+  if(diff===0){
+    arrowEl.textContent="—";
+    numEl.textContent="—";
+    return;
+  }
+  const positive = diff>0;
+  containerEl.classList.add(positive ? "delta-positive" : "delta-negative");
+  arrowEl.textContent = positive ? "▲" : "▼";
+  numEl.textContent = Math.abs(diff);
+}
+
+async function fetchData(){
+  const pid=getPlayerId();
+  const resp=await fetch(WORKER_URL,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      leaderboard:"season_10",
+      rating_type:"player_global_all",
+      client_id:"DISCORD|1069003073311211601"
+    })
+  });
+
+  if(!resp.ok)return;
+  const data=await resp.json();
+
+  const sorted=[...(data.leaderboard??[])].sort((a,b)=>(b.elo??0)-(a.elo??0));
+  const idx=sorted.findIndex(p=>p.team?.[0]===pid);
+  if(idx<0)return;
+
+  const p=sorted[idx];
+  const rank=idx+1;
+  const elo=p.elo??0;
+  const wins=p.count_placement_1??0;
+  const matches=p.matches??0;
+  const winRate = matches ? ((wins/matches)*100).toFixed(1) : "0.0";
+
+  // Capture initial values on first successful fetch
+  if(initialRank===null) initialRank=rank;
+  if(initialElo===null) initialElo=elo;
+  if(initialWins===null) initialWins=wins;
+
+  if(lastRank!==null && rank!==lastRank)
+    animateDelta(rankVal,rankDelta,lastRank,rank,true);
+  if(lastElo!==null && elo!==lastElo)
+    animateDelta(eloVal,eloDelta,lastElo,elo);
+  if(lastWins!==null && wins!==lastWins)
+    animateDelta(winsVal,winsDelta,lastWins,wins);
+
+  rankNum.textContent=rank;
+  rankSuffix.textContent=getOrdinalSuffix(rank);
+  eloVal.textContent=elo;
+  winsVal.textContent=wins;
+
+  lastRank=rank;
+  lastElo=elo;
+  lastWins=wins;
+
+  // Subtext
+  rankSub.textContent = `out of ${sorted.length} players`;
+
+  const sessionDiff = elo - initialElo;
+
+  if(sessionDiff === 0) {
+    eloSub.textContent = `Session: —`;
+  } else {
+    const sessionArrow = sessionDiff > 0 ? "▲" : "▼";
+    const sessionClass = sessionDiff > 0 ? "delta-positive" : "delta-negative";
+
+    eloSub.innerHTML = `Session:
+      <span class="session-delta ${sessionClass}">
+        <span class="delta-arrow">${sessionArrow}</span>${Math.abs(sessionDiff)}
+      </span>`;
+  }
+
+  winsSub.textContent = `Matches: ${matches} (${winRate}%)`;
+
+  // Tier handling
+  const cfg=data.resolved?.leaderboards?.["Season_10"];
+  let tier = null;
+  if(cfg){
+    const tiers=cfg.player_global_all_tiers ?? [];
+    for(const t of tiers) if(elo>=t.required_elo) tier=t;
+    if(rank===1 && cfg.player_global_all_rank_tiers?.length)
+      tier = cfg.player_global_all_rank_tiers[0];
+  }
+
+  if(tier){
+    const c=tier.color;
+    tierText.textContent=tier.name.replace(/^Season\s+\d+\s+/i,"").toUpperCase();
+    const r=parseInt(c.slice(1,3),16),
+          g=parseInt(c.slice(3,5),16),
+          b=parseInt(c.slice(5,7),16);
+    tierText.style.textShadow=`0 0 10px ${c},0 0 18px ${c}`;
+    tierContainer.style.background=`rgba(${r},${g},${b},0.22)`;
+  } else {
+    tierText.textContent="UNRANKED";
+    tierText.style.textShadow="none";
+    tierContainer.style.background="rgba(255,255,255,0.08)";
+  }
+
+  // SESSION STRIP VALUES
+  // Rank: improvement is a LOWER numeric rank, so we flip the sign
+  const rankDiff = initialRank !== null ? (initialRank - rank) : 0;
+  const eloDiff = initialElo !== null ? (elo - initialElo) : 0;
+  const winsDiff = initialWins !== null ? (wins - initialWins) : 0;
+
+  updateSessionCell(sessionRankContainer, sessionRankArrow, sessionRankDelta, rankDiff);
+  updateSessionCell(sessionEloContainer, sessionEloArrow, sessionEloDelta, eloDiff);
+  updateSessionCell(sessionWinsContainer, sessionWinsArrow, sessionWinsDelta, winsDiff);
+}
+
+fetchData();
+setInterval(fetchData,REFRESH_MS);
+</script>
+
+</body>
+</html>
