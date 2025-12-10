@@ -273,11 +273,13 @@ function buildEloMapFromLeaderboard(leaderboard) {
   return map;
 }
 
-function display(match, players, ranks) {
+function display(match, players, ranks, options = {}) {
+  const { enableRankDelta = true } = options;
+
   const rows = match.ratingResults[0].newRatings.slice(0, 8);
   resultsListEl.innerHTML = "";
 
-  const showRankDelta = rows.some(p => {
+  const showRankDelta = enableRankDelta && rows.some(p => {
     const idKey = String(p.id);
     const r = ranks[idKey];
     const rd = computeRankDelta(idKey, r);
@@ -316,7 +318,7 @@ function display(match, players, ranks) {
       </span>` : `<span></span>`;
 
     const r = ranks[idKey] ?? "—";
-    const rd = computeRankDelta(idKey, r);
+    const rd = enableRankDelta ? computeRankDelta(idKey, r) : null;
     const rankDeltaHTML = (showRankDelta && rd && rd.diff !== 0) ? `
       <span class="rank-delta ${rd.class}">
         <span class="delta-arrow">${rd.arrow}</span>${Math.abs(Math.round(rd.diff))}
@@ -394,24 +396,17 @@ async function fetchData() {
     const currentRanks = buildRanksFromLeaderboard(leaderboard);
     const leaderboardElos = buildEloMapFromLeaderboard(leaderboard);
 
-    // Ensure leaderboard has caught up to the match Elo for all participants
+    // Check if leaderboard Elo matches match Elo for *participants*.
     const participants = match.ratingResults[0].newRatings;
-    const allSynced = participants.every(p => {
+    const leaderboardSynced = participants.every(p => {
       const idKey = String(p.id);
       const lbElo = leaderboardElos[idKey];
       const matchElo = Math.round(p.elo ?? 0);
       return typeof lbElo === "number" && Math.round(lbElo) === matchElo;
     });
 
-    if (!allSynced) {
-      // Leaderboard hasn't applied this match yet; don't update the card
-      // so we avoid Elo/rank-delta desync.
-      return;
-    }
-
-    // At this point, /get_leaderboard and /get_rating_history agree on Elo.
-    // If we've already rendered this exact match, no need to re-render.
-    if (!initialLoad && newHash === lastMatchHash) {
+    // If we've already rendered this exact match and nothing changed, skip.
+    if (!initialLoad && newHash === lastMatchHash && !leaderboardSynced) {
       return;
     }
 
@@ -422,10 +417,17 @@ async function fetchData() {
     setTimeout(() => {
       if (myRequestId !== requestCounter) return;
 
-      display(match, players, currentRanks);
+      // Always show current Elo + Rank.
+      // Only show Rank Δ when leaderboard is synced with match Elo.
+      display(match, players, currentRanks, {
+        enableRankDelta: leaderboardSynced
+      });
 
-      // Rank deltas for next tick are always computed between leaderboard snapshots
-      lastRanks = currentRanks;
+      if (leaderboardSynced) {
+        // Only advance our "previous ranks" snapshot when we're confident
+        // the leaderboard has processed this match.
+        lastRanks = currentRanks;
+      }
 
       requestAnimationFrame(() => (resultsListEl.style.opacity = 1));
     }, 300);
