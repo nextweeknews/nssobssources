@@ -120,6 +120,14 @@ html, body {
   display:inline-block;
 }
 
+#sessionStrip .delta-arrow {
+  /* same relative size, but tweak alignment & spacing for small text */
+  font-size: 0.6em;
+  position: relative;
+  top: -0.2em;
+  margin-right: 0.08em;  /* gap scales with font size instead of fixed 2px */
+}
+
 /* Rank suffix */
 #rankSuffix {
   position:relative;
@@ -186,7 +194,7 @@ html, body {
 
 .session-label-text {
   text-align:center;
-  font-size:11px;
+  font-size:16px;
   font-weight: 400;
   letter-spacing:0.28em;
   color:#bcd4ff;
