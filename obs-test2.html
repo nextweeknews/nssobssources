@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Match Lobby</title>
+  <title>Previous Match Results - Rank + Inline Deltas</title>
 
   <style>
     html, body {
@@ -15,7 +15,7 @@
       -webkit-font-smoothing: antialiased;
       overflow: hidden;
     }
-
+      
     .card {
       width: 1720px;
       background: rgba(15, 23, 42, 1);
@@ -40,11 +40,11 @@
       text-align: center;
     }
 
-    /* Column structure: Rank | Player | Elo | Wins | Win Rate */
+    /* Column structure */
     .header-row,
     .entry {
       display: grid;
-      grid-template-columns: 150px 1fr 200px 170px 200px;
+      grid-template-columns: 150px 1fr 200px 130px 180px 130px;
       align-items: center;
     }
 
@@ -62,7 +62,15 @@
 
     .header-row span:nth-child(2) {
       text-align: left;
-      padding-left: 24px;
+      padding-left: 36px;
+    }
+
+    .header-row > span {
+      border-right: 2px solid rgba(255,255,255,0);
+    }
+
+    .header-row > span:last-child {
+      border-right: none;
     }
 
     #resultsList {
@@ -74,7 +82,7 @@
     }
 
     .entry {
-      height: 90px;
+      height: 70px;
       background: rgba(255,255,255,0.07);
       border-radius: 14px;
       font-size: 42px;
@@ -84,11 +92,12 @@
       transition: background .3s ease, box-shadow .3s ease;
     }
 
-    .rank-value {
+    .place {
       font-size: 42px;
-      font-weight: 800;
+      font-weight: 900;
       text-align: center;
       line-height: 1;
+      color: #c7d7ff;
     }
 
     .player-name {
@@ -102,12 +111,33 @@
       padding-right: 36px;
     }
 
-    .elo-value, .wins-value, .wr-value {
+    .elo-value, .rank-value {
       font-size: 42px;
-      font-weight: 800;
+      font-weight: 900;
       text-align: center;
       line-height: 1;
     }
+
+    .elo-delta, .rank-delta {
+      font-size: 36px;
+      text-align: center;
+      position: relative;
+    }
+
+    .delta-arrow {
+      margin-right: 4px;
+      font-size: 0.6em;
+      vertical-align: middle;
+      position: relative;
+      top: -0.2em;
+    }
+
+    .gold { color: #ffd700; }
+    .silver { color: #c0c0c0; }
+    .bronze { color: #cd7f32; }
+
+    .delta-positive { color: #4ade80; }
+    .delta-negative { color: #f87171; }
 
     /* Column borders */
     .entry > span {
@@ -122,7 +152,22 @@
       border-right: none;
     }
 
-    /* Tracked player highlight */
+    /* Placement-based highlighting (for the tracked player) */
+    .entry.highlight-gold {
+      background: rgba(255, 215, 0, 0.28);
+      box-shadow: 0 0 18px rgba(255, 215, 0, 0.3);
+    }
+
+    .entry.highlight-silver {
+      background: rgba(192, 192, 192, 0.28);
+      box-shadow: 0 0 18px rgba(192, 192, 192, 0.3);
+    }
+
+    .entry.highlight-bronze {
+      background: rgba(205, 127, 50, 0.28);
+      box-shadow: 0 0 18px rgba(205, 127, 50, 0.3);
+    }
+
     .entry.highlight-default {
       background: rgba(52, 211, 153, 0.30);
       box-shadow: 0 0 18px rgba(16, 185, 129, 0.3);
@@ -133,19 +178,21 @@
       width: 100%;
       text-align: center;
     }
+
   </style>
 </head>
 
 <body>
 <div class="card" id="card">
-  <div class="title">Match Lobby</div>
+  <div class="title">Previous Match Results</div>
 
   <div class="header-row">
-    <span>Rank</span>
+    <span>Place</span>
     <span>Player</span>
     <span>Elo</span>
-    <span>Wins</span>
-    <span>Win Rate</span>
+    <span>+/-</span>
+    <span>Rank</span>
+    <span>+/-</span>
   </div>
 
   <div id="resultsList">
@@ -154,110 +201,215 @@
 </div>
 
 <script>
-  const LB_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
-  const CLIENT_ID = "DISCORD|1069003073311211601";
-  const REFRESH_MS = 15000;
+const API_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_rating_history";
+const LB_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
+const CLIENT_ID = "DISCORD|1069003073311211601";
+const REFRESH_MS = 15000;
 
-  const cardEl = document.getElementById("card");
-  const resultsListEl = document.getElementById("resultsList");
-  const params = new URLSearchParams(location.search);
+const cardEl = document.getElementById("card");
+const resultsListEl = document.getElementById("resultsList");
+const PLAYER_ID = new URLSearchParams(location.search).get("player_id");
 
-  const playersParam = params.get("players") || "";
-  const PLAYER_IDS = playersParam
-    .split(",")
-    .map(s => s.trim())
-    .filter(Boolean);
+let lastMatchHash = "";
+let initialLoad = true;
 
-  const TRACKED_ID = params.get("player_id");
+// snapshot of ranks for *all* players from the previous refresh
+let lastRanks = {};
 
-  let lastHash = "";
-  let initialLoad = true;
+if (!PLAYER_ID) {
+  resultsListEl.innerHTML = "<div class='error'>Missing player_id</div>";
+  throw new Error("player_id required");
+}
 
-  if (PLAYER_IDS.length < 2 || PLAYER_IDS.length > 8) {
-    resultsListEl.innerHTML = "<div class='error'>Need between 2 and 8 players in ?players=ID1,ID2,…</div>";
-    throw new Error("Invalid players list");
-  }
+function resizeCard(count) {
+  const h = 56 + 24 + 60 + 14 + 48 + 50 + (70 * count) + (10 * (count - 1));
+  cardEl.style.height = `${h}px`;
+}
 
-  function resizeCard(count) {
-    // Preserve same row sizing logic as your original
-    const h = 56 + 24 + 60 + 14 + 48 + 50 + (90 * count) + (10 * (count - 1));
-    cardEl.style.height = `${h}px`;
-  }
+function hashMatch(match) {
+  // Hash only the match participants + ratings. Rank changes are handled separately.
+  return match.ratingResults[0].newRatings
+    .map(p => `${p.id}:${p.place}:${p.elo}:${p.delta}`)
+    .join("|");
+}
 
-  function hashState(rows) {
-    return rows
-      .map(r => `${r.id}:${r.rank}:${r.elo}:${r.wins}:${r.matches}`)
-      .join("|");
-  }
+function computeRankDelta(id, current) {
+  const old = lastRanks[id];
+  if (typeof old !== "number" || typeof current !== "number") return null;
+  const diff = old - current; // lower rank number = better rank
+  return {
+    diff,
+    arrow: diff > 0 ? "▲" : diff < 0 ? "▼" : "",
+    class: diff > 0 ? "delta-positive" : diff < 0 ? "delta-negative" : ""
+  };
+}
 
-  function formatWinRate(wins, matches) {
-    if (!matches || matches <= 0) return "—";
-    const pct = (wins / matches) * 100;
-    return `${pct.toFixed(1)}%`;
-  }
+// Fetch full leaderboard and build rank map for ALL players
+async function getRanks() {
+  const resp = await fetch(LB_URL, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      leaderboard: "season_10",
+      rating_type: "player_global_all",
+      client_id: CLIENT_ID
+    })
+  });
 
-  function display(rows) {
-    resultsListEl.innerHTML = "";
+  const data = await resp.json();
+  const sorted = [...(data.leaderboard || [])]
+    .sort((a, b) => (b.elo ?? 0) - (a.elo ?? 0));
 
-    rows.forEach(r => {
-      const row = document.createElement("div");
-      row.className = "entry";
+  const ranks = {};
+  sorted.forEach((p, i) => {
+    const id = p.team?.[0];
+    if (id != null) {
+      ranks[id] = i + 1; // 1-based rank
+    }
+  });
 
-      if (TRACKED_ID && String(r.id) === String(TRACKED_ID)) {
-        row.classList.add("highlight-default");
-      }
+  return ranks;
+}
 
-      const rankText = r.rank != null ? r.rank : "—";
-      const eloText = r.elo != null ? Math.round(r.elo) : "—";
-      const winsText = r.wins != null ? r.wins : "0";
-      const wrText = formatWinRate(r.wins, r.matches);
+function display(match, players, ranks) {
+  const rows = match.ratingResults[0].newRatings.slice(0, 8);
+  resultsListEl.innerHTML = "";
 
-      row.innerHTML = `
-        <span class="rank-value">${rankText}</span>
-        <span class="player-name">${r.name}</span>
-        <span class="elo-value">${eloText}</span>
-        <span class="wins-value">${winsText}</span>
-        <span class="wr-value">${wrText}</span>
-      `;
+  // Determine whether we should show the rank delta column at all
+  const showRankDelta = rows.some(p => {
+    const r = ranks[p.id];
+    const rd = computeRankDelta(p.id, r);
+    return rd && rd.diff !== 0;
+  });
 
-      resultsListEl.appendChild(row);
+  rows.forEach(p => {
+    const row = document.createElement("div");
+    row.className = "entry";
+
+    // Highlight tracked player
+    if (String(p.id) === String(PLAYER_ID)) {
+      if (p.place === 1) row.classList.add("highlight-gold");
+      else if (p.place === 2) row.classList.add("highlight-silver");
+      else if (p.place === 3) row.classList.add("highlight-bronze");
+      else row.classList.add("highlight-default");
+    }
+
+    const placeClass =
+      p.place === 1 ? "gold" :
+      p.place === 2 ? "silver" :
+      p.place === 3 ? "bronze" :
+      "";
+
+    const name = players[p.id]?.display_name || "Unknown";
+
+    // Ensure integers for Elo + Δ
+    const elo = Math.round(p.elo ?? 0);
+    const delta = Math.round(p.delta ?? 0);
+
+    const dC = delta > 0 ? "delta-positive" : delta < 0 ? "delta-negative" : "";
+    const eloDeltaHTML = delta !== 0 ? `
+      <span class="elo-delta ${dC}">
+        <span class="delta-arrow">${delta > 0 ? "▲" : "▼"}</span>${Math.abs(delta)}
+      </span>` : `<span></span>`;
+
+    // Rank + Rank Δ
+    const r = ranks[p.id] ?? "—";
+    const rd = computeRankDelta(p.id, r);
+    const rankDeltaHTML = (showRankDelta && rd && rd.diff !== 0) ? `
+      <span class="rank-delta ${rd.class}">
+        <span class="delta-arrow">${rd.arrow}</span>${Math.abs(Math.round(rd.diff))}
+      </span>` : `<span></span>`;
+
+    row.innerHTML = `
+      <span class="place ${placeClass}">${p.place}</span>
+      <span class="player-name">${name}</span>
+
+      <span class="elo-value">${elo}</span>
+      ${eloDeltaHTML}
+
+      <span class="rank-value">${r}</span>
+      ${rankDeltaHTML}
+    `;
+
+    resultsListEl.appendChild(row);
+  });
+
+  resizeCard(rows.length);
+}
+
+async function fetchData() {
+  try {
+    // Always get a full leaderboard snapshot first
+    const currentRanks = await getRanks();
+
+    const resp = await fetch(API_URL, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        player_id: PLAYER_ID,
+        client_id: CLIENT_ID,
+        limit: 10
+      })
     });
 
-    resizeCard(rows.length);
-  }
+    const data = await resp.json();
+    const players = data.resolved?.players || {};
 
-  async function fetchData() {
-    try {
-      const resp = await fetch(LB_URL, {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-          leaderboard: "season_10",
-          rating_type: "player_global_all",
-          client_id: CLIENT_ID
-        })
-      });
-
-      const data = await resp.json();
-      const leaderboard = data.leaderboard || [];
-      const resolvedPlayers = (data.resolved && data.resolved.players) || {};
-
-      // Map IDs to leaderboard entries
-      const idToEntry = {};
-      leaderboard.forEach(entry => {
-        const id = entry.team && entry.team[0];
-        if (id != null) {
-          idToEntry[String(id)] = entry;
-        }
-      });
-
-      // Build global rank map (by Elo, descending)
-      const sorted = [...leaderboard].sort(
-        (a, b) => (b.elo ?? 0) - (a.elo ?? 0)
+    const match = (data.matches || [])
+      .sort((a, b) => b.ts - a.ts)
+      .find(m =>
+        m.ratingResults.some(r =>
+          r.newRatings.some(p => String(p.id) === String(PLAYER_ID))
+        )
       );
-      const rankMap = {};
-      sorted.forEach((entry, i) => {
-        const id = entry.team && entry.team[0];
-        if (id != null) {
-          rankMap[String(id)] = i + 1;
 
+    // If there is NO match yet, still cache leaderboard snapshot
+    if (!match) {
+      // this gives us a baseline rank snapshot BEFORE the first game ends
+      lastRanks = currentRanks;
+      resultsListEl.innerHTML = "<div class='loading'>No match</div>";
+      return;
+    }
+
+    const newHash = hashMatch(match);
+
+    // Did any of the displayed players have a rank change?
+    const rows = match.ratingResults[0].newRatings.slice(0, 8);
+    const rankChanged = rows.some(p => {
+      const id = p.id;
+      const previousRank = lastRanks[id];
+      const currentRank = currentRanks[id];
+      return typeof previousRank === "number" &&
+             typeof currentRank === "number" &&
+             previousRank !== currentRank;
+    });
+
+    if (initialLoad || newHash !== lastMatchHash || rankChanged) {
+      lastMatchHash = newHash;
+
+      resultsListEl.style.opacity = 0;
+      setTimeout(() => {
+        // computeRankDelta still uses lastRanks (the *previous* snapshot)
+        display(match, players, currentRanks);
+
+        // After we've rendered deltas, roll baseline forward
+        lastRanks = currentRanks;
+        initialLoad = false;
+
+        requestAnimationFrame(() => (resultsListEl.style.opacity = 1));
+      }, 300);
+    } else {
+      // Even if nothing changed visually, keep baseline fresh for next tick
+      lastRanks = currentRanks;
+    }
+
+  } catch (err) {
+    resultsListEl.innerHTML = `<div class="error">${err.message}</div>`;
+  }
+}
+
+fetchData();
+setInterval(fetchData, REFRESH_MS);
+</script>
+</body>
+</html>
