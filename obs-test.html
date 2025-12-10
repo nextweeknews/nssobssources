@@ -305,7 +305,7 @@ function displaySnapshot(players) {
     const name = players[p.id]?.display_name || "Unknown";
 
     const elo = Math.round(p.elo ?? 0);
-    const eloDisplay = elo === 0 ? "-" : elo; // <<<<<< NEW: 0 Elo → "-"
+    const eloDisplay = elo === 0 ? "—" : elo; // <<<<<< NEW: 0 Elo → "-"
     const delta = Math.round(p.delta ?? 0);
 
     const dC = delta > 0 ? "delta-positive" : delta < 0 ? "delta-negative" : "";
