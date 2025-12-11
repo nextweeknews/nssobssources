@@ -41,7 +41,7 @@
 
     .header-row, .entry {
       display: grid;
-      /* 3 columns: Rank, Team, Score (same visual style as original) */
+      /* 3 columns: Rank, Team, Score */
       grid-template-columns: 120px 1fr 130px;
       align-items: center;
     }
@@ -76,7 +76,7 @@
       transition: background .25s ease, box-shadow .25s ease;
     }
 
-    /* --- Unified Cell Styling Fix (copied from original) --- */
+    /* --- Unified Cell Styling (same as original, but full-height) --- */
     .header-row span {
       display: flex;
       align-items: center;
@@ -94,11 +94,11 @@
       padding: 0 12px;
       box-sizing: border-box;
       border-right: 2px solid rgba(255,255,255,0.12);
-      height: 28px;
+      height: 100%;
       right: -1;
     }
 
-    /* Team name alignment (same as player name) */
+    /* Team name column alignment (same as player name before) */
     .header-row span:nth-child(2),
     .entry > span:nth-child(2) {
       justify-content: flex-start;
@@ -119,19 +119,27 @@
     }
 
     .player-name {
-      /* reused class name for teams to keep formatting identical */
       font-size: 20px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
 
-    .elo-col {
-      /* reused for “Score” to keep formatting identical */
+    /* Team column gets team color bg / custom text color */
+    .team-cell {
+      border-radius: 8px;
+      font-weight: 800;
+    }
+
+    /* Score column: light gray bg + black text */
+    .score-col {
       font-size: 24px;
       font-weight: 750;
       text-align: center;
-      color: #ffffff;
+      background: #d9d9d9;
+      color: #000000;
+      border-radius: 8px;
+      justify-content: center;
     }
 
     .gold { color: #ffd700; }
@@ -167,13 +175,13 @@
 </div>
 
 <script>
-  // === CONFIG ===
-  const WORKER_URL = "https://small-mud-2771.nextweekmedia.workers.dev/";
-  const SHEET_ID   = "1qIM0HKhx9Y-3eCJCFzBqrbATwiPrK3C1ynATwZzRC1o";
+  // === DATA SOURCE CONFIG ===
+  const WORKER_URL  = "https://small-mud-2771.nextweekmedia.workers.dev/";
+  const SHEET_ID    = "1qIM0HKhx9Y-3eCJCFzBqrbATwiPrK3C1ynATwZzRC1o";
   const RANGE_TEAMS = "Season 5!U4:X15";
 
-  const REFRESH_MS = 15000;
-  const TEAM_NAME = new URLSearchParams(location.search).get("team");
+  const REFRESH_MS  = 15000;
+  const TEAM_NAME   = new URLSearchParams(location.search).get("team");
 
   const ROW_H    = 56;
   const TITLE_H  = 46 + 16;
@@ -181,6 +189,23 @@
   const CARD_H   = 880;
 
   let lastState = null;
+
+  // === TEAM COLORS from S5 graphic ===
+  // (keys are uppercased names from the sheet)
+  const TEAM_STYLES = {
+    "ANIMALS":         { bg: "#d0965c", fg: "#ffffff" },
+    "TERRIFIC TIGERS": { bg: "#ff7a00", fg: "#000000" },
+    "BREAKERS":        { bg: "#f4c542", fg: "#17386e" },
+    "DAGGERS":         { bg: "#e9a1aa", fg: "#14162f" },
+    "SNIPERS":         { bg: "#2f6a32", fg: "#fbe0b7" },
+    "MCSTROKERS":      { bg: "#4b8fd9", fg: "#ffffff" },
+    "ASTERISM":        { bg: "#d3293b", fg: "#ffffff" },
+    "DOUBLE-EAGLES":   { bg: "#1f4fb1", fg: "#ffffff" },
+    "PHANTOM TROUPE":  { bg: "#6b3fbc", fg: "#ffffff" },
+    "SPOCCO COWS":     { bg: "#b13fae", fg: "#ffffff" },
+    "INFERNIX":        { bg: "#f6a53a", fg: "#000000" },
+    "CARROTS":         { bg: "#f89b4f", fg: "#341437" }
+  };
 
   async function fetchRange(range) {
     const url = `${WORKER_URL}?sheetId=${SHEET_ID}&range=${encodeURIComponent(range)}`;
@@ -204,6 +229,12 @@
     card.style.paddingBottom = `${40 + pad}px`;
   }
 
+  function getTeamStyle(name) {
+    if (!name) return null;
+    const key = String(name).trim().toUpperCase();
+    return TEAM_STYLES[key] || null;
+  }
+
   function render(list) {
     const el = document.getElementById("resultsList");
     el.innerHTML = "";
@@ -217,7 +248,7 @@
         team.rank === 2 ? "silver" :
         team.rank === 3 ? "bronze" : "";
 
-      // Highlight if team matches ?team= query
+      // Row highlight based on ?team= query
       if (TEAM_NAME && team.name.toLowerCase() === TEAM_NAME.toLowerCase()) {
         row.classList.add(
           team.rank === 1 ? "highlight-gold" :
@@ -227,10 +258,16 @@
         );
       }
 
+      const style = getTeamStyle(team.name) || {};
+      const teamBg = style.bg || "rgba(255,255,255,0.08)";
+      const teamFg = style.fg || "#ffffff";
+
       row.innerHTML = `
         <span class="place ${clr}">${team.rank}</span>
-        <span class="player-name">${team.name}</span>
-        <span class="elo-col">${team.score != null ? team.score : "—"}</span>
+        <span class="player-name team-cell" style="background:${teamBg};color:${teamFg};">
+          ${team.name}
+        </span>
+        <span class="score-col">${team.score != null ? team.score : "—"}</span>
       `;
 
       el.appendChild(row);
@@ -243,15 +280,15 @@
     // rows: [rank, ?, teamName, score, ...]
     return rows
       .map(r => {
-        const rank = r[0];
-        const name = r[2];
+        const rank  = r[0];
+        const name  = r[2];
         const score = r[3];
 
         if (!rank || !name) return null;
 
         return {
           rank: Number(rank),
-          id: name,          // using team name as id for now
+          id: name,
           name,
           score: score !== undefined && score !== "" ? Number(score) : null
         };
@@ -264,9 +301,7 @@
     try {
       const rows = await fetchRange(RANGE_TEAMS);
       const mapped = normalize(rows);
-
-      // For Season 5 teams we can show the full list (no slicing needed)
-      const view = mapped;
+      const view = mapped; // show full list
 
       if (!lastState || JSON.stringify(view) !== JSON.stringify(lastState)) {
         const el = document.getElementById("resultsList");
@@ -288,3 +323,4 @@
 </script>
 </body>
 </html>
+
