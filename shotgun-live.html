@@ -106,14 +106,14 @@
     }
 
     .place {
-      font-size: 36px;
+      font-size: 32px;
       font-weight: 750;
       text-align: center;
       color: #c7d7ff;
     }
 
     .player-name {
-      font-size: 36px;
+      font-size: 34px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -135,14 +135,14 @@
       padding-left: 90px;
     }
 
-    /* Icon overlay: square, zoomed a bit, left & centered vertically */
+    /* Icon overlay: now uses per-team CSS variables with defaults */
     .team-cell::before {
       content: "";
       position: absolute;
       inset: 0;
       background-repeat: no-repeat;
-      background-position: 24px center; /* left offset */
-      background-size: auto 170%;       /* height = 130% of cell, keep aspect ratio */
+      background-position: var(--icon-pos, 24px center);
+      background-size: var(--icon-size, auto 130%);
       opacity: 0.26;
       mix-blend-mode: soft-light;
       pointer-events: none;
@@ -150,7 +150,7 @@
 
     /* Score column: light gray background, black text */
     .score-col {
-      font-size: 36px;
+      font-size: 32px;
       font-weight: 750;
       text-align: center;
       background: #d9d9d9;
@@ -174,19 +174,107 @@
       font-size: 28px;
     }
 
-    /* Per-team icon mappings */
-    .team-animals::before         { background-image: url("icons/animals.png"); }
-    .team-terrific-tigers::before { background-image: url("icons/terrific-tigers.png"); }
-    .team-breakers::before        { background-image: url("icons/breakers.png"); }
-    .team-daggers::before         { background-image: url("icons/daggers.png"); }
-    .team-snipers::before         { background-image: url("icons/snipers.png"); }
-    .team-mcstrokers::before      { background-image: url("icons/mcstrokers.png"); }
-    .team-asterism::before        { background-image: url("icons/asterism.png"); }
-    .team-double-eagles::before   { background-image: url("icons/double-eagles.png"); }
-    .team-phantom-troupe::before  { background-image: url("icons/phantom-troupe.png"); }
-    .team-spocco-cows::before     { background-image: url("icons/spocco-cows.png"); }
-    .team-infernix::before        { background-image: url("icons/infernix.png"); }
-    .team-carrots::before         { background-image: url("icons/carrots.png"); }
+    /* Per-team tweak handles:
+       - background-image (icon file)
+       - optional overrides for --icon-pos / --icon-size
+       All are initialized to match current visual exactly.
+    */
+
+    .team-animals {
+      --icon-pos: 24px center;
+      --icon-size: auto 130%;
+    }
+    .team-animals::before {
+      background-image: url("icons/animals.png");
+    }
+
+    .team-terrific-tigers {
+      --icon-pos: 24px center;
+      --icon-size: auto 130%;
+    }
+    .team-terrific-tigers::before {
+      background-image: url("icons/terrific-tigers.png");
+    }
+
+    .team-breakers {
+      --icon-pos: 24px center;
+      --icon-size: auto 130%;
+    }
+    .team-breakers::before {
+      background-image: url("icons/breakers.png");
+    }
+
+    .team-daggers {
+      --icon-pos: 24px center;
+      --icon-size: auto 130%;
+    }
+    .team-daggers::before {
+      background-image: url("icons/daggers.png");
+    }
+
+    .team-snipers {
+      --icon-pos: 24px center;
+      --icon-size: auto 130%;
+    }
+    .team-snipers::before {
+      background-image: url("icons/snipers.png");
+    }
+
+    .team-mcstrokers {
+      --icon-pos: 24px center;
+      --icon-size: auto 130%;
+    }
+    .team-mcstrokers::before {
+      background-image: url("icons/mcstrokers.png");
+    }
+
+    .team-asterism {
+      --icon-pos: 24px center;
+      --icon-size: auto 130%;
+    }
+    .team-asterism::before {
+      background-image: url("icons/asterism.png");
+    }
+
+    .team-double-eagles {
+      --icon-pos: 24px center;
+      --icon-size: auto 130%;
+    }
+    .team-double-eagles::before {
+      background-image: url("icons/double-eagles.png");
+    }
+
+    .team-phantom-troupe {
+      --icon-pos: 24px center;
+      --icon-size: auto 130%;
+    }
+    .team-phantom-troupe::before {
+      background-image: url("icons/phantom-troupe.png");
+    }
+
+    .team-spocco-cows {
+      --icon-pos: 24px center;
+      --icon-size: auto 130%;
+    }
+    .team-spocco-cows::before {
+      background-image: url("icons/spocco-cows.png");
+    }
+
+    .team-infernix {
+      --icon-pos: 24px center;
+      --icon-size: auto 130%;
+    }
+    .team-infernix::before {
+      background-image: url("icons/infernix.png");
+    }
+
+    .team-carrots {
+      --icon-pos: 24px center;
+      --icon-size: auto 130%;
+    }
+    .team-carrots::before {
+      background-image: url("icons/carrots.png");
+    }
   </style>
 </head>
 
