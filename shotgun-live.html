@@ -41,8 +41,7 @@
 
     .header-row, .entry {
       display: grid;
-      /* 3 columns: Rank, Team, Score */
-      grid-template-columns: 120px 1fr 130px;
+      grid-template-columns: 120px 1fr 130px; /* Rank, Team, Score */
       align-items: center;
     }
 
@@ -70,14 +69,13 @@
     .entry {
       height: 56px;
       background: rgba(255,255,255,0.06);
-      border-radius: 10px;       /* outer corners only */
+      border-radius: 10px;      /* outer corners only */
       font-size: 24px;
       font-weight: 600;
       transition: background .25s ease, box-shadow .25s ease;
-      overflow: hidden;          /* removes inner rounding while keeping outer */
+      overflow: hidden;         /* hide inner corners / icon overflow */
     }
 
-    /* Header/row cell base styling */
     .header-row span {
       display: flex;
       align-items: center;
@@ -86,7 +84,7 @@
       box-sizing: border-box;
       height: 20px;
       right: -1;
-      border-right: none;        /* no column borders */
+      border-right: none;       /* no column borders */
     }
 
     .entry > span {
@@ -97,10 +95,10 @@
       box-sizing: border-box;
       height: 100%;
       right: -1;
-      border-right: none;        /* no column borders */
+      border-right: none;       /* no column borders */
     }
 
-    /* Team name column alignment */
+    /* Team column alignment */
     .header-row span:nth-child(2),
     .entry > span:nth-child(2) {
       justify-content: flex-start;
@@ -121,14 +119,29 @@
       text-overflow: ellipsis;
     }
 
-    /* Team cell: all caps + team color bg, no inner rounding */
+    /* Team cell base (color bar + caps text) */
     .team-cell {
+      position: relative;
       font-weight: 800;
       text-transform: uppercase;
       border-radius: 0;
+      overflow: hidden;
     }
 
-    /* Score column: light gray bg + black text, square inside */
+    /* Icon overlay */
+    .team-cell::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-repeat: no-repeat;
+      background-position: left center;
+      background-size: 120%;
+      opacity: 0.22;           /* tweak for desired subtlety */
+      mix-blend-mode: soft-light;
+      pointer-events: none;
+    }
+
+    /* Score column: light gray background, black text */
     .score-col {
       font-size: 24px;
       font-weight: 750;
@@ -153,6 +166,22 @@
       text-align: center;
       font-size: 28px;
     }
+
+    /* === PER-TEAM ICON MAPPINGS ===================== */
+    /* Replace icon URLs with your actual assets/paths. */
+
+    .team-animals::before         { background-image: url("icons/animals.png"); }
+    .team-terrific-tigers::before { background-image: url("icons/terrific-tigers.png"); }
+    .team-breakers::before        { background-image: url("icons/breakers.png"); }
+    .team-daggers::before         { background-image: url("icons/daggers.png"); }
+    .team-snipers::before         { background-image: url("icons/snipers.png"); }
+    .team-mcstrokers::before      { background-image: url("icons/mcstrokers.png"); }
+    .team-asterism::before        { background-image: url("icons/asterism.png"); }
+    .team-double-eagles::before   { background-image: url("icons/double-eagles.png"); }
+    .team-phantom-troupe::before  { background-image: url("icons/phantom-troupe.png"); }
+    .team-spocco-cows::before     { background-image: url("icons/spocco-cows.png"); }
+    .team-infernix::before        { background-image: url("icons/infernix.png"); }
+    .team-carrots::before         { background-image: url("icons/carrots.png"); }
   </style>
 </head>
 
@@ -172,7 +201,6 @@
 </div>
 
 <script>
-  // === DATA SOURCE CONFIG ===
   const WORKER_URL  = "https://small-mud-2771.nextweekmedia.workers.dev/";
   const SHEET_ID    = "1qIM0HKhx9Y-3eCJCFzBqrbATwiPrK3C1ynATwZzRC1o";
   const RANGE_TEAMS = "Season 5!U4:X15";
@@ -187,7 +215,7 @@
 
   let lastState = null;
 
-  // === TEAM COLORS from S5 graphic ===
+  // Row color styles
   const TEAM_STYLES = {
     "ANIMALS":         { bg: "#d0965c", fg: "#ffffff" },
     "TERRIFIC TIGERS": { bg: "#ff7a00", fg: "#000000" },
@@ -259,7 +287,7 @@
 
       row.innerHTML = `
         <span class="place ${clr}">${team.rank}</span>
-        <span class="player-name team-cell" style="background:${teamBg};color:${teamFg};">
+        <span class="player-name team-cell team-${team.slug}" style="background:${teamBg};color:${teamFg};">
           ${team.name}
         </span>
         <span class="score-col">${team.score != null ? team.score : "—"}</span>
@@ -269,6 +297,14 @@
     });
 
     adjustSpacing(list.length);
+  }
+
+  function slugify(name) {
+    return String(name)
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
   }
 
   function normalize(rows) {
@@ -285,6 +321,7 @@
           rank: Number(rank),
           id: name,
           name,
+          slug: slugify(name),
           score: score !== undefined && score !== "" ? Number(score) : null
         };
       })
