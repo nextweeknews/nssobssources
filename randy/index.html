@@ -27,40 +27,31 @@
       height: 100%;
       pointer-events: none;
       transition: opacity 1s ease-in-out;
+
+      /* Center Randy + text block as a unit */
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
     }
 
     .overlay.fade-out {
       opacity: 0;
     }
 
-    /* Randy locked near the top center */
-    .robot-wrapper {
-      position: absolute;
-      top: 12%;                  /* adjust this to move Randy up/down */
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      width: 100%;
-      pointer-events: none;
-    }
-
+    /* Randy at the top of the stack */
     #robot {
       max-width: 320px;
       width: 30vw;
       height: auto;
+      margin-bottom: 12px; /* small gap before text */
     }
 
-    /* Text zone closer to Randy */
+    /* Text sits directly under Randy, height fixed so he never moves */
     .text-wrapper {
-      position: absolute;
-      left: 50%;
-      bottom: 25%;              /* moves text up toward Randy */
-      transform: translateX(-50%);
       width: 80vw;
       max-width: 1000px;
-      min-height: 110px;        /* stable box so text changes don't move Randy */
+      min-height: 120px;        /* keeps block height stable */
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -77,7 +68,7 @@
       transition: opacity 0.4s ease-in-out;
       opacity: 0;
       letter-spacing: 0.10em;
-      /* no text-transform here so case is preserved */
+      /* no text-transform so case is preserved */
     }
 
     .text-outcome {
@@ -89,7 +80,7 @@
       opacity: 0;
       line-height: 1.1;
       letter-spacing: 0.14em;
-      /* crucial: no text-transform so "9i" keeps the dotted i */
+      /* keeps "9i" with dotted i */
     }
 
     .visible {
@@ -113,21 +104,18 @@
       }
       .text-wrapper {
         width: 90vw;
-        min-height: 100px;
-        bottom: 22%;
+        min-height: 110px;
       }
     }
   </style>
 </head>
 <body>
   <div class="overlay" id="overlay">
-    <!-- Randy fixed in place -->
-    <div class="robot-wrapper">
-      <!-- Update src to match your robot PNG filename -->
-      <img id="robot" src="randy.png" alt="Randy the robot" />
-    </div>
+    <!-- Randy on top -->
+    <!-- Update src to match your robot PNG filename -->
+    <img id="robot" src="randy.png" alt="Randy the robot" />
 
-    <!-- Text area that doesn't affect Randy's position -->
+    <!-- Text directly underneath Randy -->
     <div class="text-wrapper">
       <div id="mainText" class="text-main"></div>
       <div id="outcomeText" class="text-outcome"></div>
@@ -190,7 +178,7 @@
           // Phase 3: Show random outcome for 5 seconds
           const choice = outcomes[Math.floor(Math.random() * outcomes.length)];
           hideMain();
-          showOutcome(choice);  // "9i" will show with a dotted i
+          showOutcome(choice);  // "9i" shows with dotted i
 
           setTimeout(() => {
             // Fade entire overlay out after 5 seconds
@@ -202,7 +190,7 @@
 
     window.addEventListener('DOMContentLoaded', startSequence);
 
-    // Optional keyboard hotkey for testing
+    // Optional keyboard hotkey for local testing
     window.addEventListener('keydown', (e) => {
       if (e.key === 'r' || e.key === 'R') {
         location.reload();
