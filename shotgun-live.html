@@ -70,45 +70,41 @@
     .entry {
       height: 56px;
       background: rgba(255,255,255,0.06);
-      border-radius: 10px;
+      border-radius: 10px;       /* outer corners only */
       font-size: 24px;
       font-weight: 600;
       transition: background .25s ease, box-shadow .25s ease;
+      overflow: hidden;          /* removes inner rounding while keeping outer */
     }
 
-    /* --- Unified Cell Styling (same as original, but full-height) --- */
+    /* Header/row cell base styling */
     .header-row span {
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 0 12px;
       box-sizing: border-box;
-      border-right: 2px solid rgba(255,255,255,0);
       height: 20px;
       right: -1;
+      border-right: none;        /* no column borders */
     }
+
     .entry > span {
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 0 12px;
       box-sizing: border-box;
-      border-right: 2px solid rgba(255,255,255,0.12);
       height: 100%;
       right: -1;
+      border-right: none;        /* no column borders */
     }
 
-    /* Team name column alignment (same as player name before) */
+    /* Team name column alignment */
     .header-row span:nth-child(2),
     .entry > span:nth-child(2) {
       justify-content: flex-start;
       padding-left: 24px;
-    }
-
-    /* Remove border on last column */
-    .header-row span:last-child,
-    .entry > span:last-child {
-      border-right: none;
     }
 
     .place {
@@ -125,20 +121,21 @@
       text-overflow: ellipsis;
     }
 
-    /* Team column gets team color bg / custom text color */
+    /* Team cell: all caps + team color bg, no inner rounding */
     .team-cell {
-      border-radius: 8px;
       font-weight: 800;
+      text-transform: uppercase;
+      border-radius: 0;
     }
 
-    /* Score column: light gray bg + black text */
+    /* Score column: light gray bg + black text, square inside */
     .score-col {
       font-size: 24px;
       font-weight: 750;
       text-align: center;
       background: #d9d9d9;
       color: #000000;
-      border-radius: 8px;
+      border-radius: 0;
       justify-content: center;
     }
 
@@ -191,7 +188,6 @@
   let lastState = null;
 
   // === TEAM COLORS from S5 graphic ===
-  // (keys are uppercased names from the sheet)
   const TEAM_STYLES = {
     "ANIMALS":         { bg: "#d0965c", fg: "#ffffff" },
     "TERRIFIC TIGERS": { bg: "#ff7a00", fg: "#000000" },
@@ -248,7 +244,6 @@
         team.rank === 2 ? "silver" :
         team.rank === 3 ? "bronze" : "";
 
-      // Row highlight based on ?team= query
       if (TEAM_NAME && team.name.toLowerCase() === TEAM_NAME.toLowerCase()) {
         row.classList.add(
           team.rank === 1 ? "highlight-gold" :
@@ -301,7 +296,7 @@
     try {
       const rows = await fetchRange(RANGE_TEAMS);
       const mapped = normalize(rows);
-      const view = mapped; // show full list
+      const view = mapped;
 
       if (!lastState || JSON.stringify(view) !== JSON.stringify(lastState)) {
         const el = document.getElementById("resultsList");
@@ -323,4 +318,3 @@
 </script>
 </body>
 </html>
-
