@@ -2,11 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Randy</title>
+  <title>Randy Overlay</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <style>
-    /* Make the page fully transparent for OBS */
     html, body {
       margin: 0;
       padding: 0;
@@ -24,25 +23,39 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      pointer-events: none; /* So clicks pass through in OBS */
+      pointer-events: none;
+      transition: opacity 1s ease-in-out;
+    }
+
+    .overlay.fade-out {
+      opacity: 0;
     }
 
     .content {
       display: flex;
-      flex-direction: column;
+      flex-direction: row;      /* <--- Randy left, text right */
       align-items: center;
-      gap: 16px;
-      text-align: center;
+      justify-content: center;
+      gap: 32px;
+      text-align: left;
+      padding: 16px;
     }
 
     #robot {
       max-width: 300px;
-      width: 40vw;
+      width: 25vw;
       height: auto;
     }
 
+    .text-block {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-width: 60vw;
+    }
+
     .text-main {
-      font-size: clamp(32px, 4vw, 56px);
+      font-size: clamp(28px, 3vw, 44px);
       font-weight: 700;
       color: white;
       text-shadow: 0 0 8px rgba(0, 0, 0, 0.7);
@@ -51,28 +64,19 @@
     }
 
     .text-outcome {
-      font-size: clamp(40px, 5vw, 72px);
-      font-weight: 800;
+      font-size: clamp(60px, 7vw, 120px);  /* <--- Much larger */
+      font-weight: 900;
       color: white;
-      text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
-      margin-top: 8px;
+      text-shadow: 0 0 12px rgba(0, 0, 0, 0.9);
       transition: opacity 0.4s ease-in-out;
       opacity: 0;
+      line-height: 1;
     }
 
     .visible {
       opacity: 1;
     }
 
-    /* Fade whole overlay out at the end */
-    #overlay {
-      transition: opacity 1s ease-in-out;
-    }
-    #overlay.fade-out {
-      opacity: 0;
-    }
-
-    /* Optional mini-hint if you ever open this in a browser manually */
     .hint {
       position: fixed;
       bottom: 8px;
@@ -83,8 +87,16 @@
     }
 
     @media (max-width: 600px) {
+      .content {
+        flex-direction: column;
+        text-align: center;
+      }
       #robot {
         max-width: 200px;
+        width: 40vw;
+      }
+      .text-block {
+        max-width: 90vw;
       }
     }
   </style>
@@ -92,11 +104,13 @@
 <body>
   <div class="overlay" id="overlay">
     <div class="content">
-      <!-- Update src to match your actual robot PNG filename -->
+      <!-- Update src to match your robot PNG filename -->
       <img id="robot" src="randy.png" alt="Randy the robot" />
 
-      <div id="mainText" class="text-main"></div>
-      <div id="outcomeText" class="text-outcome"></div>
+      <div class="text-block">
+        <div id="mainText" class="text-main"></div>
+        <div id="outcomeText" class="text-outcome"></div>
+      </div>
     </div>
   </div>
 
@@ -166,11 +180,9 @@
       }, thinkingDurationMs);
     }
 
-    // Start as soon as the page loads
     window.addEventListener('DOMContentLoaded', startSequence);
 
-    // Optional: keyboard hotkey while testing in a browser.
-    // In OBS, you'll usually use the "Refresh browser source" hotkey instead.
+    // Optional keyboard hotkey for testing
     window.addEventListener('keydown', (e) => {
       if (e.key === 'r' || e.key === 'R') {
         location.reload();
