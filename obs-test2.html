@@ -1,1 +1,368 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Season 10 Rankings</title>
 
+  <style>
+    html, body {
+      margin: 0; padding: 0;
+      width: 100%; height: 100%;
+      background: transparent;
+      font-family: Inter, system-ui, sans-serif;
+      display: flex; justify-content: center; align-items: center;
+      overflow: hidden;
+    }
+
+    .card {
+      width: 1100px;
+      height: 880px;
+      background: rgba(15,23,42,1);
+      border-radius: 20px;
+      padding: 32px 40px;
+      display: flex;
+      flex-direction: column;
+      color: #e9eef8;
+      box-shadow: 0 32px 32px rgba(0,0,0,0.65);
+      box-sizing: border-box;
+    }
+
+    .title {
+      font-size: 46px;
+      font-weight: 900;
+      color: #c7d7ff;
+      text-align: center;
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: .035em;
+      flex-shrink: 0;
+    }
+
+    .header-row, .entry {
+      display: grid;
+      /* Added a 6th column for Top 3 Rate */
+      grid-template-columns: 120px 1fr 130px 100px 120px 120px;
+      align-items: center;
+    }
+
+    .header-row {
+      height: 46px;
+      margin-bottom: 10px;
+      background: rgba(148,163,184,0.12);
+      border-radius: 10px;
+      font-size: 20px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #9ca3c7;
+      flex-shrink: 0;
+    }
+
+    #resultsList {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex-shrink: 1;
+      transition: opacity .3s ease, gap .3s ease;
+      overflow: hidden;
+    }
+
+    .entry {
+      height: 56px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 10px;
+      font-size: 24px;
+      font-weight: 600;
+      transition: background .25s ease, box-shadow .25s ease;
+    }
+
+    /* --- Unified Cell Styling Fix --- */
+    .header-row span {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 12px;
+      box-sizing: border-box;
+      border-right: 2px solid rgba(255,255,255,0);
+      height: 20px;
+      right: -1
+    }
+    .entry > span {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 12px;
+      box-sizing: border-box;
+      border-right: 2px solid rgba(255,255,255,0.12);
+      height: 28px;
+      right: -1
+    }
+
+    /* Player name alignment */
+    .header-row span:nth-child(2),
+    .entry > span:nth-child(2) {
+      justify-content: flex-start;
+      padding-left: 24px;
+    }
+
+    /* Remove border on last column */
+    .header-row span:last-child,
+    .entry > span:last-child {
+      border-right: none;
+    }
+
+    .place {
+      font-size: 24px;
+      font-weight: 750;
+      text-align: center;
+    }
+
+    .player-name {
+      font-size: 20px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .elo-col {
+      font-size: 24px;
+      font-weight: 750;
+      text-align: center;
+      color: #ffffff;
+    }
+
+    .wins-col {
+      font-size: 20px;
+      font-weight: 500;
+      text-align: center;
+      color: #98fb98;
+    }
+
+    .wr-col {
+      font-size: 20px;
+      font-weight: 500;
+      text-align: center;
+      color: #d3d3d3;
+    }
+
+    .gold { color: #ffd700; }
+    .silver { color: #c0c0c0; }
+    .bronze { color: #cd7f32; }
+
+    .entry.highlight-gold     { background: rgba(255,215,0,0.18); }
+    .entry.highlight-silver   { background: rgba(192,192,192,0.18); }
+    .entry.highlight-bronze   { background: rgba(205,127,50,0.18); }
+    .entry.highlight-default  { background: rgba(52,211,153,0.20); }
+
+    .loading, .error {
+      width: 100%;
+      text-align: center;
+      font-size: 28px;
+    }
+  </style>
+</head>
+
+<body>
+<div class="card" id="card">
+  <div class="title">Season 10 Rankings</div>
+
+  <div class="header-row">
+    <span>Rank</span>
+    <span>Player</span>
+    <span>Elo</span>
+    <span>Wins</span>
+    <span>Win Rate</span>
+    <span>Top 3 Rate</span>
+  </div>
+
+  <div id="resultsList">
+    <div class="loading">Loading…</div>
+  </div>
+</div>
+
+<script>
+const LB_URL="https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
+const CLIENT_ID="DISCORD|1069003073311211601";
+const REFRESH_MS=15000;
+const PLAYER_ID=new URLSearchParams(location.search).get("player_id");
+
+const ROW_H=56;
+const TITLE_H=46+16;
+const HEADER_H=46+10;
+const CARD_H=880;
+
+let lastState=null;
+
+function getWinRateColor(rate) {
+  if (rate == null) return "#d3d3d3";
+  if (rate <= 10) return "#f87171";
+  if (rate >= 40) return "#4ade80";
+
+  const mid = 25;
+  if (rate < mid) {
+    const t = (rate - 15) / (mid - 10);
+    return interpolateColor("#f87171", "#facc15", t);
+  } else {
+    const t = (rate - mid) / (40 - mid);
+    return interpolateColor("#facc15", "#4ade80", t);
+  }
+}
+
+/* New: Top 3 Rate color mapping (40% red, 60% yellow, 80% green) */
+function getTop3RateColor(rate) {
+  if (rate == null) return "#d3d3d3";
+  if (rate <= 40) return "#f87171";   // red at 40% and below
+  if (rate >= 80) return "#4ade80";   // green at 80% and above
+
+  const low = 40;
+  const mid = 60;
+  const high = 80;
+
+  if (rate < mid) {
+    const t = (rate - low) / (mid - low);
+    return interpolateColor("#f87171", "#facc15", t); // red -> yellow
+  } else {
+    const t = (rate - mid) / (high - mid);
+    return interpolateColor("#facc15", "#4ade80", t); // yellow -> green
+  }
+}
+
+function interpolateColor(c1, c2, t) {
+  const a = parseInt(c1.slice(1), 16),
+        b = parseInt(c2.slice(1), 16);
+
+  const ar = (a >> 16) & 0xff,
+        ag = (a >> 8) & 0xff,
+        ab = a & 0xff;
+
+  const br = (b >> 16) & 0xff,
+        bg = (b >> 8) & 0xff,
+        bb = b & 0xff;
+
+  const rr = Math.round(ar + t * (br - ar)),
+        rg = Math.round(ag + t * (bg - ag)),
+        rb = Math.round(ab + t * (bb - ab));
+
+  return `rgb(${rr},${rg},${rb})`;
+}
+
+function adjustSpacing(rowCount){
+  const content=rowCount*ROW_H;
+  const remain=CARD_H - TITLE_H - HEADER_H - content;
+  const gaps=Math.max(0,rowCount-1);
+  const gap=Math.max(4,(remain*0.33)/gaps);
+  const pad=(remain-(gap*gaps))/2;
+
+  resultsList.style.gap=`${gap}px`;
+  card.style.paddingTop=`${32+pad}px`;
+  card.style.paddingBottom=`${40+pad}px`;
+}
+
+function render(list){
+  const el=document.getElementById("resultsList");
+  el.innerHTML="";
+
+  list.forEach(p=>{
+    const r=document.createElement("div");
+    r.className="entry";
+
+    const clr=p.rank===1?"gold":p.rank===2?"silver":p.rank===3?"bronze":"";
+
+    if(String(p.id)===String(PLAYER_ID)){
+      r.classList.add(
+        p.rank===1?"highlight-gold":
+        p.rank===2?"highlight-silver":
+        p.rank===3?"highlight-bronze":
+        "highlight-default"
+      );
+    }
+
+    r.innerHTML=`
+      <span class="place ${clr}">${p.rank}</span>
+      <span class="player-name">${p.name}</span>
+      <span class="elo-col">${p.elo}</span>
+      <span class="wins-col">${p.wins}</span>
+      <span class="wr-col" style="color:${getWinRateColor(p.winRate)}">
+        ${p.winRate != null ? p.winRate.toFixed(1) + "%" : "—"}
+      </span>
+      <span class="wr-col" style="color:${getTop3RateColor(p.top3Rate)}">
+        ${p.top3Rate != null ? p.top3Rate.toFixed(1) + "%" : "—"}
+      </span>
+    `;
+
+    el.appendChild(r);
+  });
+
+  adjustSpacing(list.length);
+}
+
+function normalize(list,res){
+  return list.map((e,i)=>{
+    const id=e.team[0];
+    const rp=res[id]||{};
+    const wins=e.count_placement_1??0;
+    const m=e.matches??0;
+
+    const top1 = e.count_placement_1 ?? 0;
+    const top2 = e.count_placement_2 ?? 0;
+    const top3 = e.count_placement_3 ?? 0;
+    const totalTop3 = top1 + top2 + top3;
+
+    return {
+      rank:i+1,
+      id,
+      name:rp.display_name || rp.username || `Player ${id}`,
+      elo:Math.round(e.elo??0.0),
+      wins,
+      winRate:m>0?((wins/m)*100):null,
+      top3Rate:m>0?((totalTop3/m)*100):null
+    };
+  });
+}
+
+function pickSlice(list){
+  const idx=list.findIndex(p=>String(p.id)===PLAYER_ID);
+  if(idx<0) return list.slice(0,16);
+  if(list[idx].rank<=16) return list.slice(0,16);
+  const start=Math.min(Math.max(idx-Math.floor(15/2),0), list.length-15);
+  return list.slice(start,start+15);
+}
+
+async function update(){
+  try{
+    const r=await fetch(LB_URL,{
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify({
+        leaderboard:"season_10",
+        rating_type:"player_global_all",
+        client_id:CLIENT_ID
+      })
+    });
+    const d=await r.json();
+
+    const sorted=[...d.leaderboard].sort((a,b)=>(b.elo??0)-(a.elo??0));
+    const mapped=normalize(sorted, d.resolved?.players||{});
+    const view=pickSlice(mapped);
+
+    if(!lastState || JSON.stringify(view)!==JSON.stringify(lastState)){
+      const el=document.getElementById("resultsList");
+      el.style.opacity="0";
+      setTimeout(()=>{
+        render(view);
+        lastState=view;
+        requestAnimationFrame(()=>el.style.opacity="1");
+      },250);
+    }
+
+  }catch(err){
+    document.getElementById("resultsList").innerHTML=
+      `<div class="error">${err.message}</div>`;
+  }
+}
+
+update();
+setInterval(update,REFRESH_MS);
+</script>
+</body>
+</html>
