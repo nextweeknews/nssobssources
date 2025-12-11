@@ -68,7 +68,7 @@
     }
 
     .entry {
-      height: 60px;             /* ⬅️ increased row height */
+      height: 60px;
       background: rgba(255,255,255,0.06);
       border-radius: 10px;      /* outer corners only */
       font-size: 24px;
@@ -127,8 +127,8 @@
       text-transform: uppercase;
       border-radius: 0;
       overflow: hidden;
-      padding-left: 120px;     /* move text right to reveal logo */
-      justify-content: flex-start;
+      padding-left: 90px;      /* ⬅️ less padding = closer to logo + slight overlap */
+      justify-content: flex-start; /* left-justified text */
     }
 
     /* Icon overlay: square, zoomed a bit, left & centered vertically */
@@ -209,7 +209,7 @@
   const REFRESH_MS  = 15000;
   const TEAM_NAME   = new URLSearchParams(location.search).get("team");
 
-  const ROW_H    = 60;          // ⬅️ updated to match .entry height
+  const ROW_H    = 60;
   const TITLE_H  = 46 + 16;
   const HEADER_H = 46 + 10;
   const CARD_H   = 880;
