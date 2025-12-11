@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Season 5 Team Standings</title>
+
+  <style>
+    html, body {
+      margin: 0; padding: 0;
+      width: 100%; height: 100%;
+      background: transparent;
+      font-family: Inter, system-ui, sans-serif;
+      display: flex; justify-content: center; align-items: center;
+      overflow: hidden;
+    }
+
+    .card {
+      width: 1100px;
+      height: 880px;
+      background: rgba(15,23,42,1);
+      border-radius: 20px;
+      padding: 32px 40px;
+      display: flex;
+      flex-direction: column;
+      color: #e9eef8;
+      box-shadow: 0 32px 32px rgba(0,0,0,0.65);
+      box-sizing: border-box;
+    }
+
+    .title {
+      font-size: 46px;
+      font-weight: 900;
+      color: #c7d7ff;
+      text-align: center;
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: .035em;
+      flex-shrink: 0;
+    }
+
+    .header-row, .entry {
+      display: grid;
+      /* 3 columns: Rank, Team, Score (same visual style as original) */
+      grid-template-columns: 120px 1fr 130px;
+      align-items: center;
+    }
+
+    .header-row {
+      height: 46px;
+      margin-bottom: 10px;
+      background: rgba(148,163,184,0.12);
+      border-radius: 10px;
+      font-size: 20px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #9ca3c7;
+      flex-shrink: 0;
+    }
+
+    #resultsList {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex-shrink: 1;
+      transition: opacity .3s ease, gap .3s ease;
+      overflow: hidden;
+    }
+
+    .entry {
+      height: 56px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 10px;
+      font-size: 24px;
+      font-weight: 600;
+      transition: background .25s ease, box-shadow .25s ease;
+    }
+
+    /* --- Unified Cell Styling Fix (copied from original) --- */
+    .header-row span {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 12px;
+      box-sizing: border-box;
+      border-right: 2px solid rgba(255,255,255,0);
+      height: 20px;
+      right: -1;
+    }
+    .entry > span {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 12px;
+      box-sizing: border-box;
+      border-right: 2px solid rgba(255,255,255,0.12);
+      height: 28px;
+      right: -1;
+    }
+
+    /* Team name alignment (same as player name) */
+    .header-row span:nth-child(2),
+    .entry > span:nth-child(2) {
+      justify-content: flex-start;
+      padding-left: 24px;
+    }
+
+    /* Remove border on last column */
+    .header-row span:last-child,
+    .entry > span:last-child {
+      border-right: none;
+    }
+
+    .place {
+      font-size: 24px;
+      font-weight: 750;
+      text-align: center;
+      color: #c7d7ff;
+    }
+
+    .player-name {
+      /* reused class name for teams to keep formatting identical */
+      font-size: 20px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .elo-col {
+      /* reused for “Score” to keep formatting identical */
+      font-size: 24px;
+      font-weight: 750;
+      text-align: center;
+      color: #ffffff;
+    }
+
+    .gold { color: #ffd700; }
+    .silver { color: #c0c0c0; }
+    .bronze { color: #cd7f32; }
+
+    .entry.highlight-gold     { background: rgba(255,215,0,0.18); }
+    .entry.highlight-silver   { background: rgba(192,192,192,0.18); }
+    .entry.highlight-bronze   { background: rgba(205,127,50,0.18); }
+    .entry.highlight-default  { background: rgba(52,211,153,0.20); }
+
+    .loading, .error {
+      width: 100%;
+      text-align: center;
+      font-size: 28px;
+    }
+  </style>
+</head>
+
+<body>
+<div class="card" id="card">
+  <div class="title">Season 5 Team Standings</div>
+
+  <div class="header-row">
+    <span>Rank</span>
+    <span>Team</span>
+    <span>Score</span>
+  </div>
+
+  <div id="resultsList">
+    <div class="loading">Loading…</div>
+  </div>
+</div>
+
+<script>
+  // === CONFIG ===
+  const WORKER_URL = "https://small-mud-2771.nextweekmedia.workers.dev/";
+  const SHEET_ID   = "1qIM0HKhx9Y-3eCJCFzBqrbATwiPrK3C1ynATwZzRC1o";
+  const RANGE_TEAMS = "Season 5!U4:X15";
+
+  const REFRESH_MS = 15000;
+  const TEAM_NAME = new URLSearchParams(location.search).get("team");
+
+  const ROW_H    = 56;
+  const TITLE_H  = 46 + 16;
+  const HEADER_H = 46 + 10;
+  const CARD_H   = 880;
+
+  let lastState = null;
+
+  async function fetchRange(range) {
+    const url = `${WORKER_URL}?sheetId=${SHEET_ID}&range=${encodeURIComponent(range)}`;
+    const res = await fetch(url);
+    const json = await res.json();
+    return json.values || [];
+  }
+
+  function adjustSpacing(rowCount) {
+    const resultsList = document.getElementById("resultsList");
+    const card = document.getElementById("card");
+
+    const content = rowCount * ROW_H;
+    const remain  = CARD_H - TITLE_H - HEADER_H - content;
+    const gaps    = Math.max(0, rowCount - 1);
+    const gap     = gaps > 0 ? Math.max(4, (remain * 0.33) / gaps) : 0;
+    const pad     = (remain - (gap * gaps)) / 2;
+
+    resultsList.style.gap = `${gap}px`;
+    card.style.paddingTop = `${32 + pad}px`;
+    card.style.paddingBottom = `${40 + pad}px`;
+  }
+
+  function render(list) {
+    const el = document.getElementById("resultsList");
+    el.innerHTML = "";
+
+    list.forEach(team => {
+      const row = document.createElement("div");
+      row.className = "entry";
+
+      const clr =
+        team.rank === 1 ? "gold" :
+        team.rank === 2 ? "silver" :
+        team.rank === 3 ? "bronze" : "";
+
+      // Highlight if team matches ?team= query
+      if (TEAM_NAME && team.name.toLowerCase() === TEAM_NAME.toLowerCase()) {
+        row.classList.add(
+          team.rank === 1 ? "highlight-gold" :
+          team.rank === 2 ? "highlight-silver" :
+          team.rank === 3 ? "highlight-bronze" :
+          "highlight-default"
+        );
+      }
+
+      row.innerHTML = `
+        <span class="place ${clr}">${team.rank}</span>
+        <span class="player-name">${team.name}</span>
+        <span class="elo-col">${team.score != null ? team.score : "—"}</span>
+      `;
+
+      el.appendChild(row);
+    });
+
+    adjustSpacing(list.length);
+  }
+
+  function normalize(rows) {
+    // rows: [rank, ?, teamName, score, ...]
+    return rows
+      .map(r => {
+        const rank = r[0];
+        const name = r[2];
+        const score = r[3];
+
+        if (!rank || !name) return null;
+
+        return {
+          rank: Number(rank),
+          id: name,          // using team name as id for now
+          name,
+          score: score !== undefined && score !== "" ? Number(score) : null
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.rank - b.rank);
+  }
+
+  async function update() {
+    try {
+      const rows = await fetchRange(RANGE_TEAMS);
+      const mapped = normalize(rows);
+
+      // For Season 5 teams we can show the full list (no slicing needed)
+      const view = mapped;
+
+      if (!lastState || JSON.stringify(view) !== JSON.stringify(lastState)) {
+        const el = document.getElementById("resultsList");
+        el.style.opacity = "0";
+        setTimeout(() => {
+          render(view);
+          lastState = view;
+          requestAnimationFrame(() => (el.style.opacity = "1"));
+        }, 250);
+      }
+    } catch (err) {
+      document.getElementById("resultsList").innerHTML =
+        `<div class="error">${err.message}</div>`;
+    }
+  }
+
+  update();
+  setInterval(update, REFRESH_MS);
+</script>
+</body>
+</html>
