@@ -5,10 +5,10 @@
   <title>Randy Overlay</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- Robotic font -->
+  <!-- Robotic-ish mono font with lowercase support -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
 
   <style>
     html, body {
@@ -18,7 +18,7 @@
       height: 100%;
       background: transparent;
       overflow: hidden;
-      font-family: 'Orbitron', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: 'Share Tech Mono', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
     .overlay {
@@ -52,15 +52,15 @@
       height: auto;
     }
 
-    /* Text zone near the bottom, vertically centered within its own box */
+    /* Text zone closer to Randy */
     .text-wrapper {
       position: absolute;
       left: 50%;
-      bottom: 10%;              /* adjust this to move the text up/down */
+      bottom: 25%;              /* moves text up toward Randy */
       transform: translateX(-50%);
       width: 80vw;
       max-width: 1000px;
-      min-height: 140px;        /* fixed-ish height so text changes don't move robot */
+      min-height: 110px;        /* stable box so text changes don't move Randy */
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -76,8 +76,8 @@
       text-shadow: 0 0 8px rgba(0, 0, 0, 0.7);
       transition: opacity 0.4s ease-in-out;
       opacity: 0;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
+      letter-spacing: 0.10em;
+      /* no text-transform here so case is preserved */
     }
 
     .text-outcome {
@@ -88,8 +88,8 @@
       transition: opacity 0.4s ease-in-out;
       opacity: 0;
       line-height: 1.1;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      /* crucial: no text-transform so "9i" keeps the dotted i */
     }
 
     .visible {
@@ -102,8 +102,8 @@
       right: 12px;
       font-size: 12px;
       color: rgba(255, 255, 255, 0.5);
-      font-family: 'Orbitron', monospace;
-      letter-spacing: 0.12em;
+      font-family: 'Share Tech Mono', monospace;
+      letter-spacing: 0.10em;
     }
 
     @media (max-width: 600px) {
@@ -113,8 +113,8 @@
       }
       .text-wrapper {
         width: 90vw;
-        min-height: 120px;
-        bottom: 8%;
+        min-height: 100px;
+        bottom: 22%;
       }
     }
   </style>
@@ -190,7 +190,7 @@
           // Phase 3: Show random outcome for 5 seconds
           const choice = outcomes[Math.floor(Math.random() * outcomes.length)];
           hideMain();
-          showOutcome(choice);
+          showOutcome(choice);  // "9i" will show with a dotted i
 
           setTimeout(() => {
             // Fade entire overlay out after 5 seconds
