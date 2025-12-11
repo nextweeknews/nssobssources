@@ -41,7 +41,8 @@
 
     .header-row, .entry {
       display: grid;
-      grid-template-columns: 120px 1fr 130px 100px 120px;
+      /* 6 columns: Rank, Player, Elo, Wins, Win Rate, Top 3 Rate */
+      grid-template-columns: 120px 1fr 130px 100px 120px 120px;
       align-items: center;
     }
 
@@ -114,6 +115,7 @@
       font-size: 24px;
       font-weight: 750;
       text-align: center;
+      color: #c7d7ff;
     }
 
     .player-name {
@@ -134,7 +136,7 @@
       font-size: 20px;
       font-weight: 500;
       text-align: center;
-      color: #98fb98;
+      color: #c7d7ff;
     }
 
     .wr-col {
@@ -170,7 +172,8 @@
     <span>Player</span>
     <span>Elo</span>
     <span>Wins</span>
-    <span>Win Rate</span>
+    <span>Win %</span>
+    <span>Top 3 %</span>
   </div>
 
   <div id="resultsList">
@@ -191,19 +194,42 @@ const CARD_H=880;
 
 let lastState=null;
 
-function getWinRateColor(rate) {
-  if (rate == null) return "#d3d3d3";
-  if (rate <= 10) return "#f87171";
-  if (rate >= 40) return "#4ade80";
+/* ---- Color + Threshold Config (easy to tweak) ---- */
+const COLOR_RED    = "#f87171";
+const COLOR_YELLOW = "#facc15";
+const COLOR_GREEN  = "#4ade80";
 
-  const mid = 25;
+// Win Rate thresholds
+const WIN_LOW  = 10;
+const WIN_MID  = 25;
+const WIN_HIGH = 40;
+
+// Top 3 Rate thresholds
+const TOP3_LOW  = 50;
+const TOP3_MID  = 70;
+const TOP3_HIGH = 90;
+
+/* Generic gradient function shared by both stats */
+function getGradientColor(rate, low, mid, high) {
+  if (rate == null) return "#d3d3d3";
+  if (rate <= low) return COLOR_RED;
+  if (rate >= high) return COLOR_GREEN;
+
   if (rate < mid) {
-    const t = (rate - 15) / (mid - 10);
-    return interpolateColor("#f87171", "#facc15", t);
+    const t = (rate - low) / (mid - low);       // low -> mid: red -> yellow
+    return interpolateColor(COLOR_RED, COLOR_YELLOW, t);
   } else {
-    const t = (rate - mid) / (40 - mid);
-    return interpolateColor("#facc15", "#4ade80", t);
+    const t = (rate - mid) / (high - mid);      // mid -> high: yellow -> green
+    return interpolateColor(COLOR_YELLOW, COLOR_GREEN, t);
   }
+}
+
+function getWinRateColor(rate) {
+  return getGradientColor(rate, WIN_LOW, WIN_MID, WIN_HIGH);
+}
+
+function getTop3RateColor(rate) {
+  return getGradientColor(rate, TOP3_LOW, TOP3_MID, TOP3_HIGH);
 }
 
 function interpolateColor(c1, c2, t) {
@@ -264,6 +290,9 @@ function render(list){
       <span class="wr-col" style="color:${getWinRateColor(p.winRate)}">
         ${p.winRate != null ? p.winRate.toFixed(1) + "%" : "—"}
       </span>
+      <span class="wr-col" style="color:${getTop3RateColor(p.top3Rate)}">
+        ${p.top3Rate != null ? p.top3Rate.toFixed(1) + "%" : "—"}
+      </span>
     `;
 
     el.appendChild(r);
@@ -278,13 +307,20 @@ function normalize(list,res){
     const rp=res[id]||{};
     const wins=e.count_placement_1??0;
     const m=e.matches??0;
+
+    const top1 = e.count_placement_1 ?? 0;
+    const top2 = e.count_placement_2 ?? 0;
+    const top3 = e.count_placement_3 ?? 0;
+    const totalTop3 = top1 + top2 + top3;
+
     return {
       rank:i+1,
       id,
       name:rp.display_name || rp.username || `Player ${id}`,
       elo:Math.round(e.elo??0.0),
       wins,
-      winRate:m>0?((wins/m)*100):null
+      winRate:m>0?((wins/m)*100):null,
+      top3Rate:m>0?((totalTop3/m)*100):null
     };
   });
 }
