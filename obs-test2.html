@@ -171,8 +171,8 @@
     <span>Player</span>
     <span>Elo</span>
     <span>Wins</span>
-    <span>Win Rate</span>
-    <span>Top 3 Rate</span>
+    <span>Win %</span>
+    <span>Top 3 %</span>
   </div>
 
   <div id="resultsList">
@@ -204,9 +204,9 @@ const WIN_MID  = 25;
 const WIN_HIGH = 40;
 
 // Top 3 Rate thresholds
-const TOP3_LOW  = 40;
-const TOP3_MID  = 60;
-const TOP3_HIGH = 80;
+const TOP3_LOW  = 50;
+const TOP3_MID  = 70;
+const TOP3_HIGH = 90;
 
 /* Generic gradient function shared by both stats */
 function getGradientColor(rate, low, mid, high) {
