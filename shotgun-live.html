@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Season 5 Standings</title>
+  <title>Season 5 Team Standings</title>
 
   <style>
     html, body {
@@ -41,8 +41,7 @@
 
     .header-row, .entry {
       display: grid;
-      /* Rank, Team, Score */
-      grid-template-columns: 120px 1fr 130px;
+      grid-template-columns: 120px 1fr 130px; /* Rank, Team, Score */
       align-items: center;
     }
 
@@ -77,7 +76,7 @@
       overflow: hidden;         /* clip logo nicely inside row */
     }
 
-    /* Header / row cell base styling */
+    /* Base cell styling */
     .header-row span {
       display: flex;
       align-items: center;
@@ -86,7 +85,7 @@
       box-sizing: border-box;
       height: 20px;
       right: -1;
-      border-right: none;       /* no column borders */
+      border-right: none;
     }
 
     .entry > span {
@@ -97,7 +96,7 @@
       box-sizing: border-box;
       height: 100%;
       right: -1;
-      border-right: none;       /* no column borders */
+      border-right: none;
     }
 
     /* Header "Team" alignment only */
@@ -127,8 +126,13 @@
       text-transform: uppercase;
       border-radius: 0;
       overflow: hidden;
-      padding-left: 90px;      /* ⬅️ less padding = closer to logo + slight overlap */
-      justify-content: flex-start; /* left-justified text */
+      padding-left: 90px;          /* room for logo + slight overlap */
+    }
+
+    /* Ensure team text is left-aligned inside the cell */
+    .entry > .team-cell {
+      justify-content: flex-start;
+      text-align: left;
     }
 
     /* Icon overlay: square, zoomed a bit, left & centered vertically */
@@ -155,7 +159,7 @@
       justify-content: center;
     }
 
-    .gold { color: #ffd700; }
+    .gold   { color: #ffd700; }
     .silver { color: #c0c0c0; }
     .bronze { color: #cd7f32; }
 
@@ -216,6 +220,7 @@
 
   let lastState = null;
 
+  // Exact Season 5 team colors (source of truth)
   const TEAM_STYLES = {
     "ANIMALS":         { bg: "#cd7f32", fg: "#ffffff" },
     "TERRIFIC TIGERS": { bg: "#fe6d01", fg: "#000000" },
@@ -230,6 +235,12 @@
     "INFERNIX":        { bg: "#f6b26b", fg: "#000000" },
     "CARROTS":         { bg: "#ff9966", fg: "#000000" }
   };
+
+  function getTeamStyle(name) {
+    if (!name) return null;
+    const key = String(name).trim().toUpperCase();
+    return TEAM_STYLES[key] || null;
+  }
 
   async function fetchRange(range) {
     const url = `${WORKER_URL}?sheetId=${SHEET_ID}&range=${encodeURIComponent(range)}`;
@@ -251,12 +262,6 @@
     resultsList.style.gap = `${gap}px`;
     card.style.paddingTop = `${32 + pad}px`;
     card.style.paddingBottom = `${40 + pad}px`;
-  }
-
-  function getTeamStyle(name) {
-    if (!name) return null;
-    const key = String(name).trim().toUpperCase();
-    return TEAM_STYLES[key] || null;
   }
 
   function slugify(name) {
