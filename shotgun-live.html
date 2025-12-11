@@ -106,14 +106,14 @@
     }
 
     .place {
-      font-size: 24px;
+      font-size: 36px;
       font-weight: 750;
       text-align: center;
       color: #c7d7ff;
     }
 
     .player-name {
-      font-size: 20px;
+      font-size: 36px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -126,13 +126,13 @@
       text-transform: uppercase;
       border-radius: 0;
       overflow: hidden;
-      padding-left: 90px;          /* room for logo + slight overlap */
     }
 
     /* Ensure team text is left-aligned inside the cell */
     .entry > .team-cell {
       justify-content: flex-start;
       text-align: left;
+      padding-left: 90px;
     }
 
     /* Icon overlay: square, zoomed a bit, left & centered vertically */
@@ -142,7 +142,7 @@
       inset: 0;
       background-repeat: no-repeat;
       background-position: 24px center; /* left offset */
-      background-size: auto 130%;       /* height = 130% of cell, keep aspect ratio */
+      background-size: auto 170%;       /* height = 130% of cell, keep aspect ratio */
       opacity: 0.26;
       mix-blend-mode: soft-light;
       pointer-events: none;
@@ -150,7 +150,7 @@
 
     /* Score column: light gray background, black text */
     .score-col {
-      font-size: 24px;
+      font-size: 36px;
       font-weight: 750;
       text-align: center;
       background: #d9d9d9;
