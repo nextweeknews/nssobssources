@@ -283,11 +283,23 @@ function addSearchResult(id,box){
 async function addPlayer(id){
   const state = await (await fetch(API_URL)).json();
 
-  if(state.players.some(x => String(x) === String(id))) return;
-  if(state.players.length >= 8 && !hasMyId(state.players)) return showError("Max 8 players");
+  if (state.players.some(x => String(x) === String(id))) return;
+  if (state.players.length >= 8 && !hasMyId(state.players)) return showError("Max 8 players");
 
   state.players.push(id);
-  await postState(state.players,state.tracked,{refresh:true});
+  await postState(state.players, state.tracked, { refresh:true });
+
+  // 🔽 Reset search box + results, keep it active
+  const input = document.getElementById("search");
+  const results = document.getElementById("searchResults");
+
+  if (input) {
+    input.value = "";
+    input.focus();
+  }
+  if (results) {
+    results.innerHTML = "";
+  }
 }
 
 async function refreshOverlay(){
