@@ -28,43 +28,32 @@
       pointer-events: none;
       transition: opacity 1s ease-in-out;
       background: transparent;
+
+      /* Center robot + text as a unit */
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
     }
 
     .overlay.fade-out {
       opacity: 0;
     }
 
-    /* Randy locked in place, centered horizontally */
-    .robot-wrapper {
-      position: absolute;
-      top: 20%;               /* <--- adjust this to move Randy up/down */
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      width: 100%;
-      pointer-events: none;
-    }
-
+    /* Randy on top */
     #robot {
       max-width: 320px;
       width: 30vw;
       height: auto;
     }
 
-    /* Text locked to a specific vertical position, under Randy */
+    /* Text directly underneath Randy, gap controlled ONLY by margin-top */
     .text-wrapper {
-      position: relative;
-      top: 40%;               /* <--- text vertical position; closer/farther from Randy */
-      left: 50%;
-      transform: translateX(-50%);
       width: 80vw;
       max-width: 1000px;
-      height: 130px;          /* fixed height so layout is stable */
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      height: 130px;          /* fixed so layout is stable */
+      margin-top: 32px;       /* <--- increase to move text LOWER, decrease to move it closer */
+      position: relative;
       text-align: center;
     }
 
@@ -113,34 +102,32 @@
     }
 
     @media (max-width: 600px) {
-      .robot-wrapper {
-        top: 26%;
-      }
       #robot {
         max-width: 220px;
         width: 45vw;
       }
       .text-wrapper {
-        top: 52%;
         width: 90vw;
         height: 120px;
+        margin-top: 24px;
       }
     }
   </style>
 </head>
 <body>
   <div class="overlay" id="overlay">
-    <!-- Randy on top, fixed -->
-    <div class="robot-wrapper">
-      <!-- Update src to your robot PNG filename -->
-      <img id="robot" src="randy.png" alt="Randy the robot" />
-    </div>
+    <!-- Randy on top -->
+    <img id="robot" src="randy.png" alt="Randy the robot" />
 
-    <!-- Text directly underneath Randy at a fixed position -->
+    <!-- Text directly underneath Randy -->
     <div class="text-wrapper">
       <div id="mainText" class="text-main"></div>
       <div id="outcomeText" class="text-outcome"></div>
     </div>
+  </div>
+
+  <div class="hint">
+    Press R to reload (or use OBS browser source refresh).
   </div>
 
   <script>
@@ -196,7 +183,7 @@
           // Phase 3: Show random outcome for 5 seconds
           const choice = outcomes[Math.floor(Math.random() * outcomes.length)];
           hideMain();          // instantly hide "Randy has decided."
-          showOutcome(choice); // instantly show the outcome in the same spot
+          showOutcome(choice); // instantly show outcome in the same spot
 
           setTimeout(() => {
             // Fade entire overlay out after 5 seconds
