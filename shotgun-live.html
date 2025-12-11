@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Season 5 Standings</title>
+  <title>Season 5 Team Standings</title>
 
   <style>
     html, body {
@@ -41,7 +41,8 @@
 
     .header-row, .entry {
       display: grid;
-      grid-template-columns: 120px 1fr 130px; /* Rank, Team, Score */
+      /* Rank, Team, Score */
+      grid-template-columns: 120px 1fr 130px;
       align-items: center;
     }
 
@@ -67,15 +68,16 @@
     }
 
     .entry {
-      height: 56px;
+      height: 60px;             /* ⬅️ increased row height */
       background: rgba(255,255,255,0.06);
       border-radius: 10px;      /* outer corners only */
       font-size: 24px;
       font-weight: 600;
       transition: background .25s ease, box-shadow .25s ease;
-      overflow: hidden;         /* hide inner corners / icon overflow */
+      overflow: hidden;         /* clip logo nicely inside row */
     }
 
+    /* Header / row cell base styling */
     .header-row span {
       display: flex;
       align-items: center;
@@ -98,9 +100,8 @@
       border-right: none;       /* no column borders */
     }
 
-    /* Team column alignment */
-    .header-row span:nth-child(2),
-    .entry > span:nth-child(2) {
+    /* Header "Team" alignment only */
+    .header-row span:nth-child(2) {
       justify-content: flex-start;
       padding-left: 24px;
     }
@@ -119,24 +120,26 @@
       text-overflow: ellipsis;
     }
 
-    /* Team cell base (color bar + caps text) */
+    /* Team cell (color bar + caps text + logo) */
     .team-cell {
       position: relative;
       font-weight: 800;
       text-transform: uppercase;
       border-radius: 0;
       overflow: hidden;
+      padding-left: 120px;     /* move text right to reveal logo */
+      justify-content: flex-start;
     }
 
-    /* Icon overlay */
+    /* Icon overlay: square, zoomed a bit, left & centered vertically */
     .team-cell::before {
       content: "";
       position: absolute;
       inset: 0;
       background-repeat: no-repeat;
-      background-position: left center;
-      background-size: 120%;
-      opacity: 0.22;           /* tweak for desired subtlety */
+      background-position: 24px center; /* left offset */
+      background-size: auto 130%;       /* height = 130% of cell, keep aspect ratio */
+      opacity: 0.26;
       mix-blend-mode: soft-light;
       pointer-events: none;
     }
@@ -167,9 +170,7 @@
       font-size: 28px;
     }
 
-    /* === PER-TEAM ICON MAPPINGS ===================== */
-    /* Replace icon URLs with your actual assets/paths. */
-
+    /* Per-team icon mappings */
     .team-animals::before         { background-image: url("icons/animals.png"); }
     .team-terrific-tigers::before { background-image: url("icons/terrific-tigers.png"); }
     .team-breakers::before        { background-image: url("icons/breakers.png"); }
@@ -208,27 +209,26 @@
   const REFRESH_MS  = 15000;
   const TEAM_NAME   = new URLSearchParams(location.search).get("team");
 
-  const ROW_H    = 56;
+  const ROW_H    = 60;          // ⬅️ updated to match .entry height
   const TITLE_H  = 46 + 16;
   const HEADER_H = 46 + 10;
   const CARD_H   = 880;
 
   let lastState = null;
 
-  // Row color styles
   const TEAM_STYLES = {
-    "ANIMALS":         { bg: "#cd7f32", fg: "#ffffff" },
-    "TERRIFIC TIGERS": { bg: "#fe6d01", fg: "#000000" },
-    "BREAKERS":        { bg: "#f1c232", fg: "#1c4487" },
-    "DAGGERS":         { bg: "#ea9999", fg: "#0f0d36" },
-    "SNIPERS":         { bg: "#275318", fg: "#ffe6cd" },
-    "MCSTROKERS":      { bg: "#4d94d8", fg: "#ffffff" },
-    "ASTERISM":        { bg: "#ba2636", fg: "#ffffff" },
-    "DOUBLE-EAGLES":   { bg: "#1c4487", fg: "#ffffff" },
-    "PHANTOM TROUPE":  { bg: "#674ea7", fg: "#ffffff" },
-    "SPOCCO COWS":     { bg: "#77206d", fg: "#ffffff" },
-    "INFERNIX":        { bg: "#f6b26b", fg: "#000000" },
-    "CARROTS":         { bg: "#ff9966", fg: "#000000" }
+    "ANIMALS":         { bg: "#d0965c", fg: "#ffffff" },
+    "TERRIFIC TIGERS": { bg: "#ff7a00", fg: "#000000" },
+    "BREAKERS":        { bg: "#f4c542", fg: "#17386e" },
+    "DAGGERS":         { bg: "#e9a1aa", fg: "#14162f" },
+    "SNIPERS":         { bg: "#2f6a32", fg: "#fbe0b7" },
+    "MCSTROKERS":      { bg: "#4b8fd9", fg: "#ffffff" },
+    "ASTERISM":        { bg: "#d3293b", fg: "#ffffff" },
+    "DOUBLE-EAGLES":   { bg: "#1f4fb1", fg: "#ffffff" },
+    "PHANTOM TROUPE":  { bg: "#6b3fbc", fg: "#ffffff" },
+    "SPOCCO COWS":     { bg: "#b13fae", fg: "#ffffff" },
+    "INFERNIX":        { bg: "#f6a53a", fg: "#000000" },
+    "CARROTS":         { bg: "#f89b4f", fg: "#341437" }
   };
 
   async function fetchRange(range) {
@@ -259,6 +259,14 @@
     return TEAM_STYLES[key] || null;
   }
 
+  function slugify(name) {
+    return String(name)
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+  }
+
   function render(list) {
     const el = document.getElementById("resultsList");
     el.innerHTML = "";
@@ -287,7 +295,8 @@
 
       row.innerHTML = `
         <span class="place ${clr}">${team.rank}</span>
-        <span class="player-name team-cell team-${team.slug}" style="background:${teamBg};color:${teamFg};">
+        <span class="player-name team-cell team-${team.slug}"
+              style="background:${teamBg};color:${teamFg};">
           ${team.name}
         </span>
         <span class="score-col">${team.score != null ? team.score : "—"}</span>
@@ -297,14 +306,6 @@
     });
 
     adjustSpacing(list.length);
-  }
-
-  function slugify(name) {
-    return String(name)
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "");
   }
 
   function normalize(rows) {
