@@ -39,25 +39,37 @@
       opacity: 0;
     }
 
-    /* Randy at the top of the stack */
+    /* Randy on top */
     #robot {
       max-width: 320px;
       width: 30vw;
       height: auto;
-      margin-bottom: 12px; /* small gap before text */
+      margin-bottom: 12px; /* gap before text */
     }
 
-    /* Text sits directly under Randy, height fixed so he never moves */
+    /* Text directly under Randy */
     .text-wrapper {
+      position: relative;
       width: 80vw;
       max-width: 1000px;
       min-height: 120px;        /* keeps block height stable */
       display: flex;
-      flex-direction: column;
       align-items: center;
-      justify-content: center;  /* vertical centering of both lines */
+      justify-content: center;
       text-align: center;
-      gap: 8px;
+    }
+
+    /* Both text elements are stacked in the same spot */
+    .text-main,
+    .text-outcome {
+      position: absolute;
+      inset: 0; /* top:0; right:0; bottom:0; left:0 */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto;
+      opacity: 0;               /* default hidden */
+      /* NOTE: no opacity transition here – clean cut change */
     }
 
     .text-main {
@@ -65,10 +77,7 @@
       font-weight: 700;
       color: white;
       text-shadow: 0 0 8px rgba(0, 0, 0, 0.7);
-      transition: opacity 0.4s ease-in-out;
-      opacity: 0;
       letter-spacing: 0.10em;
-      /* no text-transform so case is preserved */
     }
 
     .text-outcome {
@@ -76,15 +85,12 @@
       font-weight: 900;
       color: white;
       text-shadow: 0 0 12px rgba(0, 0, 0, 0.9);
-      transition: opacity 0.4s ease-in-out;
-      opacity: 0;
       line-height: 1.1;
       letter-spacing: 0.14em;
-      /* keeps "9i" with dotted i */
     }
 
     .visible {
-      opacity: 1;
+      opacity: 1; /* instant show/hide, no animation */
     }
 
     .hint {
@@ -112,7 +118,6 @@
 <body>
   <div class="overlay" id="overlay">
     <!-- Randy on top -->
-    <!-- Update src to match your robot PNG filename -->
     <img id="robot" src="randy.png" alt="Randy the robot" />
 
     <!-- Text directly underneath Randy -->
@@ -161,6 +166,7 @@
     }
 
     function startSequence() {
+      // Reset state
       hideOutcome();
       overlayEl.classList.remove('fade-out');
 
@@ -177,8 +183,8 @@
         setTimeout(() => {
           // Phase 3: Show random outcome for 5 seconds
           const choice = outcomes[Math.floor(Math.random() * outcomes.length)];
-          hideMain();
-          showOutcome(choice);  // "9i" shows with dotted i
+          hideMain();          // instantly hide the text
+          showOutcome(choice); // instantly show the outcome in same spot
 
           setTimeout(() => {
             // Fade entire overlay out after 5 seconds
