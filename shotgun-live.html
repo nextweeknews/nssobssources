@@ -141,9 +141,9 @@
       position: absolute;
       inset: 0;
       background-repeat: no-repeat;
-      background-position: var(--icon-pos, 24px center);
+      background-position: var(--icon-pos, 0px center);
       background-size: var(--icon-size, auto 130%);
-      opacity: 0.26;
+      opacity: 0.32;
       mix-blend-mode: soft-light;
       pointer-events: none;
     }
@@ -181,16 +181,14 @@
     */
 
     .team-animals {
-      --icon-pos: 24px center;
-      --icon-size: auto 170%;
+      --icon-size: auto 180%;
     }
     .team-animals::before {
       background-image: url("icons/animals.png");
     }
 
     .team-terrific-tigers {
-      --icon-pos: 24px center;
-      --icon-size: auto 130%;
+      --icon-size: auto 180%;
     }
     .team-terrific-tigers::before {
       background-image: url("icons/terrific-tigers.png");
