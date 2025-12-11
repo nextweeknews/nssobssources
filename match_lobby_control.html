@@ -119,8 +119,15 @@ const API_URL="https://blue-dust-07fa.nextweekmedia.workers.dev/lobby";
 const LB_URL="https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
 const CLIENT_ID="DISCORD|1069003073311211601";
 
+// <-- Your player ID (always in lobby + always tracked)
+const MY_ID = "702730732220579950";
+
 let leaderboard=[];
 let resolvedPlayers={};
+
+function hasMyId(players){
+  return players.some(p => String(p) === MY_ID);
+}
 
 // Initialize
 (async()=>{ await loadLeaderboard(); await refreshLobby(); })();
@@ -153,7 +160,26 @@ function showError(m){
 }
 
 async function refreshLobby(){
-  const state = await(await fetch(API_URL)).json();
+  const state = await (await fetch(API_URL)).json();
+
+  // Ensure MY_ID is always present and tracked in backend state
+  const players = state.players.slice();
+  let needsUpdate = false;
+
+  if (!hasMyId(players)) {
+    players.push(MY_ID);
+    needsUpdate = true;
+  }
+
+  if (String(state.tracked) !== MY_ID) {
+    needsUpdate = true;
+  }
+
+  if (needsUpdate) {
+    await postState(players, MY_ID, { refresh: true });
+    return; // postState will call refreshLobby again
+  }
+
   renderLobby(state);
 }
 
@@ -174,9 +200,17 @@ function renderLobby(state){
   rows.forEach(r=>{
     const row=document.createElement("div");
     row.className=`player-row ${r.tracked?"tracked":""}`;
+
+    const isMe = String(r.id) === MY_ID;
+
+    // No remove button for MY_ID
+    const controls = isMe
+      ? ""
+      : `<button class="remove-btn shared-btn" onclick="event.stopPropagation();removePlayer('${r.id}')">-</button>`;
+
     row.innerHTML=`
       <span>${r.name} (${Math.round(r.elo)})</span>
-      <button class="remove-btn shared-btn" onclick="event.stopPropagation();removePlayer('${r.id}')">-</button>
+      ${controls}
     `;
 
     // Support both mouse + touch input
@@ -188,6 +222,10 @@ function renderLobby(state){
 }
 
 async function postState(players,tracked,{refresh}={}){
+  // Enforce MY_ID invariant on every state write
+  if (!hasMyId(players)) players.push(MY_ID);
+  tracked = MY_ID; // always keep you as the tracked player
+
   await fetch(API_URL,{
     method:"POST",
     headers:{"Content-Type":"application/json"},
@@ -197,15 +235,20 @@ async function postState(players,tracked,{refresh}={}){
 }
 
 async function removePlayer(id){
-  const state = await(await fetch(API_URL)).json();
-  const players = state.players.filter(x=>x!==id);
+  // Can't remove yourself
+  if (String(id) === MY_ID) return;
+
+  const state = await (await fetch(API_URL)).json();
+  const players = state.players.filter(x=>String(x)!==String(id));
   await postState(players,state.tracked,{refresh:true});
 }
 
 async function setTracked(id){
-  const state = await(await fetch(API_URL)).json();
-  const newTracked = (String(state.tracked)===String(id) ? "" : id);
-  await postState(state.players,newTracked,{refresh:true});
+  // Ignore which row was clicked; always keep MY_ID tracked
+  const state = await (await fetch(API_URL)).json();
+  const players = state.players.slice();
+  if (!hasMyId(players)) players.push(MY_ID);
+  await postState(players, MY_ID, {refresh:true});
 }
 
 async function searchPlayers(){
@@ -238,17 +281,17 @@ function addSearchResult(id,box){
 }
 
 async function addPlayer(id){
-  const state = await(await fetch(API_URL)).json();
+  const state = await (await fetch(API_URL)).json();
 
-  if(state.players.includes(id)) return;
-  if(state.players.length >= 8) return showError("Max 8 players");
+  if(state.players.some(x => String(x) === String(id))) return;
+  if(state.players.length >= 8 && !hasMyId(state.players)) return showError("Max 8 players");
 
   state.players.push(id);
   await postState(state.players,state.tracked,{refresh:true});
 }
 
 async function refreshOverlay(){
-  const state = await(await fetch(API_URL)).json();
+  const state = await (await fetch(API_URL)).json();
   await postState(state.players,state.tracked,{refresh:true});
   showError("Overlay refreshed");
 }
