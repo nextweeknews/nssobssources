@@ -52,7 +52,7 @@
       width: 80vw;
       max-width: 1000px;
       height: 130px;          /* fixed so layout is stable */
-      margin-top: 32px;       /* <--- increase to move text LOWER, decrease to move it closer */
+      margin-top: 0px;       /* <-- was 32px; this moves text slightly closer */
       position: relative;
       text-align: center;
     }
@@ -109,7 +109,7 @@
       .text-wrapper {
         width: 90vw;
         height: 120px;
-        margin-top: 24px;
+        margin-top: 20px;
       }
     }
   </style>
@@ -124,10 +124,6 @@
       <div id="mainText" class="text-main"></div>
       <div id="outcomeText" class="text-outcome"></div>
     </div>
-  </div>
-
-  <div class="hint">
-    Press R to reload (or use OBS browser source refresh).
   </div>
 
   <script>
