@@ -40,7 +40,6 @@
       text-align: center;
     }
 
-    /* Column structure */
     .header-row,
     .entry {
       display: grid;
@@ -122,6 +121,7 @@
       font-size: 36px;
       text-align: center;
       position: relative;
+      animation: pulseDelta 1.8s ease-in-out infinite;
     }
 
     .delta-arrow {
@@ -139,7 +139,6 @@
     .delta-positive { color: #4ade80; }
     .delta-negative { color: #f87171; }
 
-    /* Column borders */
     .entry > span {
       border-right: 2px solid rgba(255,255,255,0.14);
       right: -1px;
@@ -152,7 +151,6 @@
       border-right: none;
     }
 
-    /* Placement-based highlighting (for the tracked player) */
     .entry.highlight-gold {
       background: rgba(255, 215, 0, 0.28);
       box-shadow: 0 0 18px rgba(255, 215, 0, 0.3);
@@ -179,6 +177,16 @@
       text-align: center;
     }
 
+    @keyframes pulseDelta {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+      50% {
+        transform: scale(1);
+        opacity: 0.7;
+      }
+    }
   </style>
 </head>
 
@@ -196,13 +204,13 @@
   </div>
 
   <div id="resultsList">
-  <div class="loading">Loading…</div>
+    <div class="loading">Loading…</div>
   </div>
 </div>
 
 <script>
 const API_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_rating_history";
-const LB_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
+const LB_URL  = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
 const CLIENT_ID = "DISCORD|1069003073311211601";
 const REFRESH_MS = 15000;
 
@@ -210,11 +218,24 @@ const cardEl = document.getElementById("card");
 const resultsListEl = document.getElementById("resultsList");
 const PLAYER_ID = new URLSearchParams(location.search).get("player_id");
 
-let lastMatchHash = "";
 let initialLoad = true;
 
-// snapshot of ranks for *all* players from the previous refresh
-let lastRanks = {};
+// Global baseline ranks from last processed leaderboard
+let previousRanks = {};
+
+// Snapshot for the last fully-processed match of the tracked player
+let snapshotMatch = null;
+let snapshotMatchHash = "";
+let snapshotRanks = {};       // { [id]: rankAfterMatch }
+let snapshotRankDeltas = {};  // { [id]: { diff, arrow, class } }
+
+// Latest global match we've baseline'd
+let lastGlobalMatchHash = "";
+
+// Async guard
+let requestCounter = 0;
+// To avoid unnecessary DOM work
+let lastDisplayHash = "";
 
 if (!PLAYER_ID) {
   resultsListEl.innerHTML = "<div class='error'>Missing player_id</div>";
@@ -227,67 +248,60 @@ function resizeCard(count) {
 }
 
 function hashMatch(match) {
-  // Hash only the match participants + ratings. Rank changes are handled separately.
   return match.ratingResults[0].newRatings
     .map(p => `${p.id}:${p.place}:${p.elo}:${p.delta}`)
     .join("|");
 }
 
-function computeRankDelta(id, current) {
-  const old = lastRanks[id];
-  if (typeof old !== "number" || typeof current !== "number") return null;
-  const diff = old - current; // lower rank number = better rank
-  return {
-    diff,
-    arrow: diff > 0 ? "▲" : diff < 0 ? "▼" : "",
-    class: diff > 0 ? "delta-positive" : diff < 0 ? "delta-negative" : ""
-  };
-}
-
-// Fetch full leaderboard and build rank map for ALL players
-async function getRanks() {
-  const resp = await fetch(LB_URL, {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({
-      leaderboard: "season_10",
-      rating_type: "player_global_all",
-      client_id: CLIENT_ID
-    })
-  });
-
-  const data = await resp.json();
-  const sorted = [...(data.leaderboard || [])]
-    .sort((a, b) => (b.elo ?? 0) - (a.elo ?? 0));
-
+function buildRanksFromLeaderboard(leaderboard) {
   const ranks = {};
-  sorted.forEach((p, i) => {
-    const id = p.team?.[0];
-    if (id != null) {
-      ranks[id] = i + 1; // 1-based rank
-    }
-  });
-
+  leaderboard
+    .map(p => {
+      const id = p.team?.[0];
+      if (id == null) return null;
+      return { id: String(id), elo: p.elo ?? 0 };
+    })
+    .filter(Boolean)
+    .sort((a, b) => (b.elo ?? 0) - (a.elo ?? 0)) // highest elo = rank 1
+    .forEach((p, i) => {
+      ranks[p.id] = i + 1;
+    });
   return ranks;
 }
 
-function display(match, players, ranks) {
-  const rows = match.ratingResults[0].newRatings.slice(0, 8);
+function buildEloMapFromLeaderboard(leaderboard) {
+  const map = {};
+  (leaderboard || []).forEach(p => {
+    const id = p.team?.[0];
+    if (id != null) {
+      map[String(id)] = p.elo ?? 0;
+    }
+  });
+  return map;
+}
+
+function displaySnapshot(players) {
+  if (!snapshotMatch) {
+    resultsListEl.innerHTML = "<div class='loading'>No match</div>";
+    resizeCard(1);
+    return;
+  }
+
+  const rows = snapshotMatch.ratingResults[0].newRatings.slice(0, 8);
   resultsListEl.innerHTML = "";
 
-  // Determine whether we should show the rank delta column at all
   const showRankDelta = rows.some(p => {
-    const r = ranks[p.id];
-    const rd = computeRankDelta(p.id, r);
-    return rd && rd.diff !== 0;
+    const d = snapshotRankDeltas[String(p.id)];
+    return d && d.diff !== 0;
   });
 
   rows.forEach(p => {
     const row = document.createElement("div");
     row.className = "entry";
 
-    // Highlight tracked player
-    if (String(p.id) === String(PLAYER_ID)) {
+    const idKey = String(p.id);
+
+    if (idKey === String(PLAYER_ID)) {
       if (p.place === 1) row.classList.add("highlight-gold");
       else if (p.place === 2) row.classList.add("highlight-silver");
       else if (p.place === 3) row.classList.add("highlight-bronze");
@@ -302,8 +316,8 @@ function display(match, players, ranks) {
 
     const name = players[p.id]?.display_name || "Unknown";
 
-    // Ensure integers for Elo + Δ
     const elo = Math.round(p.elo ?? 0);
+    const eloDisplay = elo === 0 ? "-" : elo; // 0 Elo → "-"
     const delta = Math.round(p.delta ?? 0);
 
     const dC = delta > 0 ? "delta-positive" : delta < 0 ? "delta-negative" : "";
@@ -312,9 +326,10 @@ function display(match, players, ranks) {
         <span class="delta-arrow">${delta > 0 ? "▲" : "▼"}</span>${Math.abs(delta)}
       </span>` : `<span></span>`;
 
-    // Rank + Rank Δ
-    const r = ranks[p.id] ?? "—";
-    const rd = computeRankDelta(p.id, r);
+    const frozenRank = snapshotRanks[idKey];
+    const rankValue = typeof frozenRank === "number" ? frozenRank : "—";
+
+    const rd = snapshotRankDeltas[idKey] || null;
     const rankDeltaHTML = (showRankDelta && rd && rd.diff !== 0) ? `
       <span class="rank-delta ${rd.class}">
         <span class="delta-arrow">${rd.arrow}</span>${Math.abs(Math.round(rd.diff))}
@@ -324,10 +339,10 @@ function display(match, players, ranks) {
       <span class="place ${placeClass}">${p.place}</span>
       <span class="player-name">${name}</span>
 
-      <span class="elo-value">${elo}</span>
+      <span class="elo-value">${eloDisplay}</span>
       ${eloDeltaHTML}
 
-      <span class="rank-value">${r}</span>
+      <span class="rank-value">${rankValue}</span>
       ${rankDeltaHTML}
     `;
 
@@ -338,8 +353,11 @@ function display(match, players, ranks) {
 }
 
 async function fetchData() {
+  const myRequestId = ++requestCounter;
+
   try {
-    const resp = await fetch(API_URL, {
+    // 1) Poll rating history every 15s
+    const historyResp = await fetch(API_URL, {
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({
@@ -348,64 +366,187 @@ async function fetchData() {
         limit: 10
       })
     });
+    const historyData = await historyResp.json();
+    if (myRequestId !== requestCounter) return;
 
-    const data = await resp.json();
-    const players = data.resolved?.players || {};
+    const players = historyData.resolved?.players || {};
+    const matches = historyData.matches || [];
 
-    const match = (data.matches || [])
-      .sort((a, b) => b.ts - a.ts)
-      .find(m =>
-        m.ratingResults.some(r =>
+    const sortedMatches = [...matches].sort((a, b) => b.ts - a.ts);
+
+    const globalLatest = sortedMatches[0] || null;
+    const globalLatestHash = globalLatest ? hashMatch(globalLatest) : null;
+
+    const latestMatchForPlayer = sortedMatches.find(m =>
+      m.ratingResults.some(r =>
+        r.newRatings.some(p => String(p.id) === String(PLAYER_ID))
+      )
+    ) || null;
+
+    const latestMatchHash = latestMatchForPlayer
+      ? hashMatch(latestMatchForPlayer)
+      : null;
+
+    const hasSnapshot = !!snapshotMatch;
+
+    const globalLatestInvolvesPlayer = globalLatest
+      ? globalLatest.ratingResults.some(r =>
           r.newRatings.some(p => String(p.id) === String(PLAYER_ID))
         )
-      );
+      : false;
 
-    if (!match) {
-      resultsListEl.innerHTML = "<div class='loading'>No match</div>";
+    const haveNewGlobalMatch =
+      globalLatestHash && globalLatestHash !== lastGlobalMatchHash;
+
+    const playerHasNewerMatchThanSnapshot =
+      latestMatchForPlayer &&
+      (!hasSnapshot || latestMatchHash !== snapshotMatchHash);
+
+    // IMPORTANT: fetch leaderboard at least once (baseline),
+    // and thereafter whenever global or player state moves forward.
+    const needInitialBaseline = Object.keys(previousRanks).length === 0;
+    const needLeaderboard =
+      needInitialBaseline || haveNewGlobalMatch || playerHasNewerMatchThanSnapshot;
+
+    if (needLeaderboard) {
+      const lbResp = await fetch(LB_URL, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          leaderboard: "season_10",
+          rating_type: "player_global_all",
+          client_id: CLIENT_ID
+        })
+      });
+      const lbData = await lbResp.json();
+      if (myRequestId !== requestCounter) return;
+
+      const leaderboard = lbData.leaderboard || [];
+      const currentRanks = buildRanksFromLeaderboard(leaderboard);
+      const leaderboardElos = buildEloMapFromLeaderboard(leaderboard);
+
+      // (A) Initialize baseline if we didn't have one yet
+      if (needInitialBaseline && Object.keys(currentRanks).length > 0) {
+        previousRanks = currentRanks;
+        if (globalLatestHash) {
+          lastGlobalMatchHash = globalLatestHash;
+        }
+      }
+
+      // (B) If player has a newer match than current snapshot, try to process it
+      if (latestMatchForPlayer && playerHasNewerMatchThanSnapshot) {
+        const participants = latestMatchForPlayer.ratingResults[0].newRatings;
+
+        // Check Elo sync (±1 tolerance)
+        const leaderboardSynced = participants.every(p => {
+          const idKey = String(p.id);
+          const lbElo = leaderboardElos[idKey];
+          const matchElo = Math.round(p.elo ?? 0);
+          if (typeof lbElo !== "number") return false;
+          return Math.abs(Math.round(lbElo) - matchElo) <= 1;
+        });
+
+        if (leaderboardSynced) {
+          const newSnapshotRanks = {};
+          const newSnapshotRankDeltas = {};
+
+          participants.forEach(p => {
+            const idKey = String(p.id);
+            const afterRank = currentRanks[idKey];
+
+            if (typeof afterRank === "number") {
+              newSnapshotRanks[idKey] = afterRank;
+            }
+
+            const beforeRank = previousRanks[idKey];
+            let diff = 0;
+            let arrow = "";
+            let cls = "";
+
+            if (typeof beforeRank === "number" &&
+                typeof afterRank === "number") {
+              diff = beforeRank - afterRank; // positive = improved rank
+              if (diff > 0) {
+                arrow = "▲";
+                cls = "delta-positive";
+              } else if (diff < 0) {
+                arrow = "▼";
+                cls = "delta-negative";
+              }
+            }
+
+            newSnapshotRankDeltas[idKey] = { diff, arrow, class: cls };
+          });
+
+          snapshotMatch = latestMatchForPlayer;
+          snapshotMatchHash = latestMatchHash;
+          snapshotRanks = newSnapshotRanks;
+          snapshotRankDeltas = newSnapshotRankDeltas;
+
+          // Baseline now advances to "after" this match
+          previousRanks = currentRanks;
+          if (globalLatestHash) {
+            lastGlobalMatchHash = globalLatestHash;
+          }
+        }
+        // If not synced, snapshot stays as-is; we'll try again on next poll.
+      }
+
+      // (C) Any new global match not involving our player still advances baseline
+      if (haveNewGlobalMatch && !globalLatestInvolvesPlayer) {
+        previousRanks = currentRanks;
+        lastGlobalMatchHash = globalLatestHash;
+      }
+    }
+
+    // Build display hash from snapshot state
+    let displayHash;
+    if (!snapshotMatch) {
+      displayHash = "NO_MATCH";
+    } else {
+      const rows = snapshotMatch.ratingResults[0].newRatings.slice(0, 8);
+      const parts = rows.map(p => {
+        const idKey = String(p.id);
+        const elo = Math.round(p.elo ?? 0);
+        const delta = Math.round(p.delta ?? 0);
+        const rankSnapshot = snapshotRanks[idKey];
+        const rankDisplayed = typeof rankSnapshot === "number"
+          ? rankSnapshot
+          : "—";
+        const rd = snapshotRankDeltas[idKey]?.diff ?? 0;
+        return `${idKey}:${p.place}:${elo}:${delta}:${rankDisplayed}:${rd}`;
+      });
+      displayHash = parts.join("|");
+    }
+
+    if (!initialLoad && displayHash === lastDisplayHash) {
       return;
     }
 
-    const newHash = hashMatch(match);
-
-    // Fetch current global ranks (all players)
-    const currentRanks = await getRanks();
-
-    // Did any of the displayed players have a rank change?
-    const rows = match.ratingResults[0].newRatings.slice(0, 8);
-    const rankChanged = rows.some(p => {
-      const id = p.id;
-      const previousRank = lastRanks[id];
-      const currentRank = currentRanks[id];
-      return typeof previousRank === "number" &&
-             typeof currentRank === "number" &&
-             previousRank !== currentRank;
-    });
-
-  if (initialLoad || newHash !== lastMatchHash || rankChanged) {
-    lastMatchHash = newHash;
+    lastDisplayHash = displayHash;
     initialLoad = false;
 
     resultsListEl.style.opacity = 0;
     setTimeout(() => {
-      // Use previous lastRanks here
-      display(match, players, currentRanks);
+      if (myRequestId !== requestCounter) return;
 
-      // Now that we've rendered deltas based on the old snapshot,
-      // update lastRanks to the latest ranks for the *next* refresh.
-      lastRanks = currentRanks;
+      displaySnapshot(players);
 
       requestAnimationFrame(() => (resultsListEl.style.opacity = 1));
     }, 300);
-  }
-
 
   } catch (err) {
+    if (myRequestId !== requestCounter) return;
     resultsListEl.innerHTML = `<div class="error">${err.message}</div>`;
   }
 }
 
-fetchData();
-setInterval(fetchData, REFRESH_MS);
+async function poll() {
+  await fetchData();
+  setTimeout(poll, REFRESH_MS);
+}
+
+poll();
 </script>
 </body>
 </html>
