@@ -209,8 +209,10 @@
 </div>
 
 <script>
-const API_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_rating_history";
-const LB_URL  = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
+const API_BASE   = "https://rapid-haze-012c.nextweekmedia.workers.dev";
+const RECENT_URL = `${API_BASE}/get_recent_changes`;
+const SNAP_URL   = `${API_BASE}/get_leaderboard_snapshot`;
+
 const CLIENT_ID = "DISCORD|1069003073311211601";
 const REFRESH_MS = 15000;
 
@@ -232,6 +234,10 @@ let snapshotRankDeltas = {};  // { [id]: { diff, arrow, class } }
 // Latest global match we've baseline'd
 let lastGlobalMatchHash = "";
 
+// Latest resolved player profiles (display_name, etc.)
+let resolvedPlayersCache = {};
+let fallbackNamesCache = {}; // from match teams, as a fallback for names
+
 // Async guard
 let requestCounter = 0;
 // To avoid unnecessary DOM work
@@ -247,10 +253,82 @@ function resizeCard(count) {
   cardEl.style.height = `${h}px`;
 }
 
-function hashMatch(match) {
-  return match.ratingResults[0].newRatings
-    .map(p => `${p.id}:${p.place}:${p.elo}:${p.delta}`)
-    .join("|");
+function normalizeEvents(data) {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.events)) return data.events;
+  if (Array.isArray(data?.matches)) return data.matches;
+  return [];
+}
+
+function pickRatingUpdate(payload) {
+  const updates = payload?.rating_updates || [];
+  // Keep consistent with the leaderboard baseline/ranks
+  return (
+    updates.find(u => u.rating_type === "player_global_all") ||
+    updates[0] ||
+    null
+  );
+}
+
+function extractParticipantsFromEvent(evt) {
+  const payload = evt?.payload || {};
+  const match = payload?.match || {};
+  const teams = match?.teams || [];
+
+  const placeById = {};
+  const fallbackNamesById = {};
+  const participantIds = [];
+
+  // Place + fallback usernames from teams
+  for (const t of teams) {
+    const place = t?.place;
+    for (const pl of (t?.players || [])) {
+      const id = String(pl?.user_id ?? "");
+      if (!id) continue;
+      placeById[id] = place;
+      fallbackNamesById[id] = pl?.username || fallbackNamesById[id] || "Unknown";
+      participantIds.push(id);
+    }
+  }
+
+  // Elo after + delta from rating_updates (prefer global_all)
+  const ru = pickRatingUpdate(payload);
+  const ratingById = {};
+  for (const entry of (ru?.affected_entries || [])) {
+    const id = String(entry?.user_id ?? "");
+    if (!id) continue;
+    ratingById[id] = {
+      elo: entry?.rating_after,
+      delta: entry?.rating_change,
+      username: entry?.username
+    };
+  }
+
+  const rows = participantIds.map(id => {
+    const r = ratingById[id] || {};
+    return {
+      id,
+      place: placeById[id],
+      elo: (r.elo == null ? null : Math.round(r.elo)),
+      delta: (r.delta == null ? null : Math.round(r.delta)),
+      fallbackName: fallbackNamesById[id] || r.username || "Unknown"
+    };
+  });
+
+  rows.sort((a, b) => {
+    const pa = (a.place ?? 9999);
+    const pb = (b.place ?? 9999);
+    if (pa !== pb) return pa - pb;
+    return String(a.fallbackName).localeCompare(String(b.fallbackName));
+  });
+
+  return { rows, fallbackNamesById };
+}
+
+function hashEvent(evt) {
+  const matchId = evt?.payload?.match?.match_id || "";
+  const { rows } = extractParticipantsFromEvent(evt);
+  return matchId + "|" + rows.map(r => `${r.id}:${r.place}:${r.elo}:${r.delta}`).join("|");
 }
 
 function buildRanksFromLeaderboard(leaderboard) {
@@ -314,7 +392,12 @@ function displaySnapshot(players) {
       p.place === 3 ? "bronze" :
       "";
 
-    const name = players[p.id]?.display_name || "Unknown";
+    // Prefer display_name from snapshot resolved.players; fall back to team username
+    const name =
+      resolvedPlayersCache[idKey]?.display_name ||
+      players[idKey]?.display_name ||
+      fallbackNamesCache[idKey] ||
+      "Unknown";
 
     const elo = Math.round(p.elo ?? 0);
     const eloDisplay = elo === 0 ? "-" : elo; // 0 Elo → "-"
@@ -352,95 +435,131 @@ function displaySnapshot(players) {
   resizeCard(rows.length);
 }
 
+async function fetchSnapshot(leaderboardId) {
+  const body = {
+    client_id: CLIENT_ID,
+
+    // Prefer the actual leaderboard_id coming from recent changes ("Season_10" in your snippet)
+    leaderboard_id: leaderboardId,
+
+    // Keep compatibility with older naming patterns too
+    leaderboard: (leaderboardId || "").toLowerCase(),
+
+    // Keep rank baseline consistent with Elo/delta source
+    rating_type: "player_global_all"
+  };
+
+  const resp = await fetch(SNAP_URL, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(body)
+  });
+
+  if (!resp.ok) throw new Error(`Snapshot HTTP ${resp.status}`);
+  const data = await resp.json();
+
+  // resolved.players -> display_name mapping
+  resolvedPlayersCache = data?.resolved?.players || resolvedPlayersCache || {};
+
+  // leaderboard array location can vary; tolerate a couple shapes
+  const leaderboard =
+    data?.leaderboard ||
+    data?.payload?.leaderboard ||
+    data?.snapshot?.leaderboard ||
+    data?.data?.leaderboard ||
+    [];
+
+  return { leaderboard };
+}
+
 async function fetchData() {
   const myRequestId = ++requestCounter;
 
   try {
-    // 1) Poll rating history every 15s
-    const historyResp = await fetch(API_URL, {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({
-        player_id: PLAYER_ID,
-        client_id: CLIENT_ID,
-        limit: 10
-      })
-    });
-    const historyData = await historyResp.json();
+    // 1) Poll recent changes every 15s
+    const recentUrl = new URL(RECENT_URL);
+    recentUrl.searchParams.set("client_id", CLIENT_ID);
+    recentUrl.searchParams.set("limit", "10");
+    recentUrl.searchParams.set("_ts", String(Date.now())); // avoid edge cache stickiness
+
+    const recentResp = await fetch(recentUrl.toString(), { method: "GET" });
+    if (!recentResp.ok) throw new Error(`Recent HTTP ${recentResp.status}`);
+    const recentData = await recentResp.json();
     if (myRequestId !== requestCounter) return;
 
-    const players = historyData.resolved?.players || {};
-    const matches = historyData.matches || [];
+    const events = normalizeEvents(recentData)
+      .filter(e => e?.payload?.match && e?.payload?.rating_updates);
 
-    const sortedMatches = [...matches].sort((a, b) => b.ts - a.ts);
+    const sortedEvents = [...events].sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0));
 
-    const globalLatest = sortedMatches[0] || null;
-    const globalLatestHash = globalLatest ? hashMatch(globalLatest) : null;
+    const globalLatest = sortedEvents[0] || null;
+    const globalLatestHash = globalLatest ? hashEvent(globalLatest) : null;
 
-    const latestMatchForPlayer = sortedMatches.find(m =>
-      m.ratingResults.some(r =>
-        r.newRatings.some(p => String(p.id) === String(PLAYER_ID))
-      )
-    ) || null;
+    const latestEventForPlayer = sortedEvents.find(evt => {
+      const teams = evt?.payload?.match?.teams || [];
+      return teams.some(t => (t?.players || []).some(p => String(p?.user_id) === String(PLAYER_ID)));
+    }) || null;
 
-    const latestMatchHash = latestMatchForPlayer
-      ? hashMatch(latestMatchForPlayer)
-      : null;
+    const latestPlayerHash = latestEventForPlayer ? hashEvent(latestEventForPlayer) : null;
 
     const hasSnapshot = !!snapshotMatch;
 
     const globalLatestInvolvesPlayer = globalLatest
-      ? globalLatest.ratingResults.some(r =>
-          r.newRatings.some(p => String(p.id) === String(PLAYER_ID))
-        )
+      ? (() => {
+          const teams = globalLatest?.payload?.match?.teams || [];
+          return teams.some(t => (t?.players || []).some(p => String(p?.user_id) === String(PLAYER_ID)));
+        })()
       : false;
 
     const haveNewGlobalMatch =
       globalLatestHash && globalLatestHash !== lastGlobalMatchHash;
 
     const playerHasNewerMatchThanSnapshot =
-      latestMatchForPlayer &&
-      (!hasSnapshot || latestMatchHash !== snapshotMatchHash);
+      latestEventForPlayer &&
+      (!hasSnapshot || latestPlayerHash !== snapshotMatchHash);
 
-    // IMPORTANT: fetch leaderboard at least once (baseline),
-    // and thereafter whenever global or player state moves forward.
+    // Need leaderboard snapshot:
+    // - first baseline
+    // - any new global match (baseline may move)
+    // - player has a new match to snapshot (need synced leaderboard to freeze ranks)
     const needInitialBaseline = Object.keys(previousRanks).length === 0;
-    const needLeaderboard =
+    const needSnapshot =
       needInitialBaseline || haveNewGlobalMatch || playerHasNewerMatchThanSnapshot;
 
-    if (needLeaderboard) {
-      const lbResp = await fetch(LB_URL, {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-          leaderboard: "season_10",
-          rating_type: "player_global_all",
-          client_id: CLIENT_ID
-        })
-      });
-      const lbData = await lbResp.json();
+    let currentRanks = null;
+    let leaderboardElos = null;
+
+    // Choose leaderboard_id from newest available event
+    const inferredLeaderboardId =
+      latestEventForPlayer?.payload?.leaderboard?.leaderboard_id ||
+      globalLatest?.payload?.leaderboard?.leaderboard_id ||
+      "Season_10";
+
+    if (needSnapshot) {
+      const snap = await fetchSnapshot(inferredLeaderboardId);
       if (myRequestId !== requestCounter) return;
 
-      const leaderboard = lbData.leaderboard || [];
-      const currentRanks = buildRanksFromLeaderboard(leaderboard);
-      const leaderboardElos = buildEloMapFromLeaderboard(leaderboard);
+      const leaderboard = snap.leaderboard || [];
+      currentRanks = buildRanksFromLeaderboard(leaderboard);
+      leaderboardElos = buildEloMapFromLeaderboard(leaderboard);
 
       // (A) Initialize baseline if we didn't have one yet
       if (needInitialBaseline && Object.keys(currentRanks).length > 0) {
         previousRanks = currentRanks;
-        if (globalLatestHash) {
-          lastGlobalMatchHash = globalLatestHash;
-        }
+        if (globalLatestHash) lastGlobalMatchHash = globalLatestHash;
       }
 
-      // (B) If player has a newer match than current snapshot, try to process it
-      if (latestMatchForPlayer && playerHasNewerMatchThanSnapshot) {
-        const participants = latestMatchForPlayer.ratingResults[0].newRatings;
+      // (B) If player has a newer match than snapshot, try to process it
+      if (latestEventForPlayer && playerHasNewerMatchThanSnapshot) {
+        const { rows: participants, fallbackNamesById } = extractParticipantsFromEvent(latestEventForPlayer);
 
-        // Check Elo sync (±1 tolerance)
+        // Cache fallback names (team usernames) for display fallback
+        fallbackNamesCache = fallbackNamesById || fallbackNamesCache;
+
+        // Check Elo sync (±1 tolerance) against current leaderboard
         const leaderboardSynced = participants.every(p => {
           const idKey = String(p.id);
-          const lbElo = leaderboardElos[idKey];
+          const lbElo = leaderboardElos ? leaderboardElos[idKey] : undefined;
           const matchElo = Math.round(p.elo ?? 0);
           if (typeof lbElo !== "number") return false;
           return Math.abs(Math.round(lbElo) - matchElo) <= 1;
@@ -452,7 +571,7 @@ async function fetchData() {
 
           participants.forEach(p => {
             const idKey = String(p.id);
-            const afterRank = currentRanks[idKey];
+            const afterRank = currentRanks ? currentRanks[idKey] : undefined;
 
             if (typeof afterRank === "number") {
               newSnapshotRanks[idKey] = afterRank;
@@ -463,8 +582,7 @@ async function fetchData() {
             let arrow = "";
             let cls = "";
 
-            if (typeof beforeRank === "number" &&
-                typeof afterRank === "number") {
+            if (typeof beforeRank === "number" && typeof afterRank === "number") {
               diff = beforeRank - afterRank; // positive = improved rank
               if (diff > 0) {
                 arrow = "▲";
@@ -478,18 +596,29 @@ async function fetchData() {
             newSnapshotRankDeltas[idKey] = { diff, arrow, class: cls };
           });
 
-          snapshotMatch = latestMatchForPlayer;
-          snapshotMatchHash = latestMatchHash;
+          // Store snapshot in the same shape your renderer expects
+          snapshotMatch = {
+            ratingResults: [
+              {
+                newRatings: participants.map(p => ({
+                  id: p.id,
+                  place: p.place,
+                  elo: p.elo,
+                  delta: p.delta
+                }))
+              }
+            ]
+          };
+
+          snapshotMatchHash = latestPlayerHash;
           snapshotRanks = newSnapshotRanks;
           snapshotRankDeltas = newSnapshotRankDeltas;
 
           // Baseline now advances to "after" this match
           previousRanks = currentRanks;
-          if (globalLatestHash) {
-            lastGlobalMatchHash = globalLatestHash;
-          }
+          if (globalLatestHash) lastGlobalMatchHash = globalLatestHash;
         }
-        // If not synced, snapshot stays as-is; we'll try again on next poll.
+        // If not synced, snapshot stays as-is; try again next poll.
       }
 
       // (C) Any new global match not involving our player still advances baseline
@@ -510,9 +639,7 @@ async function fetchData() {
         const elo = Math.round(p.elo ?? 0);
         const delta = Math.round(p.delta ?? 0);
         const rankSnapshot = snapshotRanks[idKey];
-        const rankDisplayed = typeof rankSnapshot === "number"
-          ? rankSnapshot
-          : "—";
+        const rankDisplayed = typeof rankSnapshot === "number" ? rankSnapshot : "—";
         const rd = snapshotRankDeltas[idKey]?.diff ?? 0;
         return `${idKey}:${p.place}:${elo}:${delta}:${rankDisplayed}:${rd}`;
       });
@@ -530,7 +657,9 @@ async function fetchData() {
     setTimeout(() => {
       if (myRequestId !== requestCounter) return;
 
-      displaySnapshot(players);
+      // For backward compatibility: pass a players map (we now prefer resolvedPlayersCache anyway)
+      const playersForRenderer = resolvedPlayersCache || {};
+      displaySnapshot(playersForRenderer);
 
       requestAnimationFrame(() => (resultsListEl.style.opacity = 1));
     }, 300);
