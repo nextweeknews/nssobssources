@@ -358,6 +358,25 @@ function buildEloMapFromLeaderboard(leaderboard) {
   return map;
 }
 
+/**
+ * Returns true if the leaderboard we fetched reflects the "after" Elo state for this event
+ * (±1 tolerance), i.e., it's safe to advance baseline to this snapshot.
+ */
+function isLeaderboardSyncedForEvent(evt, leaderboardElos) {
+  if (!evt || !leaderboardElos) return false;
+
+  const { rows: participants } = extractParticipantsFromEvent(evt);
+
+  return participants.every(p => {
+    const idKey = String(p.id);
+    const lbElo = leaderboardElos[idKey];
+    const matchElo = Math.round(p.elo ?? 0);
+
+    if (typeof lbElo !== "number") return false;
+    return Math.abs(Math.round(lbElo) - matchElo) <= 1;
+  });
+}
+
 function displaySnapshot(players) {
   if (!snapshotMatch) {
     resultsListEl.innerHTML = "<div class='loading'>No match</div>";
@@ -504,13 +523,6 @@ async function fetchData() {
 
     const hasSnapshot = !!snapshotMatch;
 
-    const globalLatestInvolvesPlayer = globalLatest
-      ? (() => {
-          const teams = globalLatest?.payload?.match?.teams || [];
-          return teams.some(t => (t?.players || []).some(p => String(p?.user_id) === String(PLAYER_ID)));
-        })()
-      : false;
-
     const haveNewGlobalMatch =
       globalLatestHash && globalLatestHash !== lastGlobalMatchHash;
 
@@ -543,6 +555,13 @@ async function fetchData() {
       currentRanks = buildRanksFromLeaderboard(leaderboard);
       leaderboardElos = buildEloMapFromLeaderboard(leaderboard);
 
+      // Freeze "before" baseline for THIS poll (prevents mid-function mutation issues)
+      const baselineRanks = previousRanks; // or: { ...previousRanks }
+
+      // Determine if the fetched leaderboard is synced to the newest global match
+      const globalLatestSynced =
+        globalLatest && isLeaderboardSyncedForEvent(globalLatest, leaderboardElos);
+
       // (A) Initialize baseline if we didn't have one yet
       if (needInitialBaseline && Object.keys(currentRanks).length > 0) {
         previousRanks = currentRanks;
@@ -557,7 +576,7 @@ async function fetchData() {
         fallbackNamesCache = fallbackNamesById || fallbackNamesCache;
 
         // Check Elo sync (±1 tolerance) against current leaderboard
-        const leaderboardSynced = participants.every(p => {
+        const leaderboardSyncedForPlayerMatch = participants.every(p => {
           const idKey = String(p.id);
           const lbElo = leaderboardElos ? leaderboardElos[idKey] : undefined;
           const matchElo = Math.round(p.elo ?? 0);
@@ -565,7 +584,7 @@ async function fetchData() {
           return Math.abs(Math.round(lbElo) - matchElo) <= 1;
         });
 
-        if (leaderboardSynced) {
+        if (leaderboardSyncedForPlayerMatch) {
           const newSnapshotRanks = {};
           const newSnapshotRankDeltas = {};
 
@@ -577,7 +596,9 @@ async function fetchData() {
               newSnapshotRanks[idKey] = afterRank;
             }
 
-            const beforeRank = previousRanks[idKey];
+            // IMPORTANT: compare to the frozen baseline, not the mutable previousRanks
+            const beforeRank = baselineRanks[idKey];
+
             let diff = 0;
             let arrow = "";
             let cls = "";
@@ -614,15 +635,15 @@ async function fetchData() {
           snapshotRanks = newSnapshotRanks;
           snapshotRankDeltas = newSnapshotRankDeltas;
 
-          // Baseline now advances to "after" this match
-          previousRanks = currentRanks;
-          if (globalLatestHash) lastGlobalMatchHash = globalLatestHash;
+          // NOTE: Do NOT advance previousRanks here.
+          // We advance baseline only when the newest GLOBAL match is confirmed synced,
+          // so deltas remain incremental and we don't skip states.
         }
         // If not synced, snapshot stays as-is; try again next poll.
       }
 
-      // (C) Any new global match not involving our player still advances baseline
-      if (haveNewGlobalMatch && !globalLatestInvolvesPlayer) {
+      // (C) Advance rolling baseline exactly one step when we KNOW the leaderboard reflects the new global state
+      if (haveNewGlobalMatch && globalLatestSynced) {
         previousRanks = currentRanks;
         lastGlobalMatchHash = globalLatestHash;
       }
@@ -677,5 +698,6 @@ async function poll() {
 
 poll();
 </script>
+
 </body>
 </html>
