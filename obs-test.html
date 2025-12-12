@@ -216,7 +216,7 @@ let lastGlobalMatchHash = "";
 let requestCounter = 0;
 let lastDisplayHash = "";
 
-// Names from leaderboard snapshot
+// Names from leaderboard snapshot: { [user_id]: display_name }
 let nameMap = {};
 
 if (!PLAYER_ID) {
@@ -229,7 +229,6 @@ function resizeCard(count) {
   cardEl.style.height = `${h}px`;
 }
 
-// tolerate array OR wrapper objects
 function extractRecentEvents(data) {
   if (Array.isArray(data)) return data;
   if (Array.isArray(data?.events)) return data.events;
@@ -256,7 +255,6 @@ function buildMatchFromLeaderboardRatingsEvent(evt) {
   const match = payload?.match;
   if (!payload || !match) return null;
 
-  // placements: match.teams[].players[].user_id -> team.place
   const placeById = {};
   (match.teams || []).forEach(team => {
     const place = team?.place ?? 0;
@@ -265,8 +263,6 @@ function buildMatchFromLeaderboardRatingsEvent(evt) {
     });
   });
 
-  // Elo/delta: payload.rating_updates[].affected_entries[]
-  // Prefer player_global_all (matches our leaderboard rank basis)
   const ratingUpdates = payload.rating_updates || [];
   const globalAll =
     ratingUpdates.find(r => r?.rating_type === "player_global_all") ||
@@ -344,14 +340,42 @@ function buildEloMapFromLeaderboard(leaderboard) {
   return map;
 }
 
-function buildNameMapFromLeaderboard(leaderboard) {
+// ✅ NEW: build nameMap from the players metadata map in /get_leaderboard_snapshot
+function buildNameMapFromLeaderboardSnapshot(lbData) {
   const map = {};
-  (leaderboard || []).forEach(p => {
+
+  // Common places this might live
+  const playersMap =
+    lbData?.resolved?.players ??
+    lbData?.players ??
+    lbData?.resolvedPlayers ??
+    null;
+
+  if (playersMap && typeof playersMap === "object" && !Array.isArray(playersMap)) {
+    Object.entries(playersMap).forEach(([key, obj]) => {
+      const idKey = String(obj?.id ?? key);
+      const name =
+        obj?.display_name ??
+        obj?.connection_discord?.username ??
+        obj?.username ??
+        null;
+
+      if (idKey && name) map[idKey] = String(name);
+    });
+  }
+
+  // Fallback: if leaderboard entries themselves contain names
+  const leaderboardArr = lbData?.leaderboard || [];
+  (leaderboardArr || []).forEach(p => {
     const id = p.team?.[0];
     if (id == null) return;
+    const idKey = String(id);
+    if (map[idKey]) return;
+
     const name = p.display_name ?? p.displayName ?? p.username ?? p.name ?? null;
-    if (name) map[String(id)] = String(name);
+    if (name) map[idKey] = String(name);
   });
+
   return map;
 }
 
@@ -466,7 +490,7 @@ async function fetchData() {
   const myRequestId = ++requestCounter;
 
   try {
-    // 1) GET recent changes (rolling list of last 10)
+    // 1) GET recent changes
     const changesResp = await fetch(buildRecentChangesUrl(), { method: "GET" });
     const changesRaw = await changesResp.json();
     if (myRequestId !== requestCounter) return;
@@ -522,18 +546,18 @@ async function fetchData() {
       const lbData = await lbResp.json();
       if (myRequestId !== requestCounter) return;
 
-      const leaderboard = lbData.leaderboard || [];
-      const currentRanks = buildRanksFromLeaderboard(leaderboard);
-      const leaderboardElos = buildEloMapFromLeaderboard(leaderboard);
-      nameMap = buildNameMapFromLeaderboard(leaderboard);
+      const leaderboardArr = lbData.leaderboard || [];
+      const currentRanks = buildRanksFromLeaderboard(leaderboardArr);
+      const leaderboardElos = buildEloMapFromLeaderboard(leaderboardArr);
 
-      // baseline init
+      // ✅ This is the important line for names:
+      nameMap = buildNameMapFromLeaderboardSnapshot(lbData);
+
       if (needInitialBaseline && Object.keys(currentRanks).length > 0) {
         previousRanks = currentRanks;
         if (globalLatestHash) lastGlobalMatchHash = globalLatestHash;
       }
 
-      // If player has a new match, ALWAYS snapshot it for display
       if (latestMatchForPlayer && playerHasNewerMatchThanSnapshot) {
         const participants = getNewRatings(latestMatchForPlayer);
 
@@ -542,7 +566,6 @@ async function fetchData() {
         snapshotMatch = latestMatchForPlayer;
         snapshotMatchHash = latestMatchHash;
 
-        // Only advance baseline when LB Elo matches match Elo (±1)
         const leaderboardSynced = participants.length > 0 && participants.every(p => {
           const idKey = String(p.id);
           const lbElo = leaderboardElos[idKey];
@@ -557,13 +580,11 @@ async function fetchData() {
         }
       }
 
-      // Any new global match not involving our player still advances baseline
       if (haveNewGlobalMatch && !globalLatestInvolvesPlayer) {
         previousRanks = currentRanks;
         lastGlobalMatchHash = globalLatestHash;
       }
     } else {
-      // No LB fetch this cycle: still show something if we have it
       if (!snapshotMatch && latestMatchForPlayer) {
         snapshotMatch = latestMatchForPlayer;
         snapshotMatchHash = latestMatchHash;
