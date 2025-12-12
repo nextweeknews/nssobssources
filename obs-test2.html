@@ -1,373 +1,277 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Season 10 Rankings</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Elo Rating</title>
 
-  <style>
-    html, body {
-      margin: 0; padding: 0;
-      width: 100%; height: 100%;
-      background: transparent;
-      font-family: Inter, system-ui, sans-serif;
-      display: flex; justify-content: center; align-items: center;
-      overflow: hidden;
-    }
+<style>
+html, body {
+  height:100%;
+  margin:0;
+  background: transparent;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  overflow: hidden;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
 
-    .card {
-      width: 1100px;
-      height: 880px;
-      background: rgba(15,23,42,1);
-      border-radius: 20px;
-      padding: 32px 40px;
-      display: flex;
-      flex-direction: column;
-      color: #e9eef8;
-      box-shadow: 0 32px 32px rgba(0,0,0,0.65);
-      box-sizing: border-box;
-    }
+.card {
+  width:640px;
+  height:240px;
+  background: rgba(28,28,28,0.95);
+  border-radius:24px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  text-align:center;
+  color: #e9eef8;
+}
 
-    .title {
-      font-size: 46px;
-      font-weight: 900;
-      color: #c7d7ff;
-      text-align: center;
-      margin-bottom: 16px;
-      text-transform: uppercase;
-      letter-spacing: .035em;
-      flex-shrink: 0;
-    }
+.label {
+  font-size:56px;
+  color:#bcd4ff;
+  font-weight:600;
+  margin-bottom: 8px;
+}
 
-    .header-row, .entry {
-      display: grid;
-      /* 6 columns: Rank, Player, Elo, Wins, Win Rate, Top 3 Rate */
-      grid-template-columns: 120px 1fr 130px 100px 120px 120px;
-      align-items: center;
-    }
+.rating-container {
+  position: relative;
+  height: 120px;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
 
-    .header-row {
-      height: 46px;
-      margin-bottom: 10px;
-      background: rgba(148,163,184,0.12);
-      border-radius: 10px;
-      font-size: 20px;
-      font-weight: 700;
-      text-transform: uppercase;
-      color: #9ca3c7;
-      flex-shrink: 0;
-    }
+.rating {
+  font-size:120px;
+  font-weight:700;
+  color:#ffffff;
+  position: relative;
+  z-index:1;
+  display:flex;
+  align-items:center;
+}
 
-    #resultsList {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      flex-shrink: 1;
-      transition: opacity .3s ease, gap .3s ease;
-      overflow: hidden;
-    }
+.rating-number {
+  transition: opacity 0.5s ease;
+}
 
-    .entry {
-      height: 56px;
-      background: rgba(255,255,255,0.06);
-      border-radius: 10px;
-      font-size: 24px;
-      font-weight: 600;
-      transition: background .25s ease, box-shadow .25s ease;
-    }
+.delta {
+  position: absolute;
+  top: 50%;
+  font-size:56px;
+  font-weight:600;
+  opacity:0;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
 
-    /* --- Unified Cell Styling Fix --- */
-    .header-row span {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0 12px;
-      box-sizing: border-box;
-      border-right: 2px solid rgba(255,255,255,0);
-      height: 20px;
-      right: -1
-    }
-    .entry > span {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0 12px;
-      box-sizing: border-box;
-      border-right: 2px solid rgba(255,255,255,0.12);
-      height: 28px;
-      right: -1
-    }
+.delta-arrow {
+  font-size: 0.6em;
+  margin-right: 4px;
+  line-height: 1;
+  display: inline-block;
+}
 
-    /* Player name alignment */
-    .header-row span:nth-child(2),
-    .entry > span:nth-child(2) {
-      justify-content: flex-start;
-      padding-left: 24px;
-    }
-
-    /* Remove border on last column */
-    .header-row span:last-child,
-    .entry > span:last-child {
-      border-right: none;
-    }
-
-    .place {
-      font-size: 24px;
-      font-weight: 750;
-      text-align: center;
-      color: #c7d7ff;
-    }
-
-    .player-name {
-      font-size: 20px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .elo-col {
-      font-size: 24px;
-      font-weight: 750;
-      text-align: center;
-      color: #ffffff;
-    }
-
-    .wins-col {
-      font-size: 20px;
-      font-weight: 500;
-      text-align: center;
-      color: #c7d7ff;
-    }
-
-    .wr-col {
-      font-size: 20px;
-      font-weight: 500;
-      text-align: center;
-      color: #d3d3d3;
-    }
-
-    .gold { color: #ffd700; }
-    .silver { color: #c0c0c0; }
-    .bronze { color: #cd7f32; }
-
-    .entry.highlight-gold     { background: rgba(255,215,0,0.18); }
-    .entry.highlight-silver   { background: rgba(192,192,192,0.18); }
-    .entry.highlight-bronze   { background: rgba(205,127,50,0.18); }
-    .entry.highlight-default  { background: rgba(52,211,153,0.20); }
-
-    .loading, .error {
-      width: 100%;
-      text-align: center;
-      font-size: 28px;
-    }
-  </style>
+.delta-positive { color: #4ade80; }
+.delta-negative { color: #f87171; }
+</style>
 </head>
 
 <body>
-<div class="card" id="card">
-  <div class="title">Season 10 Rankings</div>
-
-  <div class="header-row">
-    <span>Rank</span>
-    <span>Player</span>
-    <span>Elo</span>
-    <span>Wins</span>
-    <span>Win %</span>
-    <span>Top 3 %</span>
-  </div>
-
-  <div id="resultsList">
-    <div class="loading">Loading…</div>
+<div class="card">
+  <div class="label">ELO</div>
+  <div class="rating-container">
+    <div id="rating" class="rating">
+      <span id="ratingNumber" class="rating-number">—</span>
+    </div>
+    <div id="delta" class="delta">
+      <span class="delta-arrow"></span>
+      <span class="delta-number"></span>
+    </div>
   </div>
 </div>
 
 <script>
-const LB_URL="https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard";
-const CLIENT_ID="DISCORD|1069003073311211601";
-const REFRESH_MS=15000;
-const PLAYER_ID=new URLSearchParams(location.search).get("player_id");
+// UPDATED: snapshot endpoint
+const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard_snapshot";
 
-const ROW_H=56;
-const TITLE_H=46+16;
-const HEADER_H=46+10;
-const CARD_H=880;
+const DEFAULT_PLAYER_ID = "702730732220579950";
+const REFRESH_MS = 15000;
 
-let lastState=null;
+const ratingNumberEl = document.getElementById("ratingNumber");
+const deltaEl = document.getElementById("delta");
+const arrowEl = deltaEl.querySelector(".delta-arrow");
+const numberEl = deltaEl.querySelector(".delta-number");
 
-/* ---- Color + Threshold Config (easy to tweak) ---- */
-const COLOR_RED    = "#f87171";
-const COLOR_YELLOW = "#facc15";
-const COLOR_GREEN  = "#4ade80";
+let lastRating = null;
+let deltaTimeout = null;
 
-// Win Rate thresholds
-const WIN_LOW  = 10;
-const WIN_MID  = 25;
-const WIN_HIGH = 40;
+function updateDeltaPosition() {
+  const width = ratingNumberEl.offsetWidth;
+  deltaEl.style.left = (width + 16) + "px";
+}
 
-// Top 3 Rate thresholds
-const TOP3_LOW  = 50;
-const TOP3_MID  = 70;
-const TOP3_HIGH = 90;
+function setRating(value) {
+  // allow null/undefined -> show dash
+  const display = (typeof value === "number") ? value : "—";
 
-/* Generic gradient function shared by both stats */
-function getGradientColor(rate, low, mid, high) {
-  if (rate == null) return "#d3d3d3";
-  if (rate <= low) return COLOR_RED;
-  if (rate >= high) return COLOR_GREEN;
-
-  if (rate < mid) {
-    const t = (rate - low) / (mid - low);       // low -> mid: red -> yellow
-    return interpolateColor(COLOR_RED, COLOR_YELLOW, t);
-  } else {
-    const t = (rate - mid) / (high - mid);      // mid -> high: yellow -> green
-    return interpolateColor(COLOR_YELLOW, COLOR_GREEN, t);
+  if (lastRating === null) {
+    ratingNumberEl.textContent = display;
+    ratingNumberEl.style.opacity = "1";
+    updateDeltaPosition();
+    lastRating = (typeof value === "number") ? value : null;
+    return;
   }
+
+  // if we didn't get a number this refresh, don't animate delta
+  if (typeof value !== "number") {
+    ratingNumberEl.textContent = "—";
+    updateDeltaPosition();
+    lastRating = null;
+    return;
+  }
+
+  if (value === lastRating) return;
+
+  ratingNumberEl.style.opacity = "0";
+
+  setTimeout(() => {
+    ratingNumberEl.textContent = value;
+    ratingNumberEl.style.opacity = "1";
+
+    updateDeltaPosition();
+    showDelta(lastRating, value);
+
+    lastRating = value;
+  }, 500);
 }
 
-function getWinRateColor(rate) {
-  return getGradientColor(rate, WIN_LOW, WIN_MID, WIN_HIGH);
+function showDelta(oldValue, newValue) {
+  const diff = newValue - oldValue;
+  if (diff === 0 || oldValue === null) return;
+
+  arrowEl.textContent = diff > 0 ? '▲' : '▼';
+  numberEl.textContent = Math.abs(diff);
+  deltaEl.classList.remove('delta-positive','delta-negative');
+  deltaEl.classList.add(diff > 0 ? 'delta-positive' : 'delta-negative');
+
+  deltaEl.style.transition = "none";
+  deltaEl.style.transform = "translateY(-50%) translateX(20px)";
+  deltaEl.style.opacity = "0";
+  deltaEl.offsetWidth;
+
+  deltaEl.style.transition = "opacity 0.5s ease, transform 0.5s ease";
+  deltaEl.style.transform = "translateY(-50%) translateX(0)";
+  deltaEl.style.opacity = "1";
+
+  if (deltaTimeout) clearTimeout(deltaTimeout);
+  deltaTimeout = setTimeout(() => {
+    deltaEl.style.transform = "translateY(-50%) translateX(20px)";
+    deltaEl.style.opacity = "0";
+  }, 10000);
 }
 
-function getTop3RateColor(rate) {
-  return getGradientColor(rate, TOP3_LOW, TOP3_MID, TOP3_HIGH);
+function setLoading() {
+  if (lastRating === null) ratingNumberEl.textContent = "—";
+}
+function setError(msg) {
+  ratingNumberEl.textContent = "—";
+  console.error(msg);
 }
 
-function interpolateColor(c1, c2, t) {
-  const a = parseInt(c1.slice(1), 16),
-        b = parseInt(c2.slice(1), 16);
-
-  const ar = (a >> 16) & 0xff,
-        ag = (a >> 8) & 0xff,
-        ab = a & 0xff;
-
-  const br = (b >> 16) & 0xff,
-        bg = (b >> 8) & 0xff,
-        bb = b & 0xff;
-
-  const rr = Math.round(ar + t * (br - ar)),
-        rg = Math.round(ag + t * (bg - ag)),
-        rb = Math.round(ab + t * (bb - ab));
-
-  return `rgb(${rr},${rg},${rb})`;
+function getPlayerId() {
+  const params = new URLSearchParams(location.search);
+  return params.get("player_id") || DEFAULT_PLAYER_ID;
 }
 
-function adjustSpacing(rowCount){
-  const content=rowCount*ROW_H;
-  const remain=CARD_H - TITLE_H - HEADER_H - content;
-  const gaps=Math.max(0,rowCount-1);
-  const gap=Math.max(4,(remain*0.33)/gaps);
-  const pad=(remain-(gap*gaps))/2;
+// Try to locate the array of leaderboard entries no matter how the worker wraps it
+function extractEntries(snapshotJson) {
+  if (Array.isArray(snapshotJson)) return snapshotJson;
 
-  resultsList.style.gap=`${gap}px`;
-  card.style.paddingTop=`${32+pad}px`;
-  card.style.paddingBottom=`${40+pad}px`;
+  const candidates = [
+    snapshotJson?.entries,
+    snapshotJson?.leaderboard,
+    snapshotJson?.snapshot,
+    snapshotJson?.data,
+    snapshotJson?.result,
+    snapshotJson?.items
+  ];
+
+  for (const c of candidates) {
+    if (Array.isArray(c)) return c;
+  }
+
+  // sometimes workers return an object keyed by id -> entry
+  if (snapshotJson && typeof snapshotJson === "object") {
+    const vals = Object.values(snapshotJson);
+    if (vals.length && vals.every(v => v && typeof v === "object")) return vals;
+  }
+
+  return [];
 }
 
-function render(list){
-  const el=document.getElementById("resultsList");
-  el.innerHTML="";
-
-  list.forEach(p=>{
-    const r=document.createElement("div");
-    r.className="entry";
-
-    const clr=p.rank===1?"gold":p.rank===2?"silver":p.rank===3?"bronze":"";
-
-    if(String(p.id)===String(PLAYER_ID)){
-      r.classList.add(
-        p.rank===1?"highlight-gold":
-        p.rank===2?"highlight-silver":
-        p.rank===3?"highlight-bronze":
-        "highlight-default"
-      );
-    }
-
-    r.innerHTML=`
-      <span class="place ${clr}">${p.rank}</span>
-      <span class="player-name">${p.name}</span>
-      <span class="elo-col">${p.elo}</span>
-      <span class="wins-col">${p.wins}</span>
-      <span class="wr-col" style="color:${getWinRateColor(p.winRate)}">
-        ${p.winRate != null ? p.winRate.toFixed(1) + "%" : "—"}
-      </span>
-      <span class="wr-col" style="color:${getTop3RateColor(p.top3Rate)}">
-        ${p.top3Rate != null ? p.top3Rate.toFixed(1) + "%" : "—"}
-      </span>
-    `;
-
-    el.appendChild(r);
-  });
-
-  adjustSpacing(list.length);
-}
-
-function normalize(list,res){
-  return list.map((e,i)=>{
-    const id=e.team[0];
-    const rp=res[id]||{};
-    const wins=e.count_placement_1??0;
-    const m=e.matches??0;
-
-    const top1 = e.count_placement_1 ?? 0;
-    const top2 = e.count_placement_2 ?? 0;
-    const top3 = e.count_placement_3 ?? 0;
-    const totalTop3 = top1 + top2 + top3;
-
-    return {
-      rank:i+1,
-      id,
-      name:rp.display_name || rp.username || `Player ${id}`,
-      elo:Math.round(e.elo??0.0),
-      wins,
-      winRate:m>0?((wins/m)*100):null,
-      top3Rate:m>0?((totalTop3/m)*100):null
-    };
+function findPlayerEntry(entries, playerId) {
+  const pid = String(playerId);
+  // Example: entry.team is an array of strings: ["1331010..."]
+  return entries.find(e => {
+    const team = e?.team;
+    if (Array.isArray(team)) return team.map(String).includes(pid);
+    // fallback: sometimes a single string
+    if (typeof team === "string") return team === pid;
+    return false;
   });
 }
 
-function pickSlice(list){
-  const idx=list.findIndex(p=>String(p.id)===PLAYER_ID);
-  if(idx<0) return list.slice(0,16);
-  if(list[idx].rank<=16) return list.slice(0,16);
-  const start=Math.min(Math.max(idx-Math.floor(15/2),0), list.length-15);
-  return list.slice(start,start+15);
-}
+async function fetchLeaderboardSnapshot() {
+  // Snapshot endpoints are often GET; fallback to POST if needed.
+  let resp = await fetch(WORKER_URL, { method: "GET" });
 
-async function update(){
-  try{
-    const r=await fetch(LB_URL,{
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body:JSON.stringify({
-        leaderboard:"season_10",
-        rating_type:"player_global_all",
-        client_id:CLIENT_ID
-      })
+  if (!resp.ok && (resp.status === 405 || resp.status === 400)) {
+    resp = await fetch(WORKER_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}"
     });
-    const d=await r.json();
+  }
 
-    const sorted=[...d.leaderboard].sort((a,b)=>(b.elo??0)-(a.elo??0));
-    const mapped=normalize(sorted, d.resolved?.players||{});
-    const view=pickSlice(mapped);
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
+  return resp.json();
+}
 
-    if(!lastState || JSON.stringify(view)!==JSON.stringify(lastState)){
-      const el=document.getElementById("resultsList");
-      el.style.opacity="0";
-      setTimeout(()=>{
-        render(view);
-        lastState=view;
-        requestAnimationFrame(()=>el.style.opacity="1");
-      },250);
-    }
+async function fetchRating(playerId) {
+  setLoading();
+  try {
+    const snapshot = await fetchLeaderboardSnapshot();
+    const entries = extractEntries(snapshot);
+    const entry = findPlayerEntry(entries, playerId);
 
-  }catch(err){
-    document.getElementById("resultsList").innerHTML=
-      `<div class="error">${err.message}</div>`;
+    if (!entry) throw new Error(`Player ${playerId} not found in snapshot`);
+    if (typeof entry.elo !== "number") throw new Error(`Missing numeric 'elo' for player ${playerId}`);
+
+    setRating(entry.elo);
+  } catch (err) {
+    setError(err.message || String(err));
   }
 }
 
-update();
-setInterval(update,REFRESH_MS);
+let intervalHandle = null;
+function startAutoRefresh() {
+  const pid = getPlayerId();
+  fetchRating(pid);
+  if (intervalHandle) clearInterval(intervalHandle);
+  intervalHandle = setInterval(() => fetchRating(pid), REFRESH_MS);
+}
+
+window.addEventListener("load", startAutoRefresh);
+window.addEventListener("resize", updateDeltaPosition);
 </script>
 </body>
 </html>
