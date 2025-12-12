@@ -64,14 +64,6 @@
       padding-left: 36px;
     }
 
-    .header-row > span {
-      border-right: 2px solid rgba(255,255,255,0);
-    }
-
-    .header-row > span:last-child {
-      border-right: none;
-    }
-
     #resultsList {
       display: flex;
       flex-direction: column;
@@ -178,14 +170,8 @@
     }
 
     @keyframes pulseDelta {
-      0%, 100% {
-        transform: scale(1);
-        opacity: 1;
-      }
-      50% {
-        transform: scale(1);
-        opacity: 0.7;
-      }
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1); opacity: 0.7; }
     }
   </style>
 </head>
@@ -219,26 +205,19 @@ const resultsListEl = document.getElementById("resultsList");
 const PLAYER_ID = new URLSearchParams(location.search).get("player_id");
 
 let initialLoad = true;
-
-// Global baseline ranks from last processed leaderboard
 let previousRanks = {};
 
-// Snapshot for the last fully-processed match of the tracked player
 let snapshotMatch = null;
 let snapshotMatchHash = "";
-let snapshotRanks = {};       // { [id]: rankAfterMatch }
-let snapshotRankDeltas = {};  // { [id]: { diff, arrow, class } }
+let snapshotRanks = {};
+let snapshotRankDeltas = {};
 
-// Latest global match we've baseline'd
 let lastGlobalMatchHash = "";
-
-// Async guard
 let requestCounter = 0;
-// To avoid unnecessary DOM work
 let lastDisplayHash = "";
 
 // Names from leaderboard snapshot
-let nameMap = {}; // { [user_id]: displayName }
+let nameMap = {};
 
 if (!PLAYER_ID) {
   resultsListEl.innerHTML = "<div class='error'>Missing player_id</div>";
@@ -250,21 +229,22 @@ function resizeCard(count) {
   cardEl.style.height = `${h}px`;
 }
 
+// tolerate array OR wrapper objects
 function extractRecentEvents(data) {
-  // Worker returns rolling list of last 10 events (but tolerate wrapper)
   if (Array.isArray(data)) return data;
   if (Array.isArray(data?.events)) return data.events;
+  if (Array.isArray(data?.matches)) return data.matches;
+  if (Array.isArray(data?.items)) return data.items;
+  if (Array.isArray(data?.changes)) return data.changes;
   return [];
 }
 
 function getEventTsMs(evt) {
-  // sample: evt.timestamp is unix seconds
   if (typeof evt?.timestamp === "number") return evt.timestamp * 1000;
 
   const iso =
     evt?.payload?.timestamp ??
     evt?.payload?.match?.recorded_at ??
-    evt?.payload?.match?.recordedAt ??
     null;
 
   const n = typeof iso === "string" ? Date.parse(iso) : Number(iso);
@@ -286,7 +266,7 @@ function buildMatchFromLeaderboardRatingsEvent(evt) {
   });
 
   // Elo/delta: payload.rating_updates[].affected_entries[]
-  // Prefer player_global_all because your rank basis is global_all leaderboard snapshot
+  // Prefer player_global_all (matches our leaderboard rank basis)
   const ratingUpdates = payload.rating_updates || [];
   const globalAll =
     ratingUpdates.find(r => r?.rating_type === "player_global_all") ||
@@ -302,8 +282,6 @@ function buildMatchFromLeaderboardRatingsEvent(evt) {
     const idKey = String(a.user_id);
     eloById[idKey] = Math.round(a.rating_after ?? 0);
     deltaById[idKey] = Math.round(a.rating_change ?? 0);
-
-    // ensure we include participant even if place missing
     if (!(idKey in placeById)) placeById[idKey] = 0;
   });
 
@@ -329,18 +307,18 @@ function buildMatchFromLeaderboardRatingsEvent(evt) {
   };
 }
 
-function getNewRatings(matchObj) {
-  return matchObj?.ratingResults?.[0]?.newRatings || [];
+function getNewRatings(m) {
+  return m?.ratingResults?.[0]?.newRatings || [];
 }
 
-function hashMatch(matchObj) {
-  return getNewRatings(matchObj)
+function hashMatch(m) {
+  return getNewRatings(m)
     .map(p => `${p.id}:${p.place}:${Math.round(p.elo ?? 0)}:${Math.round(p.delta ?? 0)}`)
     .join("|");
 }
 
-function matchInvolvesPlayer(matchObj, playerId) {
-  return getNewRatings(matchObj).some(p => String(p.id) === String(playerId));
+function matchInvolvesPlayer(m, playerId) {
+  return getNewRatings(m).some(p => String(p.id) === String(playerId));
 }
 
 function buildRanksFromLeaderboard(leaderboard) {
@@ -352,10 +330,8 @@ function buildRanksFromLeaderboard(leaderboard) {
       return { id: String(id), elo: p.elo ?? 0 };
     })
     .filter(Boolean)
-    .sort((a, b) => (b.elo ?? 0) - (a.elo ?? 0)) // highest elo = rank 1
-    .forEach((p, i) => {
-      ranks[p.id] = i + 1;
-    });
+    .sort((a, b) => (b.elo ?? 0) - (a.elo ?? 0))
+    .forEach((p, i) => { ranks[p.id] = i + 1; });
   return ranks;
 }
 
@@ -363,9 +339,7 @@ function buildEloMapFromLeaderboard(leaderboard) {
   const map = {};
   (leaderboard || []).forEach(p => {
     const id = p.team?.[0];
-    if (id != null) {
-      map[String(id)] = p.elo ?? 0;
-    }
+    if (id != null) map[String(id)] = p.elo ?? 0;
   });
   return map;
 }
@@ -375,17 +349,36 @@ function buildNameMapFromLeaderboard(leaderboard) {
   (leaderboard || []).forEach(p => {
     const id = p.team?.[0];
     if (id == null) return;
-
-    const name =
-      p.display_name ??
-      p.displayName ??
-      p.username ??
-      p.name ??
-      null;
-
+    const name = p.display_name ?? p.displayName ?? p.username ?? p.name ?? null;
     if (name) map[String(id)] = String(name);
   });
   return map;
+}
+
+function computeSnapshotRanksAndDeltas(participants, currentRanks) {
+  const newSnapshotRanks = {};
+  const newSnapshotRankDeltas = {};
+
+  participants.forEach(p => {
+    const idKey = String(p.id);
+    const afterRank = currentRanks[idKey];
+
+    if (typeof afterRank === "number") newSnapshotRanks[idKey] = afterRank;
+
+    const beforeRank = previousRanks[idKey];
+    let diff = 0, arrow = "", cls = "";
+
+    if (typeof beforeRank === "number" && typeof afterRank === "number") {
+      diff = beforeRank - afterRank;
+      if (diff > 0) { arrow = "▲"; cls = "delta-positive"; }
+      else if (diff < 0) { arrow = "▼"; cls = "delta-negative"; }
+    }
+
+    newSnapshotRankDeltas[idKey] = { diff, arrow, class: cls };
+  });
+
+  snapshotRanks = newSnapshotRanks;
+  snapshotRankDeltas = newSnapshotRankDeltas;
 }
 
 function displaySnapshot() {
@@ -419,8 +412,7 @@ function displaySnapshot() {
     const placeClass =
       p.place === 1 ? "gold" :
       p.place === 2 ? "silver" :
-      p.place === 3 ? "bronze" :
-      "";
+      p.place === 3 ? "bronze" : "";
 
     const name = nameMap[idKey] || "Unknown";
 
@@ -462,21 +454,20 @@ function displaySnapshot() {
   resizeCard(rows.length);
 }
 
+function buildRecentChangesUrl() {
+  const u = new URL(API_URL);
+  u.searchParams.set("player_id", PLAYER_ID);
+  u.searchParams.set("client_id", CLIENT_ID);
+  u.searchParams.set("limit", "10");
+  return u.toString();
+}
+
 async function fetchData() {
   const myRequestId = ++requestCounter;
 
   try {
-    // 1) Poll recent changes (rolling list of last 10 events)
-    const changesResp = await fetch(API_URL, {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({
-        player_id: PLAYER_ID,
-        client_id: CLIENT_ID,
-        limit: 10
-      })
-    });
-
+    // 1) GET recent changes (rolling list of last 10)
+    const changesResp = await fetch(buildRecentChangesUrl(), { method: "GET" });
     const changesRaw = await changesResp.json();
     if (myRequestId !== requestCounter) return;
 
@@ -512,7 +503,7 @@ async function fetchData() {
       latestMatchForPlayer &&
       (!hasSnapshot || latestMatchHash !== snapshotMatchHash);
 
-    // 2) Fetch leaderboard snapshot at least once, and thereafter whenever global or player state moves forward.
+    // 2) POST leaderboard snapshot at least once, and thereafter when state advances
     const needInitialBaseline = Object.keys(previousRanks).length === 0;
     const needLeaderboard =
       needInitialBaseline || haveNewGlobalMatch || playerHasNewerMatchThanSnapshot;
@@ -536,19 +527,22 @@ async function fetchData() {
       const leaderboardElos = buildEloMapFromLeaderboard(leaderboard);
       nameMap = buildNameMapFromLeaderboard(leaderboard);
 
-      // (A) Initialize baseline if we didn't have one yet
+      // baseline init
       if (needInitialBaseline && Object.keys(currentRanks).length > 0) {
         previousRanks = currentRanks;
-        if (globalLatestHash) {
-          lastGlobalMatchHash = globalLatestHash;
-        }
+        if (globalLatestHash) lastGlobalMatchHash = globalLatestHash;
       }
 
-      // (B) If player has a newer match than current snapshot, try to process it
+      // If player has a new match, ALWAYS snapshot it for display
       if (latestMatchForPlayer && playerHasNewerMatchThanSnapshot) {
         const participants = getNewRatings(latestMatchForPlayer);
 
-        // Check Elo sync (±1 tolerance) so we only snapshot when LB reflects this event
+        computeSnapshotRanksAndDeltas(participants, currentRanks);
+
+        snapshotMatch = latestMatchForPlayer;
+        snapshotMatchHash = latestMatchHash;
+
+        // Only advance baseline when LB Elo matches match Elo (±1)
         const leaderboardSynced = participants.length > 0 && participants.every(p => {
           const idKey = String(p.id);
           const lbElo = leaderboardElos[idKey];
@@ -558,59 +552,25 @@ async function fetchData() {
         });
 
         if (leaderboardSynced) {
-          const newSnapshotRanks = {};
-          const newSnapshotRankDeltas = {};
-
-          participants.forEach(p => {
-            const idKey = String(p.id);
-            const afterRank = currentRanks[idKey];
-
-            if (typeof afterRank === "number") {
-              newSnapshotRanks[idKey] = afterRank;
-            }
-
-            const beforeRank = previousRanks[idKey];
-            let diff = 0;
-            let arrow = "";
-            let cls = "";
-
-            if (typeof beforeRank === "number" &&
-                typeof afterRank === "number") {
-              diff = beforeRank - afterRank; // positive = improved rank
-              if (diff > 0) {
-                arrow = "▲";
-                cls = "delta-positive";
-              } else if (diff < 0) {
-                arrow = "▼";
-                cls = "delta-negative";
-              }
-            }
-
-            newSnapshotRankDeltas[idKey] = { diff, arrow, class: cls };
-          });
-
-          snapshotMatch = latestMatchForPlayer;
-          snapshotMatchHash = latestMatchHash;
-          snapshotRanks = newSnapshotRanks;
-          snapshotRankDeltas = newSnapshotRankDeltas;
-
-          // Baseline now advances to "after" this match
           previousRanks = currentRanks;
-          if (globalLatestHash) {
-            lastGlobalMatchHash = globalLatestHash;
-          }
+          if (globalLatestHash) lastGlobalMatchHash = globalLatestHash;
         }
-        // If not synced, snapshot stays as-is; we'll try again on next poll.
       }
 
-      // (C) Any new global match not involving our player still advances baseline
+      // Any new global match not involving our player still advances baseline
       if (haveNewGlobalMatch && !globalLatestInvolvesPlayer) {
         previousRanks = currentRanks;
         lastGlobalMatchHash = globalLatestHash;
       }
+    } else {
+      // No LB fetch this cycle: still show something if we have it
+      if (!snapshotMatch && latestMatchForPlayer) {
+        snapshotMatch = latestMatchForPlayer;
+        snapshotMatchHash = latestMatchHash;
+      }
     }
 
-    // 3) Build display hash from snapshot state
+    // 3) Display hash
     let displayHash;
     if (!snapshotMatch) {
       displayHash = "NO_MATCH";
@@ -621,18 +581,14 @@ async function fetchData() {
         const elo = Math.round(p.elo ?? 0);
         const delta = Math.round(p.delta ?? 0);
         const rankSnapshot = snapshotRanks[idKey];
-        const rankDisplayed = typeof rankSnapshot === "number"
-          ? rankSnapshot
-          : "—";
+        const rankDisplayed = typeof rankSnapshot === "number" ? rankSnapshot : "—";
         const rd = snapshotRankDeltas[idKey]?.diff ?? 0;
         return `${idKey}:${p.place}:${elo}:${delta}:${rankDisplayed}:${rd}`;
       });
       displayHash = parts.join("|");
     }
 
-    if (!initialLoad && displayHash === lastDisplayHash) {
-      return;
-    }
+    if (!initialLoad && displayHash === lastDisplayHash) return;
 
     lastDisplayHash = displayHash;
     initialLoad = false;
@@ -640,9 +596,7 @@ async function fetchData() {
     resultsListEl.style.opacity = 0;
     setTimeout(() => {
       if (myRequestId !== requestCounter) return;
-
       displaySnapshot();
-
       requestAnimationFrame(() => (resultsListEl.style.opacity = 1));
     }, 300);
 
