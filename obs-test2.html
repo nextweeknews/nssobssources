@@ -1,222 +1,320 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Elo Rating</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Previous Match Results</title>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: transparent;
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
 
-<style>
-html, body {
-  height:100%;
-  margin:0;
-  background: transparent;
-  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-  -webkit-font-smoothing:antialiased;
-  -moz-osx-font-smoothing:grayscale;
-  overflow: hidden;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-}
+    .card {
+      width: 480px;
+      background: rgba(28,28,28,0.95);
+      border-radius: 12px;
+      padding: 10px;
+      color: #e9eef8;
+      text-align: center;
+    }
 
-.card {
-  width:640px;
-  height:240px;
-  background: rgba(28,28,28,0.95);
-  border-radius:24px;
-  display:flex;
-  flex-direction:column;
-  justify-content:center;
-  align-items:center;
-  text-align:center;
-  color: #e9eef8;
-}
+    .title {
+      font-size: 28px;
+      color: #bcd4ff;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
 
-.label {
-  font-size:56px;
-  color:#bcd4ff;
-  font-weight:600;
-  margin-bottom: 8px;
-}
+    .entry {
+      height: 36px;
+      line-height: 36px;
+      display: flex;
+      justify-content: space-between;
+      padding: 0 12px;
+      font-size: 22px;
+      font-weight: 600;
+      color: #ffffff;
+      border-radius: 6px;
+      transition: background 0.3s;
+      align-items: center;
+      box-sizing: border-box;
+    }
 
-.rating-container {
-  position: relative;
-  height: 120px;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-}
+    .entry span.place { 
+      width: 30px;
+      text-align: center;
+      color: #bcd4ff;
+    }
+    .entry span.place.gold { color: #ffd700; }
+    .entry span.place.silver { color: #c0c0c0; }
+    .entry span.place.bronze { color: #cd7f32; }
 
-.rating {
-  font-size:120px;
-  font-weight:700;
-  color:#ffffff;
-  position: relative;
-  z-index:1;
-  display:flex;
-  align-items:center;
-}
+    .entry span.name {
+      width: 290px;
+      text-align: left;
+      margin-left: 10px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
 
-.rating-number {
-  transition: opacity 0.5s ease;
-}
+    .entry span.elo { 
+      width: 65px;
+      text-align: center;
+    }
 
-.delta {
-  position: absolute;
-  top: 50%;
-  font-size:56px;
-  font-weight:600;
-  opacity:0;
-  display: flex;
-  align-items: center;
-  pointer-events: none;
-  transition: opacity 0.5s ease, transform 0.5s ease;
-}
+    .entry span.delta {
+      width: 65px;
+      text-align: center;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
 
-.delta-arrow {
-  font-size: 0.6em;
-  margin-right: 4px;
-  line-height: 1;
-  display: inline-block;
-}
+    .delta-arrow {
+      font-size: 0.7em;
+      margin-right: 3px;
+    }
 
-.delta-positive { color: #4ade80; }
-.delta-negative { color: #f87171; }
-</style>
+    .entry.highlight { background: rgba(255,255,255,0.15); }
+    .delta-positive { color: #4ade80; }
+    .delta-negative { color: #f87171; }
+
+    .loading, .error {
+      font-size: 16px;
+      color: #aab6d9;
+    }
+
+    #resultsList {
+      opacity: 1;
+      transition: opacity 0.3s ease;
+    }
+  </style>
 </head>
-
 <body>
-<div class="card">
-  <div class="label">ELO</div>
-  <div class="rating-container">
-    <div id="rating" class="rating">
-      <span id="ratingNumber" class="rating-number">—</span>
-    </div>
-    <div id="delta" class="delta">
-      <span class="delta-arrow"></span>
-      <span class="delta-number"></span>
-    </div>
+  <div class="card">
+    <div class="title">Previous Match Results</div>
+    <div id="resultsList"></div>
   </div>
-</div>
 
 <script>
-const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard_snapshot";
-const DEFAULT_PLAYER_ID = "702730732220579950";
-const REFRESH_MS = 15000;
+  const API_BASE = "https://rapid-haze-012c.nextweekmedia.workers.dev";
+  const CLIENT_ID = "DISCORD|1069003073311211601";
+  const REFRESH_MS = 15000;
 
-const ratingNumberEl = document.getElementById("ratingNumber");
-const deltaEl = document.getElementById("delta");
-const arrowEl = deltaEl.querySelector(".delta-arrow");
-const numberEl = deltaEl.querySelector(".delta-number");
+  const resultsEl = document.getElementById("resultsList");
+  const urlParams = new URLSearchParams(window.location.search);
+  const PLAYER_ID = urlParams.get('player_id');
 
-let lastRating = null;
-let deltaTimeout = null;
-
-function updateDeltaPosition() {
-  const width = ratingNumberEl.offsetWidth;
-  deltaEl.style.left = (width + 16) + "px";
-}
-
-function setRating(value) {
-  if (lastRating === null) {
-    ratingNumberEl.textContent = value ?? "—";
-    ratingNumberEl.style.opacity = "1";
-    updateDeltaPosition();
-    lastRating = value;
-    return;
+  if (!PLAYER_ID) {
+    resultsEl.innerHTML = '<div class="error">Missing player_id in URL</div>';
+    throw new Error("Missing player_id in URL query");
   }
-  if (value === lastRating) return;
 
-  ratingNumberEl.style.opacity = "0";
+  let lastMatchHash = "";
+  let initialLoad = true;
 
-  setTimeout(() => {
-    ratingNumberEl.textContent = value;
-    ratingNumberEl.style.opacity = "1";
+  function setError(msg) {
+    resultsEl.innerHTML = `<div class="error">Error: ${msg}</div>`;
+    console.error(msg);
+  }
 
-    updateDeltaPosition();
-    showDelta(lastRating, value);
+  function normalizeEvents(data) {
+    // You said the new route returns an array of 10 recent matches/events.
+    // But tolerate wrappers just in case.
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.events)) return data.events;
+    if (Array.isArray(data?.matches)) return data.matches;
+    return [];
+  }
 
-    lastRating = value;
-  }, 500);
-}
+  function pickRatingUpdate(payload) {
+    const updates = payload?.rating_updates || [];
+    // Prefer a stable, global rating type if present.
+    return (
+      updates.find(u => u.rating_type === "player_global_all") ||
+      updates.find(u => u.rating_type === "player_specific" && u.versus === payload?.match?.versus) ||
+      updates[0] ||
+      null
+    );
+  }
 
-function showDelta(oldValue, newValue) {
-  const diff = newValue - oldValue;
-  if (diff === 0 || oldValue === null) return;
+  function buildRowsFromEvent(evt) {
+    const payload = evt?.payload || {};
+    const match = payload?.match || {};
+    const teams = match?.teams || [];
 
-  arrowEl.textContent = diff > 0 ? '▲' : '▼';
-  numberEl.textContent = Math.abs(diff);
-  deltaEl.classList.remove('delta-positive','delta-negative');
-  deltaEl.classList.add(diff > 0 ? 'delta-positive' : 'delta-negative');
+    // 1) place + username via teams
+    const placeById = {};
+    const nameById = {};
+    const participantIds = [];
 
-  deltaEl.style.transition = "none";
-  deltaEl.style.transform = "translateY(-50%) translateX(20px)";
-  deltaEl.style.opacity = "0";
-  deltaEl.offsetWidth;
+    for (const t of teams) {
+      const place = t?.place;
+      for (const pl of (t?.players || [])) {
+        const id = String(pl?.user_id ?? "");
+        if (!id) continue;
+        placeById[id] = place;
+        nameById[id] = pl?.username || nameById[id] || "Unknown";
+        participantIds.push(id);
+      }
+    }
 
-  deltaEl.style.transition = "opacity 0.5s ease, transform 0.5s ease";
-  deltaEl.style.transform = "translateY(-50%) translateX(0)";
-  deltaEl.style.opacity = "1";
+    // 2) elo + delta via rating_updates affected_entries
+    const ru = pickRatingUpdate(payload);
+    const ratingsById = {};
+    for (const entry of (ru?.affected_entries || [])) {
+      const id = String(entry?.user_id ?? "");
+      if (!id) continue;
+      ratingsById[id] = {
+        elo: entry?.rating_after,
+        delta: entry?.rating_change,
+        name: entry?.username
+      };
+      if (!nameById[id] && entry?.username) nameById[id] = entry.username;
+    }
 
-  if (deltaTimeout) clearTimeout(deltaTimeout);
-  deltaTimeout = setTimeout(() => {
-    deltaEl.style.transform = "translateY(-50%) translateX(20px)";
-    deltaEl.style.opacity = "0";
-  }, 10000);
-}
-
-function setLoading() {
-  if (lastRating === null) ratingNumberEl.textContent = "—";
-}
-function setError(msg) {
-  ratingNumberEl.textContent = "—";
-  console.error(msg);
-}
-
-function getPlayerId() {
-  const params = new URLSearchParams(location.search);
-  return params.get("player_id") || DEFAULT_PLAYER_ID;
-}
-
-async function fetchRating(playerId) {
-  setLoading();
-  try {
-    const resp = await fetch(WORKER_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: "{}"
+    // Rows in match order, sorted by place
+    const rows = participantIds.map(id => {
+      const r = ratingsById[id] || {};
+      return {
+        id,
+        place: placeById[id],
+        name: nameById[id] || r.name || "Unknown",
+        elo: r.elo,
+        delta: r.delta
+      };
     });
 
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
+    rows.sort((a, b) => {
+      const pa = (a.place ?? 9999);
+      const pb = (b.place ?? 9999);
+      if (pa !== pb) return pa - pb;
+      return String(a.name).localeCompare(String(b.name));
+    });
 
-    const data = await resp.json();
-    const entries = Array.isArray(data.leaderboard) ? data.leaderboard : [];
-    if (!entries.length) throw new Error("Snapshot JSON missing 'leaderboard' array");
-
-    const pid = String(playerId);
-
-    // team is an array like ["1201659929421959222"]
-    const row = entries.find(e => Array.isArray(e.team) && e.team.map(String).includes(pid));
-
-    if (!row) throw new Error(`Player ${pid} not found in leaderboard snapshot`);
-    if (typeof row.elo !== "number") throw new Error(`Missing numeric 'elo' for player ${pid}`);
-
-    setRating(row.elo);
-  } catch (err) {
-    setError(err.message || String(err));
+    return { rows, matchId: match?.match_id || "", ts: evt?.timestamp || 0 };
   }
-}
 
-let intervalHandle = null;
-function startAutoRefresh() {
-  const pid = getPlayerId();
-  fetchRating(pid);
-  if (intervalHandle) clearInterval(intervalHandle);
-  intervalHandle = setInterval(() => fetchRating(pid), REFRESH_MS);
-}
+  function hashRows(matchId, rows) {
+    return matchId + "|" + rows
+      .map(p => `${p.id}:${p.place}:${p.elo}:${p.delta}`)
+      .join("|");
+  }
 
-window.addEventListener("load", startAutoRefresh);
-window.addEventListener("resize", updateDeltaPosition);
+  function displayRows(rows) {
+    resultsEl.innerHTML = '';
+
+    rows.forEach(player => {
+      const eloValue = (player.elo === null || player.elo === undefined) ? "—" : player.elo;
+      const deltaValue =
+        (player.delta === null || player.delta === undefined || isNaN(player.delta))
+          ? "—"
+          : Math.abs(player.delta);
+
+      let arrowSpan = '';
+      let deltaClass = '';
+
+      if (typeof player.delta === "number") {
+        if (player.delta > 0) {
+          arrowSpan = '<span class="delta-arrow">▲</span>';
+          deltaClass = 'delta-positive';
+        } else if (player.delta < 0) {
+          arrowSpan = '<span class="delta-arrow">▼</span>';
+          deltaClass = 'delta-negative';
+        }
+      }
+
+      let placeClass = '';
+      if (player.place === 1) placeClass = 'gold';
+      else if (player.place === 2) placeClass = 'silver';
+      else if (player.place === 3) placeClass = 'bronze';
+
+      const row = document.createElement("div");
+      row.className = "entry";
+      if (String(player.id) === String(PLAYER_ID)) row.classList.add("highlight");
+
+      row.innerHTML = `
+        <span class="place ${placeClass}">${player.place ?? "—"}</span>
+        <span class="name">${player.name}</span>
+        <span class="elo">${eloValue}</span>
+        <span class="delta ${deltaClass}">${arrowSpan}${deltaValue}</span>
+      `;
+
+      resultsEl.appendChild(row);
+    });
+  }
+
+  async function fetchMatchResults() {
+    try {
+      const url = new URL(API_BASE + "/get_recent_changes");
+      url.searchParams.set("client_id", CLIENT_ID);
+      url.searchParams.set("limit", "10");
+      // Avoid overly-sticky edge caches
+      url.searchParams.set("_ts", String(Date.now()));
+
+      const resp = await fetch(url.toString(), { method: "GET" });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+      const data = await resp.json();
+      const events = normalizeEvents(data);
+
+      // Find most recent event where PLAYER_ID is in match teams
+      const recentEvent = events
+        .slice()
+        .sort((a,b) => (b.timestamp ?? 0) - (a.timestamp ?? 0))
+        .find(evt => {
+          const teams = evt?.payload?.match?.teams || [];
+          return teams.some(t => (t?.players || []).some(p => String(p?.user_id) === String(PLAYER_ID)));
+        });
+
+      if (!recentEvent) {
+        resultsEl.innerHTML = '<div class="loading">No recent match found for this player.</div>';
+        return;
+      }
+
+      const { rows, matchId } = buildRowsFromEvent(recentEvent);
+
+      if (!rows.length) {
+        resultsEl.innerHTML = '<div class="loading">No players found in the most recent match.</div>';
+        return;
+      }
+
+      const currentHash = hashRows(matchId, rows);
+
+      if (initialLoad) {
+        initialLoad = false;
+        lastMatchHash = currentHash;
+        displayRows(rows);
+        return;
+      }
+
+      if (currentHash !== lastMatchHash) {
+        lastMatchHash = currentHash;
+
+        resultsEl.style.opacity = 0;
+        setTimeout(() => {
+          displayRows(rows);
+          requestAnimationFrame(() => resultsEl.style.opacity = 1);
+        }, 300);
+      }
+
+    } catch (err) {
+      setError(err?.message || String(err));
+    }
+  }
+
+  fetchMatchResults();
+  setInterval(fetchMatchResults, REFRESH_MS);
 </script>
 </body>
 </html>
