@@ -202,7 +202,8 @@
 </div>
 
 <script>
-const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_player_rating";
+const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard_snapshot";
+
 const nameEl = document.getElementById("name");
 const ratingEl = document.getElementById("rating");
 const resultBox = document.getElementById("result");
@@ -219,14 +220,10 @@ function extractPlayerId(input) {
     .replace(/\\/g, "/");
 
   let match = clean.match(/player\/(\d{16,20})/i);
-  if (match) {
-    return match[1];
-  }
+  if (match) return match[1];
 
   match = clean.match(/(\d{16,20})/);
-  if (match) {
-    return match[1];
-  }
+  if (match) return match[1];
 
   return null;
 }
@@ -244,7 +241,8 @@ async function lookupPlayer(rawInput) {
     return;
   }
 
-  console.log("Using Player ID:", playerId);
+  const pid = String(playerId);
+  console.log("Using Player ID:", pid);
 
   nameEl.textContent = "Loading...";
   ratingEl.textContent = "—";
@@ -254,7 +252,7 @@ async function lookupPlayer(rawInput) {
     const resp = await fetch(WORKER_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ player_id: playerId })
+      body: JSON.stringify({ player_id: pid })
     });
 
     if (!resp.ok) {
@@ -266,21 +264,48 @@ async function lookupPlayer(rawInput) {
     const data = await resp.json();
 
     console.log("FULL DATA:", data);
-    console.log("RESOLVED PATHS:", {
-      resolved: data.resolved,
-      tiers: data?.resolved?.tiers,
-      player_global_all_tiers: data.player_global_all_tiers
+
+    // 1) Find this player’s leaderboard row (elo lives here)
+    const lbRow = (data?.leaderboard || []).find(row => {
+      const team = row?.team;
+      if (Array.isArray(team)) return team.map(String).includes(pid);
+      return String(team ?? "") === pid;
     });
 
-    const player = data.player || data;
+    const elo = lbRow?.elo;
 
-    nameEl.textContent = player.display_name || "Unknown";
-    ratingEl.textContent = player.rating ?? "N/A";
+    // 2) Resolve display name (name lives here)
+    let displayName = data?.resolved?.players?.[pid]?.display_name;
 
-    eloLink.href = `obs-elo.html?player_id=${playerId}`;
-    matchLink.href = `obs-match.html?player_id=${playerId}`;
-    rankLink.href = `obs-rank.html?player_id=${playerId}`;
-    leaderboardLink.href = `obs-leaderboard.html?player_id=${playerId}`;
+    // Fallback: sometimes the object key may not match, so scan values
+    if (!displayName && data?.resolved?.players) {
+      for (const p of Object.values(data.resolved.players)) {
+        const candidateId = String(
+          p?.id ?? p?.connection_discord?.id ?? p?.metadata_id ?? ""
+        );
+        if (candidateId === pid) {
+          displayName = p?.display_name;
+          break;
+        }
+      }
+    }
+
+    // 3) Render
+    nameEl.textContent = displayName || "Unknown";
+
+    if (!lbRow) {
+      ratingEl.textContent = "Player not found in snapshot.";
+      ratingEl.classList.add("error-text");
+    } else {
+      ratingEl.textContent = (elo ?? "N/A");
+      ratingEl.classList.remove("error-text");
+    }
+
+    // Overlay links
+    eloLink.href = `obs-elo.html?player_id=${pid}`;
+    matchLink.href = `obs-match.html?player_id=${pid}`;
+    rankLink.href = `obs-rank.html?player_id=${pid}`;
+    leaderboardLink.href = `obs-leaderboard.html?player_id=${pid}`;
 
   } catch (err) {
     console.error("Lookup error:", err);
