@@ -100,7 +100,7 @@ html, body {
 </div>
 
 <script>
-const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_player_rating";
+const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard_snapshot";
 const DEFAULT_PLAYER_ID = "702730732220579950";
 const REFRESH_MS = 15000;
 
@@ -121,6 +121,7 @@ function setRating(value) {
   if (lastRating === null) {
     ratingNumberEl.textContent = value ?? "—";
     ratingNumberEl.style.opacity = "1";
+    updateDeltaPosition();
     lastRating = value;
     return;
   }
@@ -171,8 +172,10 @@ function setError(msg) {
   ratingNumberEl.textContent = "—";
   console.error(msg);
 }
-function buildBody(playerId) {
-  return JSON.stringify({ player_id: playerId });
+
+function getPlayerId() {
+  const params = new URLSearchParams(location.search);
+  return params.get("player_id") || DEFAULT_PLAYER_ID;
 }
 
 async function fetchRating(playerId) {
@@ -181,18 +184,27 @@ async function fetchRating(playerId) {
     const resp = await fetch(WORKER_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: buildBody(playerId)
+      body: "{}"
     });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
-    const data = await resp.json();
-    const player = data.player || data;
-    if (typeof player.rating === "number") setRating(player.rating);
-  } catch (err) { setError(err.message); }
-}
 
-function getPlayerId() {
-  const params = new URLSearchParams(location.search);
-  return params.get("player_id") || DEFAULT_PLAYER_ID;
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
+
+    const data = await resp.json();
+    const entries = Array.isArray(data.leaderboard) ? data.leaderboard : [];
+    if (!entries.length) throw new Error("Snapshot JSON missing 'leaderboard' array");
+
+    const pid = String(playerId);
+
+    // team is an array like ["1201659929421959222"]
+    const row = entries.find(e => Array.isArray(e.team) && e.team.map(String).includes(pid));
+
+    if (!row) throw new Error(`Player ${pid} not found in leaderboard snapshot`);
+    if (typeof row.elo !== "number") throw new Error(`Missing numeric 'elo' for player ${pid}`);
+
+    setRating(row.elo);
+  } catch (err) {
+    setError(err.message || String(err));
+  }
 }
 
 let intervalHandle = null;
