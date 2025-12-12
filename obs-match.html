@@ -107,13 +107,16 @@
   </div>
 
 <script>
-  const API_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_rating_history";
+  const API_BASE = "https://rapid-haze-012c.nextweekmedia.workers.dev";
   const CLIENT_ID = "DISCORD|1069003073311211601";
   const REFRESH_MS = 15000;
 
+  // How often to refresh snapshot names (ms)
+  const SNAPSHOT_TTL_MS = 5 * 60 * 1000;
+
   const resultsEl = document.getElementById("resultsList");
   const urlParams = new URLSearchParams(window.location.search);
-  const PLAYER_ID = urlParams.get('player_id');
+  const PLAYER_ID = urlParams.get("player_id");
 
   if (!PLAYER_ID) {
     resultsEl.innerHTML = '<div class="error">Missing player_id in URL</div>';
@@ -123,56 +126,141 @@
   let lastMatchHash = "";
   let initialLoad = true;
 
+  // Name cache from /get_leaderboard_snapshot
+  let displayNameById = {};
+  let lastSnapshotAt = 0;
+  let lastSnapshotLeaderboardId = "";
+
   function setError(msg) {
     resultsEl.innerHTML = `<div class="error">Error: ${msg}</div>`;
     console.error(msg);
   }
 
-  function hashMatch(match) {
-    if (!match || !match.ratingResults) return "";
-    return match.ratingResults[0].newRatings
+  function normalizeEvents(data) {
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.events)) return data.events;
+    if (Array.isArray(data?.matches)) return data.matches;
+    return [];
+  }
+
+  function pickRatingUpdate(payload) {
+    const updates = payload?.rating_updates || [];
+    return (
+      updates.find(u => u.rating_type === "player_global_all") ||
+      updates.find(u => u.rating_type === "player_specific" && u.versus === payload?.match?.versus) ||
+      updates[0] ||
+      null
+    );
+  }
+
+  function buildRowsFromEvent(evt) {
+    const payload = evt?.payload || {};
+    const match = payload?.match || {};
+    const teams = match?.teams || [];
+
+    // 1) place + fallback username via teams
+    const placeById = {};
+    const fallbackNameById = {};
+    const participantIds = [];
+
+    for (const t of teams) {
+      const place = t?.place;
+      for (const pl of (t?.players || [])) {
+        const id = String(pl?.user_id ?? "");
+        if (!id) continue;
+        placeById[id] = place;
+        fallbackNameById[id] = pl?.username || fallbackNameById[id] || "Unknown";
+        participantIds.push(id);
+      }
+    }
+
+    // 2) elo + delta via rating_updates affected_entries
+    const ru = pickRatingUpdate(payload);
+    const ratingsById = {};
+    for (const entry of (ru?.affected_entries || [])) {
+      const id = String(entry?.user_id ?? "");
+      if (!id) continue;
+      ratingsById[id] = {
+        elo: entry?.rating_after,
+        delta: entry?.rating_change,
+        username: entry?.username
+      };
+    }
+
+    // Rows sorted by place
+    const rows = participantIds.map(id => {
+      const r = ratingsById[id] || {};
+      const bestName =
+        displayNameById[id] ||
+        fallbackNameById[id] ||
+        r.username ||
+        "Unknown";
+
+      return {
+        id,
+        place: placeById[id],
+        name: bestName,
+        elo: r.elo,
+        delta: r.delta
+      };
+    });
+
+    rows.sort((a, b) => {
+      const pa = (a.place ?? 9999);
+      const pb = (b.place ?? 9999);
+      if (pa !== pb) return pa - pb;
+      return String(a.name).localeCompare(String(b.name));
+    });
+
+    return {
+      rows,
+      matchId: match?.match_id || "",
+      leaderboardId: payload?.leaderboard?.leaderboard_id || "",
+      ts: evt?.timestamp || 0
+    };
+  }
+
+  function hashRows(matchId, rows) {
+    return matchId + "|" + rows
       .map(p => `${p.id}:${p.place}:${p.elo}:${p.delta}`)
       .join("|");
   }
 
-  function displayResults(match, resolvedPlayers) {
-    const newRatings = match.ratingResults[0].newRatings;
-    resultsEl.innerHTML = '';
+  function displayRows(rows) {
+    resultsEl.innerHTML = "";
 
-    newRatings.forEach(player => {
-      const name = resolvedPlayers[player.id]?.display_name || "Unknown";
-
+    rows.forEach(player => {
       const eloValue = (player.elo === null || player.elo === undefined) ? "—" : player.elo;
-      const deltaValue = 
+      const deltaValue =
         (player.delta === null || player.delta === undefined || isNaN(player.delta))
-          ? "—" 
+          ? "—"
           : Math.abs(player.delta);
 
-      let arrowSpan = '';
-      let deltaClass = '';
+      let arrowSpan = "";
+      let deltaClass = "";
 
       if (typeof player.delta === "number") {
         if (player.delta > 0) {
           arrowSpan = '<span class="delta-arrow">▲</span>';
-          deltaClass = 'delta-positive';
+          deltaClass = "delta-positive";
         } else if (player.delta < 0) {
           arrowSpan = '<span class="delta-arrow">▼</span>';
-          deltaClass = 'delta-negative';
+          deltaClass = "delta-negative";
         }
       }
 
-      let placeClass = '';
-      if (player.place === 1) placeClass = 'gold';
-      else if (player.place === 2) placeClass = 'silver';
-      else if (player.place === 3) placeClass = 'bronze';
+      let placeClass = "";
+      if (player.place === 1) placeClass = "gold";
+      else if (player.place === 2) placeClass = "silver";
+      else if (player.place === 3) placeClass = "bronze";
 
       const row = document.createElement("div");
       row.className = "entry";
       if (String(player.id) === String(PLAYER_ID)) row.classList.add("highlight");
 
       row.innerHTML = `
-        <span class="place ${placeClass}">${player.place}</span>
-        <span class="name">${name}</span>
+        <span class="place ${placeClass}">${player.place ?? "—"}</span>
+        <span class="name">${player.name}</span>
         <span class="elo">${eloValue}</span>
         <span class="delta ${deltaClass}">${arrowSpan}${deltaValue}</span>
       `;
@@ -181,38 +269,88 @@
     });
   }
 
+  async function refreshLeaderboardSnapshot(leaderboardId) {
+    const now = Date.now();
+    const stale =
+      (now - lastSnapshotAt) > SNAPSHOT_TTL_MS ||
+      String(leaderboardId) !== String(lastSnapshotLeaderboardId);
+
+    if (!leaderboardId || !stale) return;
+
+    const url = API_BASE + "/get_leaderboard_snapshot";
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        client_id: CLIENT_ID,
+        leaderboard_id: leaderboardId
+      })
+    });
+
+    if (!resp.ok) throw new Error(`Snapshot HTTP ${resp.status}`);
+    const data = await resp.json();
+
+    const players = data?.resolved?.players || {};
+    const nextMap = { ...displayNameById };
+
+    for (const [key, profile] of Object.entries(players)) {
+      const id = String(profile?.player_id || key);
+      const display =
+        profile?.display_name ||
+        profile?.connection_discord?.username ||
+        profile?.username;
+
+      if (id && display) nextMap[id] = display;
+    }
+
+    displayNameById = nextMap;
+    lastSnapshotAt = now;
+    lastSnapshotLeaderboardId = String(leaderboardId);
+  }
+
   async function fetchMatchResults() {
     try {
-      const resp = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ player_id: PLAYER_ID, client_id: CLIENT_ID, limit: 10 })
-      });
+      const url = new URL(API_BASE + "/get_recent_changes");
+      url.searchParams.set("client_id", CLIENT_ID);
+      url.searchParams.set("limit", "10");
+      url.searchParams.set("_ts", String(Date.now())); // avoid edge-caching weirdness
 
+      const resp = await fetch(url.toString(), { method: "GET" });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
       const data = await resp.json();
-      const matches = data.matches || [];
-      const resolvedPlayers = data.resolved?.players || {};
+      const events = normalizeEvents(data);
 
-      const recentMatch = matches
-        .sort((a,b) => b.ts - a.ts)
-        .find(match =>
-          match.ratingResults.some(rg =>
-            rg.newRatings.some(p => String(p.id) === String(PLAYER_ID))
-          )
-        );
+      const recentEvent = events
+        .slice()
+        .sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0))
+        .find(evt => {
+          const teams = evt?.payload?.match?.teams || [];
+          return teams.some(t => (t?.players || []).some(p => String(p?.user_id) === String(PLAYER_ID)));
+        });
 
-      if (!recentMatch) {
+      if (!recentEvent) {
         resultsEl.innerHTML = '<div class="loading">No recent match found for this player.</div>';
         return;
       }
 
-      const currentHash = hashMatch(recentMatch);
+      const { rows, matchId, leaderboardId } = buildRowsFromEvent(recentEvent);
+
+      // Pull display_name mapping (cached) and rebuild rows if we updated names
+      await refreshLeaderboardSnapshot(leaderboardId);
+      const rebuilt = buildRowsFromEvent(recentEvent); // rebuild so names use displayNameById
+
+      if (!rebuilt.rows.length) {
+        resultsEl.innerHTML = '<div class="loading">No players found in the most recent match.</div>';
+        return;
+      }
+
+      const currentHash = hashRows(rebuilt.matchId, rebuilt.rows);
 
       if (initialLoad) {
         initialLoad = false;
         lastMatchHash = currentHash;
-        displayResults(recentMatch, resolvedPlayers);
+        displayRows(rebuilt.rows);
         return;
       }
 
@@ -221,13 +359,13 @@
 
         resultsEl.style.opacity = 0;
         setTimeout(() => {
-          displayResults(recentMatch, resolvedPlayers);
-          requestAnimationFrame(() => resultsEl.style.opacity = 1);
+          displayRows(rebuilt.rows);
+          requestAnimationFrame(() => (resultsEl.style.opacity = 1));
         }, 300);
       }
 
     } catch (err) {
-      setError(err.message);
+      setError(err?.message || String(err));
     }
   }
 
