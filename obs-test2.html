@@ -111,9 +111,12 @@
   const CLIENT_ID = "DISCORD|1069003073311211601";
   const REFRESH_MS = 15000;
 
+  // How often to refresh snapshot names (ms)
+  const SNAPSHOT_TTL_MS = 5 * 60 * 1000;
+
   const resultsEl = document.getElementById("resultsList");
   const urlParams = new URLSearchParams(window.location.search);
-  const PLAYER_ID = urlParams.get('player_id');
+  const PLAYER_ID = urlParams.get("player_id");
 
   if (!PLAYER_ID) {
     resultsEl.innerHTML = '<div class="error">Missing player_id in URL</div>';
@@ -123,14 +126,17 @@
   let lastMatchHash = "";
   let initialLoad = true;
 
+  // Name cache from /get_leaderboard_snapshot
+  let displayNameById = {};
+  let lastSnapshotAt = 0;
+  let lastSnapshotLeaderboardId = "";
+
   function setError(msg) {
     resultsEl.innerHTML = `<div class="error">Error: ${msg}</div>`;
     console.error(msg);
   }
 
   function normalizeEvents(data) {
-    // You said the new route returns an array of 10 recent matches/events.
-    // But tolerate wrappers just in case.
     if (Array.isArray(data)) return data;
     if (Array.isArray(data?.events)) return data.events;
     if (Array.isArray(data?.matches)) return data.matches;
@@ -139,7 +145,6 @@
 
   function pickRatingUpdate(payload) {
     const updates = payload?.rating_updates || [];
-    // Prefer a stable, global rating type if present.
     return (
       updates.find(u => u.rating_type === "player_global_all") ||
       updates.find(u => u.rating_type === "player_specific" && u.versus === payload?.match?.versus) ||
@@ -153,9 +158,9 @@
     const match = payload?.match || {};
     const teams = match?.teams || [];
 
-    // 1) place + username via teams
+    // 1) place + fallback username via teams
     const placeById = {};
-    const nameById = {};
+    const fallbackNameById = {};
     const participantIds = [];
 
     for (const t of teams) {
@@ -164,7 +169,7 @@
         const id = String(pl?.user_id ?? "");
         if (!id) continue;
         placeById[id] = place;
-        nameById[id] = pl?.username || nameById[id] || "Unknown";
+        fallbackNameById[id] = pl?.username || fallbackNameById[id] || "Unknown";
         participantIds.push(id);
       }
     }
@@ -178,18 +183,23 @@
       ratingsById[id] = {
         elo: entry?.rating_after,
         delta: entry?.rating_change,
-        name: entry?.username
+        username: entry?.username
       };
-      if (!nameById[id] && entry?.username) nameById[id] = entry.username;
     }
 
-    // Rows in match order, sorted by place
+    // Rows sorted by place
     const rows = participantIds.map(id => {
       const r = ratingsById[id] || {};
+      const bestName =
+        displayNameById[id] ||
+        fallbackNameById[id] ||
+        r.username ||
+        "Unknown";
+
       return {
         id,
         place: placeById[id],
-        name: nameById[id] || r.name || "Unknown",
+        name: bestName,
         elo: r.elo,
         delta: r.delta
       };
@@ -202,7 +212,12 @@
       return String(a.name).localeCompare(String(b.name));
     });
 
-    return { rows, matchId: match?.match_id || "", ts: evt?.timestamp || 0 };
+    return {
+      rows,
+      matchId: match?.match_id || "",
+      leaderboardId: payload?.leaderboard?.leaderboard_id || "",
+      ts: evt?.timestamp || 0
+    };
   }
 
   function hashRows(matchId, rows) {
@@ -212,7 +227,7 @@
   }
 
   function displayRows(rows) {
-    resultsEl.innerHTML = '';
+    resultsEl.innerHTML = "";
 
     rows.forEach(player => {
       const eloValue = (player.elo === null || player.elo === undefined) ? "—" : player.elo;
@@ -221,23 +236,23 @@
           ? "—"
           : Math.abs(player.delta);
 
-      let arrowSpan = '';
-      let deltaClass = '';
+      let arrowSpan = "";
+      let deltaClass = "";
 
       if (typeof player.delta === "number") {
         if (player.delta > 0) {
           arrowSpan = '<span class="delta-arrow">▲</span>';
-          deltaClass = 'delta-positive';
+          deltaClass = "delta-positive";
         } else if (player.delta < 0) {
           arrowSpan = '<span class="delta-arrow">▼</span>';
-          deltaClass = 'delta-negative';
+          deltaClass = "delta-negative";
         }
       }
 
-      let placeClass = '';
-      if (player.place === 1) placeClass = 'gold';
-      else if (player.place === 2) placeClass = 'silver';
-      else if (player.place === 3) placeClass = 'bronze';
+      let placeClass = "";
+      if (player.place === 1) placeClass = "gold";
+      else if (player.place === 2) placeClass = "silver";
+      else if (player.place === 3) placeClass = "bronze";
 
       const row = document.createElement("div");
       row.className = "entry";
@@ -254,13 +269,51 @@
     });
   }
 
+  async function refreshLeaderboardSnapshot(leaderboardId) {
+    const now = Date.now();
+    const stale =
+      (now - lastSnapshotAt) > SNAPSHOT_TTL_MS ||
+      String(leaderboardId) !== String(lastSnapshotLeaderboardId);
+
+    if (!leaderboardId || !stale) return;
+
+    const url = API_BASE + "/get_leaderboard_snapshot";
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        client_id: CLIENT_ID,
+        leaderboard_id: leaderboardId
+      })
+    });
+
+    if (!resp.ok) throw new Error(`Snapshot HTTP ${resp.status}`);
+    const data = await resp.json();
+
+    const players = data?.resolved?.players || {};
+    const nextMap = { ...displayNameById };
+
+    for (const [key, profile] of Object.entries(players)) {
+      const id = String(profile?.player_id || key);
+      const display =
+        profile?.display_name ||
+        profile?.connection_discord?.username ||
+        profile?.username;
+
+      if (id && display) nextMap[id] = display;
+    }
+
+    displayNameById = nextMap;
+    lastSnapshotAt = now;
+    lastSnapshotLeaderboardId = String(leaderboardId);
+  }
+
   async function fetchMatchResults() {
     try {
       const url = new URL(API_BASE + "/get_recent_changes");
       url.searchParams.set("client_id", CLIENT_ID);
       url.searchParams.set("limit", "10");
-      // Avoid overly-sticky edge caches
-      url.searchParams.set("_ts", String(Date.now()));
+      url.searchParams.set("_ts", String(Date.now())); // avoid edge-caching weirdness
 
       const resp = await fetch(url.toString(), { method: "GET" });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -268,10 +321,9 @@
       const data = await resp.json();
       const events = normalizeEvents(data);
 
-      // Find most recent event where PLAYER_ID is in match teams
       const recentEvent = events
         .slice()
-        .sort((a,b) => (b.timestamp ?? 0) - (a.timestamp ?? 0))
+        .sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0))
         .find(evt => {
           const teams = evt?.payload?.match?.teams || [];
           return teams.some(t => (t?.players || []).some(p => String(p?.user_id) === String(PLAYER_ID)));
@@ -282,19 +334,23 @@
         return;
       }
 
-      const { rows, matchId } = buildRowsFromEvent(recentEvent);
+      const { rows, matchId, leaderboardId } = buildRowsFromEvent(recentEvent);
 
-      if (!rows.length) {
+      // Pull display_name mapping (cached) and rebuild rows if we updated names
+      await refreshLeaderboardSnapshot(leaderboardId);
+      const rebuilt = buildRowsFromEvent(recentEvent); // rebuild so names use displayNameById
+
+      if (!rebuilt.rows.length) {
         resultsEl.innerHTML = '<div class="loading">No players found in the most recent match.</div>';
         return;
       }
 
-      const currentHash = hashRows(matchId, rows);
+      const currentHash = hashRows(rebuilt.matchId, rebuilt.rows);
 
       if (initialLoad) {
         initialLoad = false;
         lastMatchHash = currentHash;
-        displayRows(rows);
+        displayRows(rebuilt.rows);
         return;
       }
 
@@ -303,8 +359,8 @@
 
         resultsEl.style.opacity = 0;
         setTimeout(() => {
-          displayRows(rows);
-          requestAnimationFrame(() => resultsEl.style.opacity = 1);
+          displayRows(rebuilt.rows);
+          requestAnimationFrame(() => (resultsEl.style.opacity = 1));
         }, 300);
       }
 
