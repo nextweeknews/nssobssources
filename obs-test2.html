@@ -1,1 +1,683 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Previous Match Results - Rank + Inline Deltas</title>
+
+  <style>
+    html, body {
+      margin: 0; padding: 0;
+      width: 100%; height: 100%;
+      background: transparent;
+      font-family: Inter, system-ui, sans-serif;
+      display: flex; justify-content: center; align-items: center;
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+    }
+
+    .card {
+      width: 1720px;
+      background: rgba(15, 23, 42, 1);
+      border-radius: 24px;
+      padding: 48px 50px;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      transition: height 0.4s ease;
+      color: #e9eef8;
+      box-shadow: 0 32px 32px rgba(0,0,0,0.65);
+      box-sizing: border-box;
+    }
+
+    .title {
+      font-size: 56px;
+      color: #c7d7ff;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: .035em;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    /* TEMP: removed Rank Delta column */
+    .header-row,
+    .entry {
+      display: grid;
+      grid-template-columns: 150px 1fr 200px 130px 180px; /* Place | Player | Elo | +/- | Rank */
+      align-items: center;
+    }
+
+    .header-row {
+      height: 60px;
+      margin-bottom: 14px;
+      background: rgba(148, 163, 184, 0.12);
+      font-size: 24px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #9ca3c7;
+      border-radius: 12px;
+      text-align: center;
+    }
+
+    .header-row span:nth-child(2) {
+      text-align: left;
+      padding-left: 36px;
+    }
+
+    .header-row > span {
+      border-right: 2px solid rgba(255,255,255,0);
+    }
+
+    .header-row > span:last-child {
+      border-right: none;
+    }
+
+    #resultsList {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      opacity: 1;
+      transition: opacity .3s ease;
+    }
+
+    .entry {
+      height: 70px;
+      background: rgba(255,255,255,0.07);
+      border-radius: 14px;
+      font-size: 42px;
+      font-weight: 600;
+      color: #fff;
+      align-items: center;
+      transition: background .3s ease, box-shadow .3s ease;
+    }
+
+    .place {
+      font-size: 42px;
+      font-weight: 900;
+      text-align: center;
+      line-height: 1;
+      color: #c7d7ff;
+    }
+
+    .player-name {
+      font-size: 36px;
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: left;
+      padding-left: 36px;
+      padding-right: 36px;
+    }
+
+    .elo-value, .rank-value {
+      font-size: 42px;
+      font-weight: 900;
+      text-align: center;
+      line-height: 1;
+    }
+
+    .elo-delta {
+      font-size: 36px;
+      text-align: center;
+      position: relative;
+      animation: pulseDelta 1.8s ease-in-out infinite;
+    }
+
+    .delta-arrow {
+      margin-right: 4px;
+      font-size: 0.6em;
+      vertical-align: middle;
+      position: relative;
+      top: -0.2em;
+    }
+
+    .gold { color: #ffd700; }
+    .silver { color: #c0c0c0; }
+    .bronze { color: #cd7f32; }
+
+    .delta-positive { color: #4ade80; }
+    .delta-negative { color: #f87171; }
+
+    .entry > span {
+      border-right: 2px solid rgba(255,255,255,0.14);
+      right: -1px;
+      height: 45px;
+      position: relative;
+      vertical-align: middle;
+    }
+
+    .entry > span:last-child {
+      border-right: none;
+    }
+
+    .entry.highlight-gold {
+      background: rgba(255, 215, 0, 0.28);
+      box-shadow: 0 0 18px rgba(255, 215, 0, 0.3);
+    }
+
+    .entry.highlight-silver {
+      background: rgba(192, 192, 192, 0.28);
+      box-shadow: 0 0 18px rgba(192, 192, 192, 0.3);
+    }
+
+    .entry.highlight-bronze {
+      background: rgba(205, 127, 50, 0.28);
+      box-shadow: 0 0 18px rgba(205, 127, 50, 0.3);
+    }
+
+    .entry.highlight-default {
+      background: rgba(52, 211, 153, 0.30);
+      box-shadow: 0 0 18px rgba(16, 185, 129, 0.3);
+    }
+
+    .loading, .error {
+      font-size: 36px;
+      width: 100%;
+      text-align: center;
+    }
+
+    @keyframes pulseDelta {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50%      { transform: scale(1); opacity: 0.7; }
+    }
+  </style>
+</head>
+
+<body>
+<div class="card" id="card">
+  <div class="title">Previous Match Results</div>
+
+  <div class="header-row">
+    <span>Place</span>
+    <span>Player</span>
+    <span>Elo</span>
+    <span>+/-</span>
+    <span>Rank</span>
+  </div>
+
+  <div id="resultsList">
+    <div class="loading">Loading…</div>
+  </div>
+</div>
+
+<script>
+const API_BASE   = "https://rapid-haze-012c.nextweekmedia.workers.dev";
+const RECENT_URL = `${API_BASE}/get_recent_changes`;
+const SNAP_URL   = `${API_BASE}/get_leaderboard_snapshot`;
+
+const CLIENT_ID = "DISCORD|1069003073311211601";
+const REFRESH_MS = 15000;
+
+const cardEl = document.getElementById("card");
+const resultsListEl = document.getElementById("resultsList");
+const PLAYER_ID = new URLSearchParams(location.search).get("player_id");
+
+let initialLoad = true;
+
+// Global baseline ranks from last processed leaderboard
+let previousRanks = {};
+
+// Snapshot for the last fully-processed match of the tracked player
+let snapshotMatch = null;
+let snapshotMatchHash = "";
+let snapshotRanks = {};       // { [id]: rankAfterMatch }
+
+// Latest global match we've baseline'd
+let lastGlobalMatchHash = "";
+
+// Latest resolved player profiles (display_name, etc.)
+let resolvedPlayersCache = {};
+let fallbackNamesCache = {}; // from match teams, as a fallback for names
+
+// Async guard
+let requestCounter = 0;
+// To avoid unnecessary DOM work
+let lastDisplayHash = "";
+
+if (!PLAYER_ID) {
+  resultsListEl.innerHTML = "<div class='error'>Missing player_id</div>";
+  throw new Error("player_id required");
+}
+
+function resizeCard(count) {
+  const h = 56 + 24 + 60 + 14 + 48 + 50 + (70 * count) + (10 * (count - 1));
+  cardEl.style.height = `${h}px`;
+}
+
+function normalizeEvents(data) {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.events)) return data.events;
+  if (Array.isArray(data?.matches)) return data.matches;
+  return [];
+}
+
+/** Support both shapes:
+ *  - evt.payload.match / evt.payload.rating_updates
+ *  - evt.match / evt.rating_updates
+ */
+function getMatch(evt) {
+  return evt?.payload?.match || evt?.match || null;
+}
+function getRatingUpdates(evt) {
+  return evt?.payload?.rating_updates || evt?.rating_updates || null;
+}
+function getLeaderboardIdFromEvent(evt) {
+  return (
+    evt?.payload?.leaderboard?.leaderboard_id ||
+    evt?.payload?.match?.leaderboard_id ||
+    evt?.payload?.leaderboard_id ||
+    evt?.leaderboard?.leaderboard_id ||
+    evt?.match?.leaderboard_id ||
+    evt?.leaderboard_id ||
+    null
+  );
+}
+function getEventTimeMs(evt) {
+  // Try several common fields; fall back to 0
+  const ts = evt?.timestamp;
+  if (typeof ts === "number") return ts;
+  const match = getMatch(evt);
+  const iso =
+    evt?.recorded_at ||
+    match?.recorded_at ||
+    evt?.created_at ||
+    evt?.updated_at ||
+    null;
+  const ms = iso ? Date.parse(iso) : NaN;
+  return Number.isFinite(ms) ? ms : 0;
+}
+
+function pickRatingUpdate(evt) {
+  const updates = getRatingUpdates(evt)?.rating_updates || getRatingUpdates(evt) || [];
+  // Keep consistent with the leaderboard baseline/ranks
+  return (
+    updates.find(u => u.rating_type === "player_global_all") ||
+    updates[0] ||
+    null
+  );
+}
+
+function extractParticipantsFromEvent(evt) {
+  const match = getMatch(evt) || {};
+  const teams = match?.teams || [];
+
+  const placeById = {};
+  const fallbackNamesById = {};
+  const participantIds = [];
+
+  // Place + fallback usernames from teams
+  for (const t of teams) {
+    const place = t?.place;
+    for (const pl of (t?.players || [])) {
+      const id = String(pl?.user_id ?? pl?.id ?? "");
+      if (!id) continue;
+      placeById[id] = place;
+      fallbackNamesById[id] = pl?.username || fallbackNamesById[id] || "Unknown";
+      participantIds.push(id);
+    }
+  }
+
+  // Elo after + delta from rating_updates (prefer global_all)
+  const ru = pickRatingUpdate(evt);
+  const ratingById = {};
+  for (const entry of (ru?.affected_entries || [])) {
+    const id = String(entry?.user_id ?? entry?.id ?? "");
+    if (!id) continue;
+    ratingById[id] = {
+      elo: entry?.rating_after,
+      delta: entry?.rating_change,
+      username: entry?.username
+    };
+  }
+
+  const rows = participantIds.map(id => {
+    const r = ratingById[id] || {};
+    return {
+      id,
+      place: placeById[id],
+      // null if rating_updates not present yet
+      elo: (r.elo == null ? null : Math.round(r.elo)),
+      delta: (r.delta == null ? null : Math.round(r.delta)),
+      fallbackName: fallbackNamesById[id] || r.username || "Unknown"
+    };
+  });
+
+  rows.sort((a, b) => {
+    const pa = (a.place ?? 9999);
+    const pb = (b.place ?? 9999);
+    if (pa !== pb) return pa - pb;
+    return String(a.fallbackName).localeCompare(String(b.fallbackName));
+  });
+
+  return { rows, fallbackNamesById };
+}
+
+function hashEvent(evt) {
+  const matchId = getMatch(evt)?.match_id || "";
+  const { rows } = extractParticipantsFromEvent(evt);
+  return matchId + "|" + rows.map(r => `${r.id}:${r.place}:${r.elo}:${r.delta}`).join("|");
+}
+
+function buildRanksFromLeaderboard(leaderboard) {
+  const ranks = {};
+  leaderboard
+    .map(p => {
+      const id = p.team?.[0];
+      if (id == null) return null;
+      return { id: String(id), elo: p.elo ?? 0 };
+    })
+    .filter(Boolean)
+    .sort((a, b) => (b.elo ?? 0) - (a.elo ?? 0)) // highest elo = rank 1
+    .forEach((p, i) => {
+      ranks[p.id] = i + 1;
+    });
+  return ranks;
+}
+
+function buildEloMapFromLeaderboard(leaderboard) {
+  const map = {};
+  (leaderboard || []).forEach(p => {
+    const id = p.team?.[0];
+    if (id != null) {
+      map[String(id)] = p.elo ?? 0;
+    }
+  });
+  return map;
+}
+
+/**
+ * Returns true if the leaderboard we fetched reflects the "after" Elo state for this event
+ * (±1 tolerance), i.e., it's safe to advance baseline to this snapshot.
+ */
+function isLeaderboardSyncedForEvent(evt, leaderboardElos) {
+  if (!evt || !leaderboardElos) return false;
+  const { rows: participants } = extractParticipantsFromEvent(evt);
+
+  // If rating updates aren't present yet, we can't assert sync.
+  const hasAnyElo = participants.some(p => typeof p.elo === "number");
+  if (!hasAnyElo) return false;
+
+  return participants.every(p => {
+    const idKey = String(p.id);
+    const lbElo = leaderboardElos[idKey];
+    const matchElo = Math.round(p.elo ?? 0);
+
+    if (typeof lbElo !== "number") return false;
+    return Math.abs(Math.round(lbElo) - matchElo) <= 1;
+  });
+}
+
+function displaySnapshot(players) {
+  if (!snapshotMatch) {
+    resultsListEl.innerHTML = "<div class='loading'>No match</div>";
+    resizeCard(1);
+    return;
+  }
+
+  const rows = snapshotMatch.ratingResults[0].newRatings.slice(0, 8);
+  resultsListEl.innerHTML = "";
+
+  rows.forEach(p => {
+    const row = document.createElement("div");
+    row.className = "entry";
+
+    const idKey = String(p.id);
+
+    if (idKey === String(PLAYER_ID)) {
+      if (p.place === 1) row.classList.add("highlight-gold");
+      else if (p.place === 2) row.classList.add("highlight-silver");
+      else if (p.place === 3) row.classList.add("highlight-bronze");
+      else row.classList.add("highlight-default");
+    }
+
+    const placeClass =
+      p.place === 1 ? "gold" :
+      p.place === 2 ? "silver" :
+      p.place === 3 ? "bronze" :
+      "";
+
+    // Prefer display_name from snapshot resolved.players; fall back to team username
+    const name =
+      resolvedPlayersCache[idKey]?.display_name ||
+      players[idKey]?.display_name ||
+      fallbackNamesCache[idKey] ||
+      "Unknown";
+
+    const elo = (p.elo == null ? null : Math.round(p.elo));
+    const eloDisplay = (elo == null || elo === 0) ? "-" : elo; // null/0 Elo → "-"
+    const delta = (p.delta == null ? 0 : Math.round(p.delta));
+
+    const dC = delta > 0 ? "delta-positive" : delta < 0 ? "delta-negative" : "";
+    const eloDeltaHTML = (p.delta != null && delta !== 0) ? `
+      <span class="elo-delta ${dC}">
+        <span class="delta-arrow">${delta > 0 ? "▲" : "▼"}</span>${Math.abs(delta)}
+      </span>` : `<span></span>`;
+
+    const frozenRank = snapshotRanks[idKey];
+    const rankValue = typeof frozenRank === "number" ? frozenRank : "—";
+
+    row.innerHTML = `
+      <span class="place ${placeClass}">${p.place ?? "—"}</span>
+      <span class="player-name">${name}</span>
+
+      <span class="elo-value">${eloDisplay}</span>
+      ${eloDeltaHTML}
+
+      <span class="rank-value">${rankValue}</span>
+    `;
+
+    resultsListEl.appendChild(row);
+  });
+
+  resizeCard(rows.length);
+}
+
+async function fetchSnapshot(leaderboardId) {
+  const body = {
+    client_id: CLIENT_ID,
+
+    // Prefer the actual leaderboard_id coming from recent changes
+    leaderboard_id: leaderboardId,
+
+    // Keep compatibility with older naming patterns too
+    leaderboard: (leaderboardId || "").toLowerCase(),
+
+    // Keep rank baseline consistent with Elo/delta source
+    rating_type: "player_global_all"
+  };
+
+  const resp = await fetch(SNAP_URL, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(body)
+  });
+
+  if (!resp.ok) throw new Error(`Snapshot HTTP ${resp.status}`);
+  const data = await resp.json();
+
+  // resolved.players -> display_name mapping
+  resolvedPlayersCache = data?.resolved?.players || resolvedPlayersCache || {};
+
+  // leaderboard array location can vary; tolerate a couple shapes
+  const leaderboard =
+    data?.leaderboard ||
+    data?.payload?.leaderboard ||
+    data?.snapshot?.leaderboard ||
+    data?.data?.leaderboard ||
+    [];
+
+  return { leaderboard };
+}
+
+async function fetchData() {
+  const myRequestId = ++requestCounter;
+
+  try {
+    // 1) Poll recent changes every 15s
+    const recentUrl = new URL(RECENT_URL);
+    recentUrl.searchParams.set("client_id", CLIENT_ID);
+    recentUrl.searchParams.set("limit", "50"); // increased to reduce "missed match"
+    recentUrl.searchParams.set("_ts", String(Date.now())); // avoid edge cache stickiness
+
+    const recentResp = await fetch(recentUrl.toString(), { method: "GET" });
+    if (!recentResp.ok) throw new Error(`Recent HTTP ${recentResp.status}`);
+    const recentData = await recentResp.json();
+    if (myRequestId !== requestCounter) return;
+
+    // Accept both evt.payload.match and evt.match
+    const events = normalizeEvents(recentData)
+      .filter(e => !!getMatch(e));
+
+    // Sort by best-available time
+    const sortedEvents = [...events].sort((a, b) => getEventTimeMs(b) - getEventTimeMs(a));
+
+    const globalLatest = sortedEvents[0] || null;
+    const globalLatestHash = globalLatest ? hashEvent(globalLatest) : null;
+
+    const latestEventForPlayer = sortedEvents.find(evt => {
+      const teams = getMatch(evt)?.teams || [];
+      return teams.some(t => (t?.players || []).some(p =>
+        String(p?.user_id ?? p?.id ?? "") === String(PLAYER_ID)
+      ));
+    }) || null;
+
+    const latestPlayerHash = latestEventForPlayer ? hashEvent(latestEventForPlayer) : null;
+
+    const hasSnapshot = !!snapshotMatch;
+
+    const haveNewGlobalMatch =
+      globalLatestHash && globalLatestHash !== lastGlobalMatchHash;
+
+    const playerHasNewerMatchThanSnapshot =
+      latestEventForPlayer &&
+      (!hasSnapshot || latestPlayerHash !== snapshotMatchHash);
+
+    const needInitialBaseline = Object.keys(previousRanks).length === 0;
+
+    // Need leaderboard snapshot:
+    // - first baseline
+    // - any new global match (baseline may move)
+    // - player has a new match to snapshot (need ranks)
+    const needSnapshot =
+      needInitialBaseline || haveNewGlobalMatch || playerHasNewerMatchThanSnapshot;
+
+    let currentRanks = null;
+    let leaderboardElos = null;
+
+    // Choose leaderboard_id from newest available event (tolerant paths)
+    const inferredLeaderboardId =
+      (latestEventForPlayer && getLeaderboardIdFromEvent(latestEventForPlayer)) ||
+      (globalLatest && getLeaderboardIdFromEvent(globalLatest)) ||
+      "Season_10";
+
+    if (needSnapshot) {
+      const snap = await fetchSnapshot(inferredLeaderboardId);
+      if (myRequestId !== requestCounter) return;
+
+      const leaderboard = snap.leaderboard || [];
+      currentRanks = buildRanksFromLeaderboard(leaderboard);
+      leaderboardElos = buildEloMapFromLeaderboard(leaderboard);
+
+      // Freeze "before" baseline for THIS poll
+      const baselineRanks = previousRanks;
+
+      // Determine if the fetched leaderboard is synced to the newest global match
+      const globalLatestSynced =
+        globalLatest && isLeaderboardSyncedForEvent(globalLatest, leaderboardElos);
+
+      // (A) Initialize baseline if we didn't have one yet
+      if (needInitialBaseline && Object.keys(currentRanks).length > 0) {
+        previousRanks = currentRanks;
+        if (globalLatestHash) lastGlobalMatchHash = globalLatestHash;
+      }
+
+      // (B) If player has a newer match than snapshot, show it immediately (even if rating_updates lag)
+      if (latestEventForPlayer && playerHasNewerMatchThanSnapshot) {
+        const { rows: participants, fallbackNamesById } = extractParticipantsFromEvent(latestEventForPlayer);
+
+        // Cache fallback names (team usernames) for display fallback
+        fallbackNamesCache = fallbackNamesById || fallbackNamesCache;
+
+        // Always set snapshot so UI doesn't say "No match"
+        snapshotMatch = {
+          ratingResults: [
+            {
+              newRatings: participants.map(p => ({
+                id: p.id,
+                place: p.place,
+                elo: p.elo,     // may be null until rating_updates arrive
+                delta: p.delta  // may be null until rating_updates arrive
+              }))
+            }
+          ]
+        };
+        snapshotMatchHash = latestPlayerHash;
+
+        // If we have ranks, store them (otherwise UI shows "—" until next poll/sync)
+        const newSnapshotRanks = {};
+        participants.forEach(p => {
+          const idKey = String(p.id);
+          const afterRank = currentRanks ? currentRanks[idKey] : undefined;
+          if (typeof afterRank === "number") newSnapshotRanks[idKey] = afterRank;
+        });
+        snapshotRanks = newSnapshotRanks;
+
+        // NOTE: We intentionally do not advance previousRanks here.
+        // Baseline advances only when newest GLOBAL match is confirmed synced.
+      }
+
+      // (C) Advance rolling baseline exactly one step when we KNOW the leaderboard reflects the new global state
+      if (haveNewGlobalMatch && globalLatestSynced) {
+        previousRanks = currentRanks;
+        lastGlobalMatchHash = globalLatestHash;
+      }
+    }
+
+    // Build display hash from snapshot state
+    let displayHash;
+    if (!snapshotMatch) {
+      displayHash = "NO_MATCH";
+    } else {
+      const rows = snapshotMatch.ratingResults[0].newRatings.slice(0, 8);
+      const parts = rows.map(p => {
+        const idKey = String(p.id);
+        const elo = (p.elo == null ? "n" : Math.round(p.elo));
+        const delta = (p.delta == null ? "n" : Math.round(p.delta));
+        const rankSnapshot = snapshotRanks[idKey];
+        const rankDisplayed = typeof rankSnapshot === "number" ? rankSnapshot : "—";
+        return `${idKey}:${p.place}:${elo}:${delta}:${rankDisplayed}`;
+      });
+      displayHash = parts.join("|");
+    }
+
+    if (!initialLoad && displayHash === lastDisplayHash) return;
+
+    lastDisplayHash = displayHash;
+    initialLoad = false;
+
+    resultsListEl.style.opacity = 0;
+    setTimeout(() => {
+      if (myRequestId !== requestCounter) return;
+      displaySnapshot(resolvedPlayersCache || {});
+      requestAnimationFrame(() => (resultsListEl.style.opacity = 1));
+    }, 300);
+
+  } catch (err) {
+    if (myRequestId !== requestCounter) return;
+    resultsListEl.innerHTML = `<div class="error">${err.message}</div>`;
+  }
+}
+
+async function poll() {
+  await fetchData();
+  setTimeout(poll, REFRESH_MS);
+}
+
+poll();
+</script>
+
+</body>
+</html>
 
