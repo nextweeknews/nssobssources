@@ -43,7 +43,7 @@ async function buildEmbed() {
     getData(RANGES.players)
   ]);
 
-  const sheetLink = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit?usp=sharing`;
+  const sheetLink = `https://nssgolf.com/proleague`;
 
   return {
     title: "Shotgun Pro League — Season 6, Stage 1",
