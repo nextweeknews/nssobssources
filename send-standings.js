@@ -46,7 +46,7 @@ async function buildEmbed() {
   const sheetLink = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit?usp=sharing`;
 
   return {
-    title: "Shotgun League — Season 5 Standings",
+    title: "Shotgun Pro League — Season 6, Stage 1",
     description:
       `**Team Standings**\n${buildFieldBlock(teams)}\n\n` +
       `**Top 10 Players**\n${buildFieldBlock(players)}\n\n` +
