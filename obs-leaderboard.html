@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Season 10 Leaderboard</title>
+<title>Season 11 Leaderboard</title>
 
 <style>
 html, body {
@@ -100,7 +100,7 @@ html, body {
 
 <body>
 <div class="card">
-  <div class="leaderboard-title">NSS Golf Leaders: Season 10</div>
+  <div class="leaderboard-title">Ranked League Leaders: Season 11</div>
   <div class="fade-wrapper" id="fadeWrapper">
     <div id="leaderboardList"></div>
   </div>
@@ -109,7 +109,7 @@ html, body {
 <script>
 const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard_snapshot";
 const REFRESH_MS = 15000;
-const TOTAL_DISPLAY = 16;
+const TOTAL_DISPLAY = 10;
 
 const fadeWrapper = document.getElementById("fadeWrapper");
 const leaderboardEl = document.getElementById("leaderboardList");
@@ -190,7 +190,7 @@ async function fetchLeaderboard() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        leaderboard: "season_10",
+        leaderboard: "season_11",
         rating_type: "player_global_all",
         client_id: "DISCORD|1069003073311211601"
       })
