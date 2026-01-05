@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Season 10 Rankings</title>
+  <title>Season 11 Rankings</title>
 
   <style>
     html, body {
@@ -165,7 +165,7 @@
 
 <body>
 <div class="card" id="card">
-  <div class="title">Season 10 Rankings</div>
+  <div class="title">Season 11 Rankings</div>
 
   <div class="header-row">
     <span>Rank</span>
@@ -327,8 +327,8 @@ function normalize(list,res){
 
 function pickSlice(list){
   const idx=list.findIndex(p=>String(p.id)===PLAYER_ID);
-  if(idx<0) return list.slice(0,16);
-  if(list[idx].rank<=16) return list.slice(0,16);
+  if(idx<0) return list.slice(0,15);
+  if(list[idx].rank<=15) return list.slice(0,15);
   const start=Math.min(Math.max(idx-Math.floor(15/2),0), list.length-15);
   return list.slice(start,start+15);
 }
@@ -339,7 +339,7 @@ async function update(){
       method:"POST",
       headers:{ "Content-Type":"application/json" },
       body:JSON.stringify({
-        leaderboard:"season_10",
+        leaderboard:"season_11",
         rating_type:"player_global_all",
         client_id:CLIENT_ID
       })
