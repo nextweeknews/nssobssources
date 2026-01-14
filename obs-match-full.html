@@ -545,7 +545,7 @@ async function fetchData() {
     const inferredLeaderboardId =
       latestEventForPlayer?.payload?.leaderboard?.leaderboard_id ||
       globalLatest?.payload?.leaderboard?.leaderboard_id ||
-      "Season_10";
+      "Season_11";
 
     if (needSnapshot) {
       const snap = await fetchSnapshot(inferredLeaderboardId);
