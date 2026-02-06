@@ -46,7 +46,7 @@ async function buildEmbed() {
   const sheetLink = `https://nssgolf.com/proleague`;
 
   return {
-    title: "Shotgun Pro League — Season 6, Stage 1",
+    title: "Shotgun Pro League — Season 6, Stage 2",
     description:
       `**Team Standings**\n${buildFieldBlock(teams)}\n\n` +
       `**Top 10 Players**\n${buildFieldBlock(players)}\n\n` +
