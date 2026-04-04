@@ -180,7 +180,6 @@
 <script>
 const API_URL = "https://blue-dust-07fa.nextweekmedia.workers.dev/lobby";
 const LB_URL  = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard_snapshot";
-const CLIENT_ID = "DISCORD|1069003073311211601";
 
 const resultsListEl = document.getElementById("resultsList");
 const cardEl = document.getElementById("card");
@@ -266,9 +265,8 @@ async function updateLobby(){
       method:"POST",
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({
-        leaderboard:"season_10",
-        rating_type:"player_global_all",
-        client_id:CLIENT_ID
+        leaderboard:"default",
+        format:""
       })
     })).json();
 

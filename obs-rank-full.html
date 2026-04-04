@@ -183,7 +183,6 @@
 
 <script>
 const LB_URL="https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard_snapshot";
-const CLIENT_ID="DISCORD|1069003073311211601";
 const REFRESH_MS=15000;
 const PLAYER_ID=new URLSearchParams(location.search).get("player_id");
 
@@ -339,9 +338,8 @@ async function update(){
       method:"POST",
       headers:{ "Content-Type":"application/json" },
       body:JSON.stringify({
-        leaderboard:"season_11",
-        rating_type:"player_global_all",
-        client_id:CLIENT_ID
+        leaderboard:"default",
+        format:""
       })
     });
     const d=await r.json();

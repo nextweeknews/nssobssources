@@ -1,6 +1,6 @@
 const WORKER_BASE_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_player_rating".replace(/\/+$/, "");
 
-async function fetchLeaderboard(playerId) {
+async function fetchPlayerRating(playerId) {
   const container = document.getElementById("data");
   container.innerHTML = "<p class='loading'>Loading player...</p>";
 
@@ -8,7 +8,7 @@ async function fetchLeaderboard(playerId) {
     const response = await fetch(WORKER_BASE_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ player_id: playerId })
+      body: JSON.stringify({ player_id: playerId, leaderboard: "default", format: "" })
     });
 
     if (!response.ok) {
@@ -31,3 +31,6 @@ async function fetchLeaderboard(playerId) {
     container.innerHTML = `<p class='error'>Error: ${err.message}</p>`;
   }
 }
+
+// Backward-compatible alias for any existing callers.
+const fetchLeaderboard = fetchPlayerRating;

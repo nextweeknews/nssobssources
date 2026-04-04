@@ -273,9 +273,8 @@ async function fetchData(){
     method:"POST",
     headers:{"Content-Type":"application/json"},
     body:JSON.stringify({
-      leaderboard:"season_11",
-      rating_type:"player_global_all",
-      client_id:"DISCORD|1069003073311211601"
+      leaderboard:"default",
+      format:""
     })
   });
 
@@ -306,7 +305,8 @@ async function fetchData(){
   lastElo=elo;
   lastWins=wins;
 
-  const cfg=data.resolved?.leaderboards?.["Season_11"];
+  const cfg=data.resolved?.leaderboards?.default
+    || data.resolved?.leaderboards?.["Season_11"];
   let tier = null;
   if(cfg){
     if(rank===1 && cfg.player_global_all_rank_tiers?.length)

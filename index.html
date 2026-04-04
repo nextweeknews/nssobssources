@@ -150,8 +150,7 @@
   </div>
   <div class="info-content">
     <ol>
-      <li>Open the <a href="https://teamupdiscord.com/leaderboard/client/DISCORD%7C1069003073311211601/leaderboard/Season_11/rating_type/player_global_all/format/global"
-         >Season 11 Leaderboard</a></li>
+      <li>Open any Team Up player profile page and copy its URL.</li>
       <li>Click your player name</li>
       <li>Copy the <strong>full URL</strong> of your player page (or the numbers following <code>player/</code> in the URL)</li>
       <li>Paste above!</li>
@@ -202,7 +201,7 @@
 </div>
 
 <script>
-const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard_snapshot";
+const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_player_rating";
 
 const nameEl = document.getElementById("name");
 const ratingEl = document.getElementById("rating");
@@ -244,7 +243,7 @@ async function lookupPlayer(rawInput) {
   const pid = String(playerId);
   console.log("Using Player ID:", pid);
 
-  nameEl.textContent = "Loading...";
+  nameEl.textContent = `Player ${pid}`;
   ratingEl.textContent = "—";
   ratingEl.classList.remove("error-text");
 
@@ -252,7 +251,7 @@ async function lookupPlayer(rawInput) {
     const resp = await fetch(WORKER_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ player_id: pid })
+      body: JSON.stringify({ player_id: pid, leaderboard: "default", format: "" })
     });
 
     if (!resp.ok) {
@@ -265,39 +264,15 @@ async function lookupPlayer(rawInput) {
 
     console.log("FULL DATA:", data);
 
-    // 1) Find this player’s leaderboard row (elo lives here)
-    const lbRow = (data?.leaderboard || []).find(row => {
-      const team = row?.team;
-      if (Array.isArray(team)) return team.map(String).includes(pid);
-      return String(team ?? "") === pid;
-    });
+    const row = data?.data || data;
+    const elo = row?.elo ?? row?.rating ?? row?.value;
+    nameEl.textContent = `Player ${pid}`;
 
-    const elo = lbRow?.elo;
-
-    // 2) Resolve display name (name lives here)
-    let displayName = data?.resolved?.players?.[pid]?.display_name;
-
-    // Fallback: sometimes the object key may not match, so scan values
-    if (!displayName && data?.resolved?.players) {
-      for (const p of Object.values(data.resolved.players)) {
-        const candidateId = String(
-          p?.id ?? p?.connection_discord?.id ?? p?.metadata_id ?? ""
-        );
-        if (candidateId === pid) {
-          displayName = p?.display_name;
-          break;
-        }
-      }
-    }
-
-    // 3) Render
-    nameEl.textContent = displayName || "Unknown";
-
-    if (!lbRow) {
-      ratingEl.textContent = "Player not found in snapshot.";
+    if (elo == null) {
+      ratingEl.textContent = "Player rating unavailable.";
       ratingEl.classList.add("error-text");
     } else {
-      ratingEl.textContent = (elo ?? "N/A");
+      ratingEl.textContent = elo;
       ratingEl.classList.remove("error-text");
     }
 
@@ -309,7 +284,7 @@ async function lookupPlayer(rawInput) {
 
   } catch (err) {
     console.error("Lookup error:", err);
-    nameEl.textContent = "Error";
+    nameEl.textContent = `Player ${pid}`;
     ratingEl.textContent = err.message || "Unknown error";
     ratingEl.classList.add("error-text");
   }

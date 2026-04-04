@@ -213,7 +213,6 @@ const API_BASE   = "https://rapid-haze-012c.nextweekmedia.workers.dev";
 const RECENT_URL = `${API_BASE}/get_recent_changes`;
 const SNAP_URL   = `${API_BASE}/get_leaderboard_snapshot`;
 
-const CLIENT_ID = "DISCORD|1069003073311211601";
 const REFRESH_MS = 15000;
 
 const cardEl = document.getElementById("card");
@@ -454,18 +453,10 @@ function displaySnapshot(players) {
   resizeCard(rows.length);
 }
 
-async function fetchSnapshot(leaderboardId) {
+async function fetchSnapshot() {
   const body = {
-    client_id: CLIENT_ID,
-
-    // Prefer the actual leaderboard_id coming from recent changes ("Season_10" in your snippet)
-    leaderboard_id: leaderboardId,
-
-    // Keep compatibility with older naming patterns too
-    leaderboard: (leaderboardId || "").toLowerCase(),
-
-    // Keep rank baseline consistent with Elo/delta source
-    rating_type: "player_global_all"
+    leaderboard: "default",
+    format: ""
   };
 
   const resp = await fetch(SNAP_URL, {
@@ -497,7 +488,6 @@ async function fetchData() {
   try {
     // 1) Poll recent changes every 15s
     const recentUrl = new URL(RECENT_URL);
-    recentUrl.searchParams.set("client_id", CLIENT_ID);
     recentUrl.searchParams.set("limit", "10");
     recentUrl.searchParams.set("_ts", String(Date.now())); // avoid edge cache stickiness
 
@@ -541,14 +531,9 @@ async function fetchData() {
     let currentRanks = null;
     let leaderboardElos = null;
 
-    // Choose leaderboard_id from newest available event
-    const inferredLeaderboardId =
-      latestEventForPlayer?.payload?.leaderboard?.leaderboard_id ||
-      globalLatest?.payload?.leaderboard?.leaderboard_id ||
-      "Season_11";
-
+    // Snapshot route now uses worker defaults (no leaderboard id required).
     if (needSnapshot) {
-      const snap = await fetchSnapshot(inferredLeaderboardId);
+      const snap = await fetchSnapshot();
       if (myRequestId !== requestCounter) return;
 
       const leaderboard = snap.leaderboard || [];

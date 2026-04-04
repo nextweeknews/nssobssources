@@ -108,8 +108,7 @@
 
 <script>
   const API_BASE = "https://rapid-haze-012c.nextweekmedia.workers.dev";
-  const CLIENT_ID = "DISCORD|1069003073311211601";
-  const REFRESH_MS = 15000;
+    const REFRESH_MS = 15000;
 
   // How often to refresh snapshot names (ms)
   const SNAPSHOT_TTL_MS = 5 * 60 * 1000;
@@ -282,8 +281,8 @@
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        client_id: CLIENT_ID,
-        leaderboard_id: leaderboardId
+        leaderboard: "default",
+        format: ""
       })
     });
 
@@ -311,7 +310,6 @@
   async function fetchMatchResults() {
     try {
       const url = new URL(API_BASE + "/get_recent_changes");
-      url.searchParams.set("client_id", CLIENT_ID);
       url.searchParams.set("limit", "10");
       url.searchParams.set("_ts", String(Date.now())); // avoid edge-caching weirdness
 
