@@ -1,4 +1,9 @@
-const WORKER_BASE_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_player_rating".replace(/\/+$/, "");
+const TEAMUP_CONFIG = window.TEAMUP_CONFIG || {
+  CURRENT_LEADERBOARD_KEY: "Season_12",
+  DEFAULT_FORMAT: "",
+  WORKER_BASE_URL: "https://rapid-haze-012c.nextweekmedia.workers.dev"
+};
+const WORKER_BASE_URL = `${TEAMUP_CONFIG.WORKER_BASE_URL}/get_player_rating`.replace(/\/+$/, "");
 
 async function fetchPlayerRating(playerId) {
   const container = document.getElementById("data");
@@ -8,7 +13,7 @@ async function fetchPlayerRating(playerId) {
     const response = await fetch(WORKER_BASE_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ player_id: playerId, leaderboard: "default", format: "" })
+      body: JSON.stringify({ player_id: playerId, leaderboard: TEAMUP_CONFIG.CURRENT_LEADERBOARD_KEY, format: TEAMUP_CONFIG.DEFAULT_FORMAT })
     });
 
     if (!response.ok) {

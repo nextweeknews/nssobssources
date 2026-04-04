@@ -114,9 +114,11 @@
 
 <button class="refresh-btn" onclick="refreshOverlay()">Refresh Overlay</button>
 
+<script src="teamup-config.js"></script>
 <script>
+const TEAMUP_CONFIG = window.TEAMUP_CONFIG;
 const API_URL="https://blue-dust-07fa.nextweekmedia.workers.dev/lobby";
-const LB_URL="https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard_snapshot";
+const LB_URL=`${TEAMUP_CONFIG.WORKER_BASE_URL}/get_leaderboard_snapshot`;
 
 // <-- Your player ID (always in lobby + always tracked)
 const MY_ID = "702730732220579950";
@@ -136,8 +138,8 @@ async function loadLeaderboard(){
     method:"POST",
     headers:{"Content-Type":"application/json"},
     body:JSON.stringify({
-      leaderboard:"default",
-      format:""
+      leaderboard:TEAMUP_CONFIG.CURRENT_LEADERBOARD_KEY,
+      format:TEAMUP_CONFIG.DEFAULT_FORMAT
     })
   });
   

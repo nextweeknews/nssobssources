@@ -275,8 +275,10 @@ session-col-elo  { flex: 0 0 40%; }
   </div>
 </div>
 
+<script src="teamup-config.js"></script>
 <script>
-const WORKER_URL="https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard_snapshot";
+const TEAMUP_CONFIG = window.TEAMUP_CONFIG;
+const WORKER_URL=`${TEAMUP_CONFIG.WORKER_BASE_URL}/get_leaderboard_snapshot`;
 const REFRESH_MS=15000;
 
 const rankVal=document.getElementById("rankValue");
@@ -381,8 +383,8 @@ async function fetchData(){
       method:"POST",
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({
-        leaderboard:"default",
-        format:""
+        leaderboard:TEAMUP_CONFIG.CURRENT_LEADERBOARD_KEY,
+        format:TEAMUP_CONFIG.DEFAULT_FORMAT
       })
     });
 
@@ -425,7 +427,7 @@ async function fetchData(){
     lastWins=wins;
 
     // Tier handling
-    const cfg=data.resolved?.leaderboards?.default;
+    const cfg=data.resolved?.leaderboards?.[TEAMUP_CONFIG.CURRENT_LEADERBOARD_KEY];
     let tier = null;
     if(cfg){
       const tiers=cfg.player_global_all_tiers ?? [];

@@ -202,8 +202,10 @@
   </div>
 </div>
 
+<script src="teamup-config.js"></script>
 <script>
-const API_BASE   = "https://rapid-haze-012c.nextweekmedia.workers.dev";
+const TEAMUP_CONFIG = window.TEAMUP_CONFIG;
+const API_BASE   = TEAMUP_CONFIG.WORKER_BASE_URL;
 const RECENT_URL = `${API_BASE}/get_recent_changes`;
 const SNAP_URL   = `${API_BASE}/get_leaderboard_snapshot`;
 
@@ -475,8 +477,8 @@ function displaySnapshot(players) {
 
 async function fetchSnapshot() {
   const body = {
-    leaderboard: "default",
-    format: ""
+    leaderboard: TEAMUP_CONFIG.CURRENT_LEADERBOARD_KEY,
+    format: TEAMUP_CONFIG.DEFAULT_FORMAT
   };
 
   const resp = await fetch(SNAP_URL, {
@@ -556,7 +558,7 @@ async function fetchData() {
     let currentRanks = null;
     let leaderboardElos = null;
 
-    // Snapshot route now uses worker defaults (no leaderboard id required).
+    // Snapshot route uses the configured current leaderboard key.
     if (needSnapshot) {
       const snap = await fetchSnapshot();
       if (myRequestId !== requestCounter) return;
