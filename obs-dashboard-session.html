@@ -425,8 +425,7 @@ async function fetchData(){
     lastWins=wins;
 
     // Tier handling
-    const cfg=data.resolved?.leaderboards?.default
-      || data.resolved?.leaderboards?.["Season_11"];
+    const cfg=data.resolved?.leaderboards?.default;
     let tier = null;
     if(cfg){
       const tiers=cfg.player_global_all_tiers ?? [];
