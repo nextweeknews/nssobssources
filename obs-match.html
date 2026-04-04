@@ -154,6 +154,18 @@ const TEAMUP_CONFIG = window.TEAMUP_CONFIG;
     );
   }
 
+  function getEventLeaderboardId(evt) {
+    return (
+      evt?.payload?.leaderboard?.leaderboard_id ||
+      evt?.payload?.match?.leaderboard_id ||
+      evt?.payload?.leaderboard_id ||
+      evt?.leaderboard?.leaderboard_id ||
+      evt?.match?.leaderboard_id ||
+      evt?.leaderboard_id ||
+      ""
+    );
+  }
+
   function buildRowsFromEvent(evt) {
     const payload = evt?.payload || {};
     const match = payload?.match || {};
@@ -321,7 +333,13 @@ const TEAMUP_CONFIG = window.TEAMUP_CONFIG;
       const data = await resp.json();
       const events = normalizeEvents(data);
 
-      const recentEvent = events
+      const targetLeaderboard = String(TEAMUP_CONFIG.CURRENT_LEADERBOARD_KEY || "");
+      const eventsForConfiguredLeaderboard = events.filter(evt => {
+        const leaderboardId = String(getEventLeaderboardId(evt) || "");
+        return !targetLeaderboard || leaderboardId === targetLeaderboard;
+      });
+
+      const recentEvent = eventsForConfiguredLeaderboard
         .slice()
         .sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0))
         .find(evt => {

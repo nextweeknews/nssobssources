@@ -519,8 +519,13 @@ async function fetchData() {
     if (myRequestId !== requestCounter) return;
 
     // Accept both evt.payload.match and evt.match
+    const targetLeaderboard = String(TEAMUP_CONFIG.CURRENT_LEADERBOARD_KEY || "");
     const events = normalizeEvents(recentData)
-      .filter(e => !!getMatch(e));
+      .filter(e => !!getMatch(e))
+      .filter(e => {
+        const leaderboardId = String(getLeaderboardIdFromEvent(e) || "");
+        return !targetLeaderboard || leaderboardId === targetLeaderboard;
+      });
 
     // Sort by best-available time
     const sortedEvents = [...events].sort((a, b) => getEventTimeMs(b) - getEventTimeMs(a));
