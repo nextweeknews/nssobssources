@@ -261,6 +261,18 @@ function normalizeEvents(data) {
   return [];
 }
 
+function getEventLeaderboardId(evt) {
+  return (
+    evt?.payload?.leaderboard?.leaderboard_id ||
+    evt?.payload?.match?.leaderboard_id ||
+    evt?.payload?.leaderboard_id ||
+    evt?.leaderboard?.leaderboard_id ||
+    evt?.match?.leaderboard_id ||
+    evt?.leaderboard_id ||
+    null
+  );
+}
+
 function pickRatingUpdate(payload) {
   const updates = payload?.rating_updates || [];
   // Keep consistent with the leaderboard baseline/ranks
@@ -498,8 +510,13 @@ async function fetchData() {
     const recentData = await recentResp.json();
     if (myRequestId !== requestCounter) return;
 
+    const targetLeaderboard = String(TEAMUP_CONFIG.CURRENT_LEADERBOARD_KEY || "");
     const events = normalizeEvents(recentData)
-      .filter(e => e?.payload?.match && e?.payload?.rating_updates);
+      .filter(e => e?.payload?.match && e?.payload?.rating_updates)
+      .filter(e => {
+        const leaderboardId = String(getEventLeaderboardId(e) || "");
+        return !targetLeaderboard || leaderboardId === targetLeaderboard;
+      });
 
     const sortedEvents = [...events].sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0));
 
