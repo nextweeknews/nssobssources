@@ -181,8 +181,10 @@
   </div>
 </div>
 
+<script src="teamup-config.js"></script>
 <script>
-const LB_URL="https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard_snapshot";
+const TEAMUP_CONFIG = window.TEAMUP_CONFIG;
+const LB_URL=`${TEAMUP_CONFIG.WORKER_BASE_URL}/get_leaderboard_snapshot`;
 const REFRESH_MS=15000;
 const PLAYER_ID=new URLSearchParams(location.search).get("player_id");
 
@@ -338,8 +340,8 @@ async function update(){
       method:"POST",
       headers:{ "Content-Type":"application/json" },
       body:JSON.stringify({
-        leaderboard:"default",
-        format:""
+        leaderboard:TEAMUP_CONFIG.CURRENT_LEADERBOARD_KEY,
+        format:TEAMUP_CONFIG.DEFAULT_FORMAT
       })
     });
     const d=await r.json();

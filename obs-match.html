@@ -106,8 +106,10 @@
     <div id="resultsList"></div>
   </div>
 
+<script src="teamup-config.js"></script>
 <script>
-  const API_BASE = "https://rapid-haze-012c.nextweekmedia.workers.dev";
+const TEAMUP_CONFIG = window.TEAMUP_CONFIG;
+  const API_BASE = TEAMUP_CONFIG.WORKER_BASE_URL;
     const REFRESH_MS = 15000;
 
   // How often to refresh snapshot names (ms)
@@ -281,8 +283,8 @@
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        leaderboard: "default",
-        format: ""
+        leaderboard: TEAMUP_CONFIG.CURRENT_LEADERBOARD_KEY,
+        format: TEAMUP_CONFIG.DEFAULT_FORMAT
       })
     });
 
