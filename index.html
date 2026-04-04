@@ -201,7 +201,7 @@
 </div>
 
 <script>
-const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_player_rating";
+const WORKER_URL = "https://rapid-haze-012c.nextweekmedia.workers.dev/get_leaderboard_snapshot";
 
 const nameEl = document.getElementById("name");
 const ratingEl = document.getElementById("rating");
@@ -251,7 +251,7 @@ async function lookupPlayer(rawInput) {
     const resp = await fetch(WORKER_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ player_id: pid, leaderboard: "default", format: "" })
+      body: JSON.stringify({ leaderboard: "default", format: "" })
     });
 
     if (!resp.ok) {
@@ -264,9 +264,37 @@ async function lookupPlayer(rawInput) {
 
     console.log("FULL DATA:", data);
 
-    const row = data?.data || data;
+    const leaderboardRows = Array.isArray(data?.leaderboard) ? data.leaderboard : [];
+    const row = leaderboardRows.find((entry) => {
+      const team = entry?.team;
+      if (Array.isArray(team)) return team.some((member) => String(member) === pid);
+      if (team == null) return false;
+      return String(team) === pid;
+    });
+
+    if (!row) {
+      nameEl.textContent = `Player ${pid}`;
+      ratingEl.textContent = "Player not found in snapshot.";
+      ratingEl.classList.add("error-text");
+      return;
+    }
+
+    const resolvedPlayers = data?.resolved?.players;
+    let displayName = resolvedPlayers?.[pid]?.display_name;
+
+    if (!displayName && resolvedPlayers && typeof resolvedPlayers === "object") {
+      for (const value of Object.values(resolvedPlayers)) {
+        if (!value || typeof value !== "object") continue;
+        const candidateId = value.player_id ?? value.id ?? value.pid;
+        if (candidateId != null && String(candidateId) === pid) {
+          displayName = value.display_name;
+          break;
+        }
+      }
+    }
+
     const elo = row?.elo ?? row?.rating ?? row?.value;
-    nameEl.textContent = `Player ${pid}`;
+    nameEl.textContent = displayName || `Player ${pid}`;
 
     if (elo == null) {
       ratingEl.textContent = "Player rating unavailable.";
