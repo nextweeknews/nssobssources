@@ -8,8 +8,8 @@ const WORKER_URL = "https://small-mud-2771.nextweekmedia.workers.dev/";
 const SHEET_ID = "1qIM0HKhx9Y-3eCJCFzBqrbATwiPrK3C1ynATwZzRC1o";
 
 const RANGES = {
-  teams: "Season 6, Stage 3!U4:X15",
-  players: "Season 6, Stage 3!U18:X32"
+  teams: "Season 7, Stage 1!U4:X15",
+  players: "Season 7, Stage 1!U18:X32"
 };
 
 async function getData(range) {
@@ -46,7 +46,7 @@ async function buildEmbed() {
   const sheetLink = `https://nssgolf.com/proleague`;
 
   return {
-    title: "Shotgun Pro League — Season 6, Stage 3",
+    title: "Shotgun Pro League — Season 7, Stage 1",
     description:
       `**Team Standings**\n${buildFieldBlock(teams)}\n\n` +
       `**Top 10 Players**\n${buildFieldBlock(players)}\n\n` +
