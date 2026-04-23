@@ -302,9 +302,36 @@ function render(list){
   adjustSpacing(list.length);
 }
 
+function getEntryPlayerId(entry){
+  const id = entry?.team?.[0] ?? entry?.player_id;
+  return id == null ? null : String(id);
+}
+
+function normalizeSnapshot(data){
+  const entries = Array.isArray(data?.leaderboard)
+    ? data.leaderboard
+    : Array.isArray(data?.entries)
+      ? data.entries
+      : [];
+
+  const resolvedPlayers = { ...(data?.resolved?.players || {}) };
+  entries.forEach((entry) => {
+    const id = getEntryPlayerId(entry);
+    if (!id || !entry?.display_name) return;
+    resolvedPlayers[id] = {
+      ...(resolvedPlayers[id] || {}),
+      player_id: id,
+      display_name: entry.display_name,
+      avatar_url: entry.avatar_url ?? resolvedPlayers[id]?.avatar_url
+    };
+  });
+
+  return { entries, resolvedPlayers };
+}
+
 function normalize(list,res){
   return list.map((e,i)=>{
-    const id=e.team[0];
+    const id=getEntryPlayerId(e);
     const rp=res[id]||{};
     const wins=e.count_placement_1??0;
     const m=e.matches??0;
@@ -346,8 +373,9 @@ async function update(){
     });
     const d=await r.json();
 
-    const sorted=[...d.leaderboard].sort((a,b)=>(b.elo??0)-(a.elo??0));
-    const mapped=normalize(sorted, d.resolved?.players||{});
+    const snapshot = normalizeSnapshot(d);
+    const sorted=[...snapshot.entries].sort((a,b)=>(b.elo??0)-(a.elo??0));
+    const mapped=normalize(sorted, snapshot.resolvedPlayers);
     const view=pickSlice(mapped);
 
     if(!lastState || JSON.stringify(view)!==JSON.stringify(lastState)){

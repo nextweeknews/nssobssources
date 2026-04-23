@@ -144,6 +144,11 @@ const TEAMUP_CONFIG = window.TEAMUP_CONFIG;
     return [];
   }
 
+  function getEntryPlayerId(entry) {
+    const id = entry?.team?.[0] ?? entry?.player_id;
+    return id == null ? null : String(id);
+  }
+
   function pickRatingUpdate(payload) {
     const updates = payload?.rating_updates || [];
     return (
@@ -315,6 +320,17 @@ const TEAMUP_CONFIG = window.TEAMUP_CONFIG;
 
       if (id && display) nextMap[id] = display;
     }
+
+    const entries = Array.isArray(data?.leaderboard)
+      ? data.leaderboard
+      : Array.isArray(data?.entries)
+        ? data.entries
+        : [];
+    entries.forEach((entry) => {
+      const id = getEntryPlayerId(entry);
+      if (!id || !entry?.display_name) return;
+      nextMap[id] = entry.display_name;
+    });
 
     displayNameById = nextMap;
     lastSnapshotAt = now;

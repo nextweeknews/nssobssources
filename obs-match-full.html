@@ -344,11 +344,16 @@ function hashEvent(evt) {
   return matchId + "|" + rows.map(r => `${r.id}:${r.place}:${r.elo}:${r.delta}`).join("|");
 }
 
+function getEntryPlayerId(entry) {
+  const id = entry?.team?.[0] ?? entry?.player_id;
+  return id == null ? null : String(id);
+}
+
 function buildRanksFromLeaderboard(leaderboard) {
   const ranks = {};
   leaderboard
     .map(p => {
-      const id = p.team?.[0];
+      const id = getEntryPlayerId(p);
       if (id == null) return null;
       return { id: String(id), elo: p.elo ?? 0 };
     })
@@ -363,7 +368,7 @@ function buildRanksFromLeaderboard(leaderboard) {
 function buildEloMapFromLeaderboard(leaderboard) {
   const map = {};
   (leaderboard || []).forEach(p => {
-    const id = p.team?.[0];
+    const id = getEntryPlayerId(p);
     if (id != null) {
       map[String(id)] = p.elo ?? 0;
     }
@@ -483,15 +488,33 @@ async function fetchSnapshot() {
   const data = await resp.json();
 
   // resolved.players -> display_name mapping
-  resolvedPlayersCache = data?.resolved?.players || resolvedPlayersCache || {};
+  const snapshotEntries = Array.isArray(data?.leaderboard)
+    ? data.leaderboard
+    : Array.isArray(data?.entries)
+      ? data.entries
+      : Array.isArray(data?.payload?.leaderboard)
+        ? data.payload.leaderboard
+        : Array.isArray(data?.snapshot?.leaderboard)
+          ? data.snapshot.leaderboard
+          : Array.isArray(data?.data?.leaderboard)
+            ? data.data.leaderboard
+            : [];
+
+  const resolvedPlayers = { ...(data?.resolved?.players || {}) };
+  snapshotEntries.forEach((entry) => {
+    const id = getEntryPlayerId(entry);
+    if (!id || !entry?.display_name) return;
+    resolvedPlayers[id] = {
+      ...(resolvedPlayers[id] || {}),
+      player_id: id,
+      display_name: entry.display_name,
+      avatar_url: entry.avatar_url ?? resolvedPlayers[id]?.avatar_url
+    };
+  });
+  resolvedPlayersCache = resolvedPlayers;
 
   // leaderboard array location can vary; tolerate a couple shapes
-  const leaderboard =
-    data?.leaderboard ||
-    data?.payload?.leaderboard ||
-    data?.snapshot?.leaderboard ||
-    data?.data?.leaderboard ||
-    [];
+  const leaderboard = snapshotEntries;
 
   return { leaderboard };
 }

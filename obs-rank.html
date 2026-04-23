@@ -129,6 +129,33 @@ function setError(msg) {
   console.error(msg);
 }
 
+function getEntryPlayerId(entry) {
+  const id = entry?.team?.[0] ?? entry?.player_id;
+  return id == null ? null : String(id);
+}
+
+function normalizeSnapshot(data) {
+  const entries = Array.isArray(data?.leaderboard)
+    ? data.leaderboard
+    : Array.isArray(data?.entries)
+      ? data.entries
+      : [];
+
+  const resolvedPlayers = { ...(data?.resolved?.players || {}) };
+  entries.forEach((entry) => {
+    const id = getEntryPlayerId(entry);
+    if (!id || !entry?.display_name) return;
+    resolvedPlayers[id] = {
+      ...(resolvedPlayers[id] || {}),
+      player_id: id,
+      display_name: entry.display_name,
+      avatar_url: entry.avatar_url ?? resolvedPlayers[id]?.avatar_url
+    };
+  });
+
+  return { entries, resolvedPlayers };
+}
+
 function statesEqual(a, b) {
   if (!a || !b || a.length !== b.length) return false;
   return a.every((row, i) =>
@@ -167,7 +194,7 @@ function renderList(state, highlightId) {
 function displayLeaderboard(entries, resolvedPlayers) {
   const highlightId = getPlayerId();
 
-  const highlightIndex = entries.findIndex(e => e.team[0] === highlightId);
+  const highlightIndex = entries.findIndex(e => getEntryPlayerId(e) === highlightId);
   let startIndex = 0;
 
   if (highlightIndex >= 0) {
@@ -178,9 +205,9 @@ function displayLeaderboard(entries, resolvedPlayers) {
   const slice = entries.slice(startIndex, startIndex + TOTAL_DISPLAY);
 
   const newState = slice.map((player, i) => ({
-    rank: startIndex + i + 1,
-    id: player.team[0],
-    name: resolvedPlayers?.[player.team[0]]?.display_name || "Unknown",
+    rank: player.rank ?? (startIndex + i + 1),
+    id: getEntryPlayerId(player),
+    name: resolvedPlayers?.[getEntryPlayerId(player)]?.display_name || player.display_name || "Unknown",
     elo: player.elo ?? "—"
   }));
 
@@ -211,7 +238,8 @@ async function fetchLeaderboard() {
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
 
-    displayLeaderboard(data.leaderboard || [], data.resolved?.players || {});
+    const snapshot = normalizeSnapshot(data);
+    displayLeaderboard(snapshot.entries, snapshot.resolvedPlayers);
   }
   catch (err) {
     setError(err.message);
