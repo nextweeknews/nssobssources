@@ -176,7 +176,7 @@ html, body {
 }
 
 .session-col-rank { flex: 0 0 30%; }
-session-col-elo  { flex: 0 0 40%; }
+.session-col-elo  { flex: 0 0 40%; }
 .session-col-wins { flex: 0 0 30%; }
 
 .session-delta-value {
@@ -325,6 +325,20 @@ function getPlayerId(){
   return /^\d{17,20}$/.test(pid)?pid:"702730732220579950";
 }
 
+function getEntryPlayerId(entry){
+  const id = entry?.player_id ?? entry?.team?.[0];
+  return id == null ? null : String(id);
+}
+
+function toNumberOrNull(value){
+  if(typeof value === "number" && Number.isFinite(value)) return value;
+  if(typeof value === "string" && value.trim() !== ""){
+    const parsed = Number(value);
+    if(Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
 function animateDelta(valueEl, deltaEl, oldVal, newVal, reverse=false){
   const diff=newVal-oldVal;
   if(oldVal===null || diff===0) return;
@@ -396,29 +410,39 @@ async function fetchData(){
 
     lastAppliedVersion = myVersion;
 
-    const sorted=[...(data.leaderboard??[])].sort((a,b)=>(b.elo??0)-(a.elo??0));
-    const idx=sorted.findIndex(p=>p.team?.[0]===pid);
-    if(idx<0)return;
+    const leaderboardData = Array.isArray(data?.leaderboard)
+      ? data.leaderboard
+      : Array.isArray(data?.entries)
+        ? data.entries
+        : [];
+    const p = leaderboardData.find(player => getEntryPlayerId(player) === pid);
+    if(!p) return;
 
-    const p=sorted[idx];
-    const rank=idx+1;
-    const elo=p.elo??0;
-    const wins=p.count_placement_1??0;
+    const elo = toNumberOrNull(p.elo) ?? 0;
+    const wins = toNumberOrNull(p.wins) ?? toNumberOrNull(p.count_placement_1) ?? 0;
+
+    // Prefer payload rank, but gracefully fall back to list position if omitted.
+    let rank = toNumberOrNull(p.rank);
+    if(rank === null){
+      const sorted=[...leaderboardData].sort((a,b)=>(toNumberOrNull(b?.elo)??0)-(toNumberOrNull(a?.elo)??0));
+      const idx=sorted.findIndex(player => getEntryPlayerId(player) === pid);
+      rank = idx >= 0 ? idx + 1 : null;
+    }
 
     // Capture initial values on first successful fetch
     if(initialRank===null) initialRank=rank;
     if(initialElo===null) initialElo=elo;
     if(initialWins===null) initialWins=wins;
 
-    if(lastRank!==null && rank!==lastRank)
+    if(lastRank!==null && rank!==null && rank!==lastRank)
       animateDelta(rankVal,rankDelta,lastRank,rank,true);
     if(lastElo!==null && elo!==lastElo)
       animateDelta(eloVal,eloDelta,lastElo,elo);
     if(lastWins!==null && wins!==lastWins)
       animateDelta(winsVal,winsDelta,lastWins,wins);
 
-    rankNum.textContent=rank;
-    rankSuffix.textContent=getOrdinalSuffix(rank);
+    rankNum.textContent=rank ?? "—";
+    rankSuffix.textContent=rank !== null ? getOrdinalSuffix(rank) : "";
     eloVal.textContent=elo;
     winsVal.textContent=wins;
 
@@ -452,7 +476,7 @@ async function fetchData(){
 
     // SESSION STRIP VALUES
     // Rank: improvement is LOWER numeric rank, so flip sign
-    const rankDiff = initialRank !== null ? (initialRank - rank) : 0;
+    const rankDiff = (initialRank !== null && rank !== null) ? (initialRank - rank) : 0;
     const eloDiff  = initialElo  !== null ? (elo - initialElo)       : 0;
     const winsDiff = initialWins !== null ? (wins - initialWins)     : 0;
 
@@ -470,10 +494,6 @@ async function fetchData(){
 // kick off the loop
 fetchData();
 </script>
-
-</body>
-</html>
-
 
 </body>
 </html>
