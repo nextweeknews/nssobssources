@@ -176,7 +176,7 @@ html, body {
 }
 
 .session-col-rank { flex: 0 0 30%; }
-session-col-elo  { flex: 0 0 40%; }
+.session-col-elo  { flex: 0 0 40%; }
 .session-col-wins { flex: 0 0 30%; }
 
 .session-delta-value {
@@ -396,14 +396,14 @@ async function fetchData(){
 
     lastAppliedVersion = myVersion;
 
-    const sorted=[...(data.leaderboard??[])].sort((a,b)=>(b.elo??0)-(a.elo??0));
-    const idx=sorted.findIndex(p=>p.team?.[0]===pid);
-    if(idx<0)return;
+    const leaderboardData = Array.isArray(data.leaderboard) ? data.leaderboard : [];
+    const p = leaderboardData.find(player => String(player.player_id) === pid);
+    if(!p) return;
 
-    const p=sorted[idx];
-    const rank=idx+1;
-    const elo=p.elo??0;
-    const wins=p.count_placement_1??0;
+    const rank = Number.isFinite(p.rank) ? p.rank : null;
+    const elo = Number.isFinite(p.elo) ? p.elo : 0;
+    const wins = Number.isFinite(p.wins) ? p.wins : 0;
+    if(rank === null) return;
 
     // Capture initial values on first successful fetch
     if(initialRank===null) initialRank=rank;
@@ -470,10 +470,6 @@ async function fetchData(){
 // kick off the loop
 fetchData();
 </script>
-
-</body>
-</html>
-
 
 </body>
 </html>
