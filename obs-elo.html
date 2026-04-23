@@ -180,6 +180,12 @@ function getPlayerId() {
   return params.get("player_id") || DEFAULT_PLAYER_ID;
 }
 
+function getEntryPlayerIds(entry) {
+  if (Array.isArray(entry?.team)) return entry.team.map(String);
+  if (entry?.player_id != null) return [String(entry.player_id)];
+  return [];
+}
+
 async function fetchRating(playerId) {
   setLoading();
   try {
@@ -195,13 +201,16 @@ async function fetchRating(playerId) {
     if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
 
     const data = await resp.json();
-    const entries = Array.isArray(data.leaderboard) ? data.leaderboard : [];
-    if (!entries.length) throw new Error("Snapshot JSON missing 'leaderboard' array");
+    const entries = Array.isArray(data?.leaderboard)
+      ? data.leaderboard
+      : Array.isArray(data?.entries)
+        ? data.entries
+        : [];
+    if (!entries.length) throw new Error("Snapshot JSON missing leaderboard entries");
 
     const pid = String(playerId);
 
-    // team is an array like ["1201659929421959222"]
-    const row = entries.find(e => Array.isArray(e.team) && e.team.map(String).includes(pid));
+    const row = entries.find(e => getEntryPlayerIds(e).includes(pid));
 
     if (!row) throw new Error(`Player ${pid} not found in leaderboard snapshot`);
     if (typeof row.elo !== "number") throw new Error(`Missing numeric 'elo' for player ${pid}`);

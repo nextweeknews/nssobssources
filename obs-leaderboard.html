@@ -128,6 +128,33 @@ function setError(msg) {
   console.error(msg);
 }
 
+function getEntryPlayerId(entry) {
+  const id = entry?.team?.[0] ?? entry?.player_id;
+  return id == null ? null : String(id);
+}
+
+function normalizeSnapshot(data) {
+  const entries = Array.isArray(data?.leaderboard)
+    ? data.leaderboard
+    : Array.isArray(data?.entries)
+      ? data.entries
+      : [];
+
+  const resolvedPlayers = { ...(data?.resolved?.players || {}) };
+  entries.forEach((entry) => {
+    const id = getEntryPlayerId(entry);
+    if (!id || !entry?.display_name) return;
+    resolvedPlayers[id] = {
+      ...(resolvedPlayers[id] || {}),
+      player_id: id,
+      display_name: entry.display_name,
+      avatar_url: entry.avatar_url ?? resolvedPlayers[id]?.avatar_url
+    };
+  });
+
+  return { entries, resolvedPlayers };
+}
+
 function statesEqual(a, b) {
   if (!a || !b || a.length !== b.length) return false;
   return a.every((row, i) =>
@@ -167,9 +194,9 @@ function displayLeaderboard(entries, resolvedPlayers = {}) {
   const highlightId = getPlayerId();
 
   const slice = entries.slice(0, TOTAL_DISPLAY).map((player, i) => ({
-    rank: i + 1,
-    id: player.team?.[0] ?? `unknown_${i}`,
-    name: resolvedPlayers?.[player.team?.[0]]?.display_name || "Unknown",
+    rank: player.rank ?? i + 1,
+    id: getEntryPlayerId(player) ?? `unknown_${i}`,
+    name: resolvedPlayers?.[getEntryPlayerId(player)]?.display_name || player.display_name || "Unknown",
     elo: player.elo ?? "—"
   }));
 
@@ -200,7 +227,8 @@ async function fetchLeaderboard() {
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
 
-    displayLeaderboard(data.leaderboard || [], data.resolved?.players || {});
+    const snapshot = normalizeSnapshot(data);
+    displayLeaderboard(snapshot.entries, snapshot.resolvedPlayers);
   }
   catch (err) {
     setError(err.message);
