@@ -1,0 +1,604 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Golf Scoreboard</title>
+
+<style>
+:root {
+  --surface: rgba(15, 23, 42, 0.98);
+  --panel: rgba(255, 255, 255, 0.065);
+  --panel-strong: rgba(148, 163, 184, 0.13);
+  --line: rgba(255, 255, 255, 0.12);
+  --text: #f8fafc;
+  --muted: #9ca3c7;
+  --label: #c7d7ff;
+  --par: #ffffff;
+  --albatross: #d8b4fe;
+  --eagle: #93c5fd;
+  --birdie: #86efac;
+  --bogey: #fca5a5;
+  --double-bogey: #fb7185;
+  --worse: #f43f5e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.card {
+  width: 1800px;
+  height: 320px;
+  padding: 22px 26px 20px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0)),
+    var(--surface);
+  border-radius: 24px;
+  box-shadow: 0 32px 32px rgba(0,0,0,0.65);
+}
+
+.scoreboard {
+  display: grid;
+  grid-template-columns: 86px repeat(9, 70px) 132px repeat(9, 70px) 132px 152px;
+  grid-template-rows: 38px 46px 46px 122px;
+  gap: 6px;
+}
+
+.cell {
+  min-width: 0;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  font-variant-numeric: tabular-nums;
+}
+
+.group {
+  background: var(--panel-strong);
+  color: var(--label);
+  font-size: 19px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.row-label {
+  background: rgba(199, 215, 255, 0.12);
+  color: var(--label);
+  font-size: 19px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.035em;
+}
+
+.hole-cell {
+  background: rgba(148, 163, 184, 0.09);
+  color: #dbe7ff;
+  font-size: 28px;
+  font-weight: 850;
+}
+
+.par-cell {
+  background: rgba(255, 255, 255, 0.04);
+  color: #b6c1dd;
+  font-size: 23px;
+  font-weight: 750;
+}
+
+.score-cell {
+  background: var(--panel);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.score-cell.next {
+  outline: 3px solid rgba(199, 215, 255, 0.44);
+  outline-offset: -3px;
+}
+
+.score-cell.filled {
+  background: rgba(255, 255, 255, 0.085);
+}
+
+.total-cell {
+  flex-direction: column;
+  gap: 5px;
+  background: rgba(199, 215, 255, 0.11);
+  border: 1px solid rgba(199, 215, 255, 0.13);
+}
+
+.total-cell.round {
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.total-raw {
+  font-size: 50px;
+  font-weight: 950;
+  line-height: 0.95;
+  color: #ffffff;
+}
+
+.relative {
+  min-width: 56px;
+  height: 25px;
+  padding: 1px 8px 0;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1;
+  color: #0f172a;
+  background: #ffffff;
+}
+
+.relative.empty {
+  color: #74809e;
+  background: rgba(255,255,255,0.12);
+}
+
+.relative.under {
+  background: var(--birdie);
+}
+
+.relative.even {
+  background: #ffffff;
+}
+
+.relative.over {
+  background: var(--bogey);
+}
+
+.score-mark {
+  width: 62px;
+  height: 62px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  color: var(--par);
+  font-size: 44px;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.score-mark.empty {
+  color: rgba(255,255,255,0.28);
+  font-size: 42px;
+}
+
+.score-mark.albatross { color: var(--albatross); }
+.score-mark.eagle { color: var(--eagle); }
+.score-mark.birdie { color: var(--birdie); }
+.score-mark.bogey { color: var(--bogey); }
+.score-mark.double-bogey { color: var(--double-bogey); }
+.score-mark.worse { color: var(--worse); }
+
+.score-value {
+  position: relative;
+  z-index: 1;
+  transform: translateY(-1px);
+}
+
+.ring {
+  position: absolute;
+  pointer-events: none;
+  border: 3px solid currentColor;
+  opacity: 0.96;
+}
+
+.ring.circle {
+  border-radius: 999px;
+}
+
+.ring.square {
+  border-radius: 7px;
+}
+
+.ring-1 { inset: 7px; }
+.ring-2 { inset: 2px; }
+.ring-3 { inset: -2px; }
+
+.controls {
+  height: 34px;
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 750;
+  letter-spacing: 0.015em;
+}
+
+.hotkeys {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.key {
+  color: #e9eef8;
+  opacity: 0.72;
+  white-space: nowrap;
+}
+
+.key strong {
+  color: #ffffff;
+  font-weight: 900;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+button {
+  height: 32px;
+  min-width: 74px;
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.09);
+  color: #ffffff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+button:hover {
+  background: rgba(255,255,255,0.16);
+}
+
+button:active {
+  transform: translateY(1px);
+}
+
+.pulse {
+  animation: pulseNext 240ms ease;
+}
+
+@keyframes pulseNext {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+</style>
+</head>
+
+<body>
+<main class="card" aria-label="Golf scoreboard">
+  <section class="scoreboard" id="scoreboard"></section>
+  <section class="controls" aria-label="Scoreboard controls">
+    <div class="hotkeys" aria-label="Keyboard shortcuts">
+      <span class="key"><strong>Opt+1</strong> Albatross</span>
+      <span class="key"><strong>Opt+2</strong> Eagle</span>
+      <span class="key"><strong>Opt+3</strong> Birdie</span>
+      <span class="key"><strong>Opt+4</strong> Par</span>
+      <span class="key"><strong>Opt+5</strong> Bogey</span>
+      <span class="key"><strong>Opt+6</strong> Double</span>
+      <span class="key"><strong>Opt+7</strong> Undo</span>
+      <span class="key"><strong>Opt+8</strong> Reset</span>
+    </div>
+    <div class="actions">
+      <button id="undoBtn" type="button">Undo</button>
+      <button id="resetBtn" type="button">Reset</button>
+    </div>
+  </section>
+</main>
+
+<script>
+const STORAGE_KEY = "nss_golf_scoreboard_round_v1";
+
+const holes = [
+  { number: 1, par: 4 },
+  { number: 2, par: 2 },
+  { number: 3, par: 5 },
+  { number: 4, par: 3 },
+  { number: 5, par: 5 },
+  { number: 6, par: 4 },
+  { number: 7, par: 4 },
+  { number: 8, par: 3 },
+  { number: 9, par: 5 },
+  { number: 10, par: 4 },
+  { number: 11, par: 3 },
+  { number: 12, par: 5 },
+  { number: 13, par: 3 },
+  { number: 14, par: 5 },
+  { number: 15, par: 4 },
+  { number: 16, par: 4 },
+  { number: 17, par: 3 },
+  { number: 18, par: 5 }
+];
+
+const scoreActions = {
+  "1": { label: "Albatross", delta: -3 },
+  "2": { label: "Eagle", delta: -2 },
+  "3": { label: "Birdie", delta: -1 },
+  "4": { label: "Par", delta: 0 },
+  "5": { label: "Bogey", delta: 1 },
+  "6": { label: "Double bogey", delta: 2 }
+};
+
+const scoreboardEl = document.getElementById("scoreboard");
+const undoBtn = document.getElementById("undoBtn");
+const resetBtn = document.getElementById("resetBtn");
+
+let history = loadHistory();
+
+function loadHistory() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((entry) =>
+      Number.isInteger(entry?.holeIndex) &&
+      entry.holeIndex >= 0 &&
+      entry.holeIndex < holes.length &&
+      Number.isInteger(entry?.delta)
+    );
+  } catch (err) {
+    console.warn("Could not load saved golf scoreboard state.", err);
+    return [];
+  }
+}
+
+function saveHistory() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+}
+
+function getScores() {
+  const scores = Array(holes.length).fill(null);
+  history.forEach((entry) => {
+    scores[entry.holeIndex] = entry.delta;
+  });
+  return scores;
+}
+
+function getNextHoleIndex(scores) {
+  return scores.findIndex((score) => score === null);
+}
+
+function addCell(className, text = "", gridColumn = "") {
+  const cell = document.createElement("div");
+  cell.className = `cell ${className}`;
+  if (gridColumn) cell.style.gridColumn = gridColumn;
+  cell.textContent = text;
+  scoreboardEl.appendChild(cell);
+  return cell;
+}
+
+function makeScoreMark(delta, par) {
+  const mark = document.createElement("div");
+  mark.className = "score-mark";
+
+  if (delta === null) {
+    mark.classList.add("empty");
+    mark.innerHTML = '<span class="score-value">-</span>';
+    return mark;
+  }
+
+  const score = par + delta;
+  const ringCount = getRingCount(delta);
+  const ringShape = delta < 0 ? "circle" : delta > 0 ? "square" : "";
+  const tone = getTone(delta);
+
+  mark.classList.add(tone);
+  mark.innerHTML = `<span class="score-value">${score}</span>`;
+
+  for (let i = 1; i <= ringCount; i++) {
+    const ring = document.createElement("span");
+    ring.className = `ring ${ringShape} ring-${i}`;
+    mark.appendChild(ring);
+  }
+
+  return mark;
+}
+
+function getRingCount(delta) {
+  if (delta <= -3) return 3;
+  if (delta === -2) return 2;
+  if (delta === -1) return 1;
+  if (delta === 1) return 1;
+  if (delta >= 2) return Math.min(delta, 3);
+  return 0;
+}
+
+function getTone(delta) {
+  if (delta <= -3) return "albatross";
+  if (delta === -2) return "eagle";
+  if (delta === -1) return "birdie";
+  if (delta === 1) return "bogey";
+  if (delta === 2) return "double-bogey";
+  if (delta > 2) return "worse";
+  return "par";
+}
+
+function getTotal(scores, start, end) {
+  let raw = 0;
+  let par = 0;
+  let count = 0;
+
+  for (let i = start; i < end; i++) {
+    if (scores[i] === null) continue;
+    raw += holes[i].par + scores[i];
+    par += holes[i].par;
+    count++;
+  }
+
+  return { raw, relative: raw - par, count };
+}
+
+function formatRelative(relative) {
+  if (relative === 0) return "E";
+  return relative > 0 ? `+${relative}` : String(relative);
+}
+
+function relativeClass(relative, count) {
+  if (!count) return "empty";
+  if (relative < 0) return "under";
+  if (relative > 0) return "over";
+  return "even";
+}
+
+function makeTotalCell(total, extraClass = "") {
+  const cell = addCell(`score-cell total-cell ${extraClass}`);
+  const raw = document.createElement("div");
+  raw.className = "total-raw";
+  raw.textContent = total.count ? total.raw : "-";
+
+  const relative = document.createElement("div");
+  relative.className = `relative ${relativeClass(total.relative, total.count)}`;
+  relative.textContent = total.count ? formatRelative(total.relative) : "-";
+
+  cell.append(raw, relative);
+  return cell;
+}
+
+function render() {
+  const scores = getScores();
+  const nextHoleIndex = getNextHoleIndex(scores);
+  const frontTotal = getTotal(scores, 0, 9);
+  const backTotal = getTotal(scores, 9, 18);
+  const roundTotal = getTotal(scores, 0, 18);
+
+  scoreboardEl.innerHTML = "";
+
+  addCell("group", "");
+  addCell("group", "Holes 1-9", "span 9");
+  addCell("group", "Front Total");
+  addCell("group", "Holes 10-18", "span 9");
+  addCell("group", "Back Total");
+  addCell("group", "Round Total");
+
+  addCell("row-label", "Hole");
+  holes.slice(0, 9).forEach((hole) => addCell("hole-cell", hole.number));
+  addCell("hole-cell", "F");
+  holes.slice(9).forEach((hole) => addCell("hole-cell", hole.number));
+  addCell("hole-cell", "B");
+  addCell("hole-cell", "T");
+
+  addCell("row-label", "Par");
+  holes.slice(0, 9).forEach((hole) => addCell("par-cell", hole.par));
+  addCell("par-cell", holes.slice(0, 9).reduce((sum, hole) => sum + hole.par, 0));
+  holes.slice(9).forEach((hole) => addCell("par-cell", hole.par));
+  addCell("par-cell", holes.slice(9).reduce((sum, hole) => sum + hole.par, 0));
+  addCell("par-cell", holes.reduce((sum, hole) => sum + hole.par, 0));
+
+  addCell("row-label", "Score");
+  holes.slice(0, 9).forEach((hole, i) => renderScoreCell(hole, i, scores, nextHoleIndex));
+  makeTotalCell(frontTotal);
+  holes.slice(9).forEach((hole, sliceIndex) => {
+    const i = sliceIndex + 9;
+    renderScoreCell(hole, i, scores, nextHoleIndex);
+  });
+  makeTotalCell(backTotal);
+  makeTotalCell(roundTotal, "round");
+}
+
+function renderScoreCell(hole, index, scores, nextHoleIndex) {
+  const cell = addCell("score-cell");
+  if (scores[index] !== null) cell.classList.add("filled");
+  if (index === nextHoleIndex) cell.classList.add("next");
+  cell.appendChild(makeScoreMark(scores[index], hole.par));
+}
+
+function recordScore(delta) {
+  const scores = getScores();
+  const nextHoleIndex = getNextHoleIndex(scores);
+  if (nextHoleIndex === -1) {
+    pulseCard();
+    return;
+  }
+
+  history.push({ holeIndex: nextHoleIndex, delta });
+  saveHistory();
+  render();
+  pulseCard();
+}
+
+function undoScore() {
+  if (!history.length) {
+    pulseCard();
+    return;
+  }
+
+  history.pop();
+  saveHistory();
+  render();
+  pulseCard();
+}
+
+function resetScores() {
+  history = [];
+  saveHistory();
+  render();
+  pulseCard();
+}
+
+function pulseCard() {
+  const target = document.querySelector(".card");
+  target.classList.remove("pulse");
+  window.requestAnimationFrame(() => target.classList.add("pulse"));
+}
+
+function isOptionHotkey(event) {
+  return event.altKey && !event.metaKey && !event.ctrlKey && !event.shiftKey;
+}
+
+function getHotkeyDigit(event) {
+  const codeMatch = event.code && event.code.match(/^Digit([1-8])$/);
+  if (codeMatch) return codeMatch[1];
+
+  const keyMatch = event.key && event.key.match(/^[1-8]$/);
+  return keyMatch ? keyMatch[0] : null;
+}
+
+window.addEventListener("keydown", (event) => {
+  if (!isOptionHotkey(event)) return;
+
+  const digit = getHotkeyDigit(event);
+  const action = scoreActions[digit];
+  if (action) {
+    event.preventDefault();
+    recordScore(action.delta);
+    return;
+  }
+
+  if (digit === "7") {
+    event.preventDefault();
+    undoScore();
+    return;
+  }
+
+  if (digit === "8") {
+    event.preventDefault();
+    resetScores();
+  }
+});
+
+undoBtn.addEventListener("click", undoScore);
+resetBtn.addEventListener("click", resetScores);
+
+render();
+</script>
+</body>
+</html>
