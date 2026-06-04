@@ -298,6 +298,20 @@ const scoreActions = {
   "6": { label: "Double bogey", delta: 2 }
 };
 
+const OBS_EVENT_NAME = "nssGolfScoreboard";
+const eventActions = {
+  albatross: -3,
+  doubleeagle: -3,
+  double_eagle: -3,
+  eagle: -2,
+  birdie: -1,
+  par: 0,
+  bogey: 1,
+  double: 2,
+  doublebogey: 2,
+  double_bogey: 2
+};
+
 const scoreboardEl = document.getElementById("scoreboard");
 
 let history = loadHistory();
@@ -509,6 +523,39 @@ function resetScores() {
   render();
 }
 
+function normalizeEventDetail(event) {
+  const detail = event?.detail || {};
+  return detail.event_data || detail.eventData || detail;
+}
+
+function handleScoreboardCommand(command) {
+  const action = String(command?.action || command?.type || "").toLowerCase().replace(/[\s-]/g, "_");
+
+  if (action === "undo") {
+    undoScore();
+    return;
+  }
+
+  if (action === "reset" || action === "clear") {
+    resetScores();
+    return;
+  }
+
+  if (Number.isInteger(command?.delta)) {
+    recordScore(command.delta);
+    return;
+  }
+
+  const normalizedAction = action.replace(/_/g, "");
+  if (Object.prototype.hasOwnProperty.call(eventActions, action)) {
+    recordScore(eventActions[action]);
+    return;
+  }
+  if (Object.prototype.hasOwnProperty.call(eventActions, normalizedAction)) {
+    recordScore(eventActions[normalizedAction]);
+  }
+}
+
 function isOptionHotkey(event) {
   return event.altKey && !event.metaKey && !event.ctrlKey && !event.shiftKey;
 }
@@ -542,6 +589,10 @@ window.addEventListener("keydown", (event) => {
     event.preventDefault();
     resetScores();
   }
+});
+
+window.addEventListener(OBS_EVENT_NAME, (event) => {
+  handleScoreboardCommand(normalizeEventDetail(event));
 });
 
 render();
