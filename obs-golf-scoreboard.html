@@ -61,28 +61,32 @@ body {
   border-radius: 12px;
   box-shadow: inset 0 0 0 1px rgba(199,215,255,0.11);
   color: #dbe7ff;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
+  display: grid;
+  grid-template-rows: 32px 70px 22px;
+  row-gap: 5px;
+  align-content: center;
+  align-items: center;
   justify-content: center;
   text-align: center;
   text-transform: uppercase;
   font-weight: 950;
-  line-height: 0.86;
   font-variant-numeric: tabular-nums;
 }
 
 .challenge-break {
+  line-height: 1;
   font-size: 38px;
   letter-spacing: 0.045em;
 }
 
 .challenge-number {
+  line-height: 1;
   font-size: 82px;
   letter-spacing: 0;
 }
 
 .challenge-word {
+  line-height: 1;
   font-size: 19px;
   letter-spacing: 0.15em;
 }
