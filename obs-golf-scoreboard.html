@@ -181,6 +181,7 @@ body {
 .relative.empty {
   color: #74809e;
   background: rgba(255,255,255,0.12);
+  visibility: hidden;
 }
 
 .relative.under {
@@ -425,11 +426,11 @@ function makeTotalCell(parent, total, extraClass = "") {
   const cell = addCell(parent, `score-cell total-cell ${extraClass}`);
   const raw = document.createElement("div");
   raw.className = "total-raw";
-  raw.textContent = total.count ? total.raw : "-";
+  raw.textContent = total.count ? total.raw : "";
 
   const relative = document.createElement("div");
   relative.className = `relative ${relativeClass(total.relative, total.count)}`;
-  relative.textContent = total.count ? formatRelative(total.relative) : "-";
+  relative.textContent = total.count ? formatRelative(total.relative) : "";
 
   cell.append(raw, relative);
   return cell;
