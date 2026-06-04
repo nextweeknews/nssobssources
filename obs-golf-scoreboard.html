@@ -45,30 +45,60 @@ body {
 
 .card {
   width: 1800px;
-  height: 204px;
-  padding: 18px 24px;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0)),
-    var(--surface);
-  border-radius: 24px;
-  box-shadow: 0 10px 18px rgba(0,0,0,0.36);
+  height: 178px;
+  padding: 0 24px;
+  background: transparent;
+  display: grid;
+  grid-template-columns: 178px 1fr;
+  column-gap: 14px;
+  align-items: center;
+}
+
+.challenge-title {
+  width: 178px;
+  height: 168px;
+  color: #dbe7ff;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  text-align: center;
+  text-transform: uppercase;
+  font-weight: 950;
+  line-height: 0.86;
+  font-variant-numeric: tabular-nums;
+}
+
+.challenge-break {
+  font-size: 42px;
+  letter-spacing: 0.045em;
+}
+
+.challenge-number {
+  font-size: 98px;
+  letter-spacing: 0;
+}
+
+.challenge-word {
+  font-size: 22px;
+  letter-spacing: 0.15em;
 }
 
 .scoreboard {
   display: grid;
   grid-template-columns: 1fr 1fr 116px;
   column-gap: 10px;
-  height: 100%;
+  height: 168px;
 }
 
 .column-group {
   min-width: 0;
   overflow: hidden;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.055);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+  background: rgba(15, 23, 42, 0.94);
+  box-shadow: inset 0 0 0 1px rgba(199,215,255,0.11);
   display: grid;
-  grid-template-rows: 40px 24px 104px;
+  grid-template-rows: 36px 20px 82px;
 }
 
 .holes-group {
@@ -77,7 +107,7 @@ body {
 
 .round-group {
   grid-template-columns: 1fr;
-  background: rgba(199, 215, 255, 0.105);
+  background: rgba(18, 31, 55, 0.96);
 }
 
 .cell {
@@ -91,7 +121,7 @@ body {
 }
 
 .hole-cell {
-  background: rgba(148, 163, 184, 0.105);
+  background: rgba(42, 57, 89, 0.84);
   color: #dbe7ff;
   font-size: 25px;
   font-weight: 950;
@@ -104,18 +134,18 @@ body {
 }
 
 .par-cell {
-  background: rgba(255, 255, 255, 0.035);
+  background: rgba(255, 255, 255, 0.055);
   color: #b6c1dd;
   font-size: 16px;
   font-weight: 750;
 }
 
 .score-cell {
-  background: rgba(255, 255, 255, 0.065);
+  background: rgba(29, 41, 66, 0.9);
 }
 
 .score-cell.filled {
-  background: rgba(255, 255, 255, 0.09);
+  background: rgba(37, 51, 79, 0.96);
 }
 
 .score-cell.changed::after {
@@ -148,52 +178,50 @@ body {
 
 .total-cell {
   flex-direction: column;
-  gap: 4px;
-  background: rgba(199, 215, 255, 0.095);
+  gap: 1px;
+  background: rgba(39, 54, 84, 0.95);
 }
 
 .total-cell.round {
-  background: rgba(255, 255, 255, 0.13);
+  background: rgba(46, 61, 92, 0.98);
 }
 
 .total-raw {
-  font-size: 46px;
+  font-size: 38px;
   font-weight: 950;
   line-height: 0.95;
   color: #ffffff;
 }
 
 .relative {
-  min-width: 56px;
-  height: 25px;
-  padding: 1px 8px 0;
-  border-radius: 999px;
+  min-width: 0;
+  height: auto;
+  padding: 0;
+  border-radius: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: 18px;
   font-weight: 900;
   line-height: 1;
-  color: #0f172a;
-  background: #ffffff;
+  color: var(--teal);
+  background: transparent;
 }
 
 .relative.empty {
-  color: #74809e;
-  background: rgba(255,255,255,0.12);
   visibility: hidden;
 }
 
 .relative.under {
-  background: var(--teal);
+  color: var(--teal);
 }
 
 .relative.even {
-  background: #ffffff;
+  color: var(--teal);
 }
 
 .relative.over {
-  background: var(--bogey);
+  color: var(--teal);
 }
 
 .score-mark {
@@ -262,6 +290,11 @@ body {
 
 <body>
 <main class="card" aria-label="Golf scoreboard">
+  <div class="challenge-title" aria-hidden="true">
+    <div class="challenge-break">Break</div>
+    <div class="challenge-number">40</div>
+    <div class="challenge-word">Challenge</div>
+  </div>
   <section class="scoreboard" id="scoreboard"></section>
 </main>
 
