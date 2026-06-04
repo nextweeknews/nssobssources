@@ -94,7 +94,13 @@ body {
   background: rgba(148, 163, 184, 0.105);
   color: #dbe7ff;
   font-size: 25px;
-  font-weight: 850;
+  font-weight: 950;
+}
+
+.total-head {
+  font-size: 19px;
+  font-weight: 950;
+  letter-spacing: 0.035em;
 }
 
 .par-cell {
@@ -115,23 +121,25 @@ body {
 .score-cell.changed::after {
   content: "";
   position: absolute;
-  inset: 0;
+  inset: 8px 7px;
   z-index: 0;
+  border-radius: 999px;
   pointer-events: none;
   opacity: 0;
-  animation: scoreCellPulse 560ms cubic-bezier(.2, .8, .2, 1) forwards;
+  filter: blur(3px);
+  animation: scoreCellPulse 520ms cubic-bezier(.2, .8, .2, 1) forwards;
 }
 
 .score-cell.changed.added::after {
   background:
-    radial-gradient(circle at center, rgba(94, 234, 212, 0.36), transparent 64%),
-    linear-gradient(180deg, rgba(255,255,255,0.18), transparent 60%);
+    radial-gradient(circle at center, rgba(94, 234, 212, 0.18), rgba(94, 234, 212, 0.08) 42%, transparent 72%),
+    linear-gradient(180deg, rgba(255,255,255,0.08), transparent 62%);
 }
 
 .score-cell.changed.undone::after {
   background:
-    radial-gradient(circle at center, rgba(199, 215, 255, 0.32), transparent 64%),
-    linear-gradient(180deg, rgba(255,255,255,0.14), transparent 60%);
+    radial-gradient(circle at center, rgba(199, 215, 255, 0.16), rgba(199, 215, 255, 0.07) 42%, transparent 72%),
+    linear-gradient(180deg, rgba(255,255,255,0.07), transparent 62%);
 }
 
 .score-cell.changed .score-mark {
@@ -238,14 +246,14 @@ body {
 .ring-3 { inset: -5px; }
 
 @keyframes scoreCellPulse {
-  0% { opacity: 0; transform: scale(0.92); }
-  28% { opacity: 1; transform: scale(1); }
-  100% { opacity: 0; transform: scale(1.08); }
+  0% { opacity: 0; transform: scale(0.9); }
+  30% { opacity: 0.78; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.05); }
 }
 
 @keyframes scoreMarkPulse {
   0% { transform: scale(0.96); filter: brightness(1); }
-  28% { transform: scale(1.08); filter: brightness(1.22); }
+  30% { transform: scale(1.035); filter: brightness(1.1); }
   100% { transform: scale(1); filter: brightness(1); }
 }
 </style>
