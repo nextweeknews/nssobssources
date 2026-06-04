@@ -44,8 +44,8 @@ body {
 
 .card {
   width: 1800px;
-  height: 320px;
-  padding: 22px 26px 20px;
+  height: 204px;
+  padding: 18px 24px;
   background:
     linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0)),
     var(--surface);
@@ -55,14 +55,37 @@ body {
 
 .scoreboard {
   display: grid;
-  grid-template-columns: 86px repeat(9, 70px) 132px repeat(9, 70px) 132px 152px;
-  grid-template-rows: 38px 46px 46px 122px;
-  gap: 6px;
+  grid-template-columns: 86px 1fr 1fr 150px;
+  column-gap: 10px;
+  height: 100%;
+}
+
+.column-group {
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.055);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+  display: grid;
+  grid-template-rows: 40px 24px 104px;
+}
+
+.holes-group {
+  grid-template-columns: repeat(9, minmax(0, 1fr)) 124px;
+}
+
+.round-group {
+  grid-template-columns: 1fr;
+  background: rgba(199, 215, 255, 0.105);
+}
+
+.labels-group {
+  grid-template-columns: 1fr;
+  background: rgba(199, 215, 255, 0.105);
 }
 
 .cell {
   min-width: 0;
-  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -71,57 +94,63 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-.group {
-  background: var(--panel-strong);
-  color: var(--label);
-  font-size: 19px;
-  font-weight: 850;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
 .row-label {
-  background: rgba(199, 215, 255, 0.12);
+  background: rgba(199, 215, 255, 0.08);
   color: var(--label);
-  font-size: 19px;
+  font-size: 18px;
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 0.035em;
 }
 
 .hole-cell {
-  background: rgba(148, 163, 184, 0.09);
+  background: rgba(148, 163, 184, 0.105);
   color: #dbe7ff;
-  font-size: 28px;
+  font-size: 25px;
   font-weight: 850;
 }
 
 .par-cell {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.035);
   color: #b6c1dd;
-  font-size: 23px;
+  font-size: 16px;
   font-weight: 750;
 }
 
 .score-cell {
-  background: var(--panel);
-  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255, 255, 255, 0.065);
 }
 
 .score-cell.next {
-  outline: 3px solid rgba(199, 215, 255, 0.44);
-  outline-offset: -3px;
+  box-shadow: inset 0 0 0 3px rgba(199, 215, 255, 0.26);
 }
 
 .score-cell.filled {
-  background: rgba(255, 255, 255, 0.085);
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.score-cell.changed::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  transform: translateX(-110%);
+  animation: scoreSwipe 620ms ease-out forwards;
+}
+
+.score-cell.changed.added::after {
+  background: linear-gradient(90deg, transparent, rgba(134, 239, 172, 0.24), transparent);
+}
+
+.score-cell.changed.undone::after {
+  background: linear-gradient(90deg, transparent, rgba(199, 215, 255, 0.22), transparent);
 }
 
 .total-cell {
   flex-direction: column;
-  gap: 5px;
-  background: rgba(199, 215, 255, 0.11);
-  border: 1px solid rgba(199, 215, 255, 0.13);
+  gap: 4px;
+  background: rgba(199, 215, 255, 0.095);
 }
 
 .total-cell.round {
@@ -129,7 +158,7 @@ body {
 }
 
 .total-raw {
-  font-size: 50px;
+  font-size: 46px;
   font-weight: 950;
   line-height: 0.95;
   color: #ffffff;
@@ -168,21 +197,21 @@ body {
 }
 
 .score-mark {
-  width: 62px;
-  height: 62px;
+  width: 58px;
+  height: 58px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   position: relative;
   color: var(--par);
-  font-size: 44px;
+  font-size: 41px;
   font-weight: 950;
   line-height: 1;
 }
 
 .score-mark.empty {
   color: rgba(255,255,255,0.28);
-  font-size: 42px;
+  font-size: 36px;
 }
 
 .score-mark.albatross { color: var(--albatross); }
@@ -217,70 +246,10 @@ body {
 .ring-2 { inset: 2px; }
 .ring-3 { inset: -2px; }
 
-.controls {
-  height: 34px;
-  margin-top: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  color: var(--muted);
-  font-size: 14px;
-  font-weight: 750;
-  letter-spacing: 0.015em;
-}
-
-.hotkeys {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
-
-.key {
-  color: #e9eef8;
-  opacity: 0.72;
-  white-space: nowrap;
-}
-
-.key strong {
-  color: #ffffff;
-  font-weight: 900;
-}
-
-.actions {
-  display: flex;
-  gap: 8px;
-}
-
-button {
-  height: 32px;
-  min-width: 74px;
-  border: 1px solid rgba(255,255,255,0.14);
-  border-radius: 8px;
-  background: rgba(255,255,255,0.09);
-  color: #ffffff;
-  font: inherit;
-  font-size: 14px;
-  font-weight: 900;
-  cursor: pointer;
-}
-
-button:hover {
-  background: rgba(255,255,255,0.16);
-}
-
-button:active {
-  transform: translateY(1px);
-}
-
-.pulse {
-  animation: pulseNext 240ms ease;
-}
-
-@keyframes pulseNext {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.06); }
-  100% { transform: scale(1); }
+@keyframes scoreSwipe {
+  0% { transform: translateX(-110%); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: translateX(110%); opacity: 0; }
 }
 </style>
 </head>
@@ -288,22 +257,6 @@ button:active {
 <body>
 <main class="card" aria-label="Golf scoreboard">
   <section class="scoreboard" id="scoreboard"></section>
-  <section class="controls" aria-label="Scoreboard controls">
-    <div class="hotkeys" aria-label="Keyboard shortcuts">
-      <span class="key"><strong>Opt+1</strong> Albatross</span>
-      <span class="key"><strong>Opt+2</strong> Eagle</span>
-      <span class="key"><strong>Opt+3</strong> Birdie</span>
-      <span class="key"><strong>Opt+4</strong> Par</span>
-      <span class="key"><strong>Opt+5</strong> Bogey</span>
-      <span class="key"><strong>Opt+6</strong> Double</span>
-      <span class="key"><strong>Opt+7</strong> Undo</span>
-      <span class="key"><strong>Opt+8</strong> Reset</span>
-    </div>
-    <div class="actions">
-      <button id="undoBtn" type="button">Undo</button>
-      <button id="resetBtn" type="button">Reset</button>
-    </div>
-  </section>
 </main>
 
 <script>
@@ -311,7 +264,7 @@ const STORAGE_KEY = "nss_golf_scoreboard_round_v1";
 
 const holes = [
   { number: 1, par: 4 },
-  { number: 2, par: 2 },
+  { number: 2, par: 3 },
   { number: 3, par: 5 },
   { number: 4, par: 3 },
   { number: 5, par: 5 },
@@ -340,10 +293,9 @@ const scoreActions = {
 };
 
 const scoreboardEl = document.getElementById("scoreboard");
-const undoBtn = document.getElementById("undoBtn");
-const resetBtn = document.getElementById("resetBtn");
 
 let history = loadHistory();
+let lastChange = null;
 
 function loadHistory() {
   try {
@@ -377,12 +329,18 @@ function getNextHoleIndex(scores) {
   return scores.findIndex((score) => score === null);
 }
 
-function addCell(className, text = "", gridColumn = "") {
+function addGroup(className) {
+  const group = document.createElement("div");
+  group.className = `column-group ${className}`;
+  scoreboardEl.appendChild(group);
+  return group;
+}
+
+function addCell(parent, className, text = "") {
   const cell = document.createElement("div");
   cell.className = `cell ${className}`;
-  if (gridColumn) cell.style.gridColumn = gridColumn;
   cell.textContent = text;
-  scoreboardEl.appendChild(cell);
+  parent.appendChild(cell);
   return cell;
 }
 
@@ -459,8 +417,8 @@ function relativeClass(relative, count) {
   return "even";
 }
 
-function makeTotalCell(total, extraClass = "") {
-  const cell = addCell(`score-cell total-cell ${extraClass}`);
+function makeTotalCell(parent, total, extraClass = "") {
+  const cell = addCell(parent, `score-cell total-cell ${extraClass}`);
   const raw = document.createElement("div");
   raw.className = "total-raw";
   raw.textContent = total.count ? total.raw : "-";
@@ -482,42 +440,43 @@ function render() {
 
   scoreboardEl.innerHTML = "";
 
-  addCell("group", "");
-  addCell("group", "Holes 1-9", "span 9");
-  addCell("group", "Front Total");
-  addCell("group", "Holes 10-18", "span 9");
-  addCell("group", "Back Total");
-  addCell("group", "Round Total");
+  const labels = addGroup("labels-group");
+  addCell(labels, "row-label", "Hole");
+  addCell(labels, "row-label", "Par");
+  addCell(labels, "row-label", "Score");
 
-  addCell("row-label", "Hole");
-  holes.slice(0, 9).forEach((hole) => addCell("hole-cell", hole.number));
-  addCell("hole-cell", "F");
-  holes.slice(9).forEach((hole) => addCell("hole-cell", hole.number));
-  addCell("hole-cell", "B");
-  addCell("hole-cell", "T");
+  const front = addGroup("holes-group");
+  holes.slice(0, 9).forEach((hole) => addCell(front, "hole-cell", hole.number));
+  addCell(front, "hole-cell total-head", "Front");
+  holes.slice(0, 9).forEach((hole) => addCell(front, "par-cell", hole.par));
+  addCell(front, "par-cell", holes.slice(0, 9).reduce((sum, hole) => sum + hole.par, 0));
+  holes.slice(0, 9).forEach((hole, i) => renderScoreCell(front, hole, i, scores, nextHoleIndex));
+  makeTotalCell(front, frontTotal);
 
-  addCell("row-label", "Par");
-  holes.slice(0, 9).forEach((hole) => addCell("par-cell", hole.par));
-  addCell("par-cell", holes.slice(0, 9).reduce((sum, hole) => sum + hole.par, 0));
-  holes.slice(9).forEach((hole) => addCell("par-cell", hole.par));
-  addCell("par-cell", holes.slice(9).reduce((sum, hole) => sum + hole.par, 0));
-  addCell("par-cell", holes.reduce((sum, hole) => sum + hole.par, 0));
-
-  addCell("row-label", "Score");
-  holes.slice(0, 9).forEach((hole, i) => renderScoreCell(hole, i, scores, nextHoleIndex));
-  makeTotalCell(frontTotal);
+  const back = addGroup("holes-group");
+  holes.slice(9).forEach((hole) => addCell(back, "hole-cell", hole.number));
+  addCell(back, "hole-cell total-head", "Back");
+  holes.slice(9).forEach((hole) => addCell(back, "par-cell", hole.par));
+  addCell(back, "par-cell", holes.slice(9).reduce((sum, hole) => sum + hole.par, 0));
   holes.slice(9).forEach((hole, sliceIndex) => {
     const i = sliceIndex + 9;
-    renderScoreCell(hole, i, scores, nextHoleIndex);
+    renderScoreCell(back, hole, i, scores, nextHoleIndex);
   });
-  makeTotalCell(backTotal);
-  makeTotalCell(roundTotal, "round");
+  makeTotalCell(back, backTotal);
+
+  const round = addGroup("round-group");
+  addCell(round, "hole-cell total-head", "Total");
+  addCell(round, "par-cell", holes.reduce((sum, hole) => sum + hole.par, 0));
+  makeTotalCell(round, roundTotal, "round");
 }
 
-function renderScoreCell(hole, index, scores, nextHoleIndex) {
-  const cell = addCell("score-cell");
+function renderScoreCell(parent, hole, index, scores, nextHoleIndex) {
+  const cell = addCell(parent, "score-cell");
   if (scores[index] !== null) cell.classList.add("filled");
   if (index === nextHoleIndex) cell.classList.add("next");
+  if (lastChange?.holeIndex === index) {
+    cell.classList.add("changed", lastChange.type);
+  }
   cell.appendChild(makeScoreMark(scores[index], hole.par));
 }
 
@@ -525,39 +484,31 @@ function recordScore(delta) {
   const scores = getScores();
   const nextHoleIndex = getNextHoleIndex(scores);
   if (nextHoleIndex === -1) {
-    pulseCard();
     return;
   }
 
   history.push({ holeIndex: nextHoleIndex, delta });
+  lastChange = { holeIndex: nextHoleIndex, type: "added" };
   saveHistory();
   render();
-  pulseCard();
 }
 
 function undoScore() {
   if (!history.length) {
-    pulseCard();
     return;
   }
 
-  history.pop();
+  const undone = history.pop();
+  lastChange = { holeIndex: undone.holeIndex, type: "undone" };
   saveHistory();
   render();
-  pulseCard();
 }
 
 function resetScores() {
   history = [];
+  lastChange = null;
   saveHistory();
   render();
-  pulseCard();
-}
-
-function pulseCard() {
-  const target = document.querySelector(".card");
-  target.classList.remove("pulse");
-  window.requestAnimationFrame(() => target.classList.add("pulse"));
 }
 
 function isOptionHotkey(event) {
@@ -594,9 +545,6 @@ window.addEventListener("keydown", (event) => {
     resetScores();
   }
 });
-
-undoBtn.addEventListener("click", undoScore);
-resetBtn.addEventListener("click", resetScores);
 
 render();
 </script>
