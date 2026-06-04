@@ -94,8 +94,14 @@ body {
 .scoreboard {
   display: grid;
   grid-template-columns: 1fr 1fr 116px;
-  column-gap: 10px;
+  column-gap: 0;
   height: 138px;
+}
+
+.round-group {
+  margin-left: 10px;
+  grid-template-columns: 1fr;
+  background: rgba(18, 31, 55, 0.96);
 }
 
 .column-group {
@@ -112,9 +118,14 @@ body {
   grid-template-columns: repeat(9, minmax(0, 1fr)) 96px;
 }
 
-.round-group {
-  grid-template-columns: 1fr;
-  background: rgba(18, 31, 55, 0.96);
+.holes-group:first-child {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.holes-group:nth-child(2) {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
 }
 
 .cell {
