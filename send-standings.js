@@ -9,7 +9,7 @@ const SHEET_ID = "1qIM0HKhx9Y-3eCJCFzBqrbATwiPrK3C1ynATwZzRC1o";
 
 const RANGES = {
   teams: "Season 8, Stage 1!U4:X15",
-  players: "Season 8, Stage 1!U18:X32"
+  players: "Season 8, Stage 1!AE4:AH13"
 };
 
 async function getData(range) {
