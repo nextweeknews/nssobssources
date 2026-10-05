@@ -3,7 +3,7 @@ const test = require("node:test");
 const sharp = require("sharp");
 
 const {
-  buildLeaderboardImage,
+  buildLeaderboardImages,
   buildMessagePayload,
   buildMultipart,
   buildPlayerTeamMap,
@@ -57,27 +57,40 @@ test("includes every player tied within the top 10", () => {
   ]).map(row => row.name), ["Ciberian", "Ap13", "Anderson", "Seventy", "Jacob"]);
 });
 
-test("renders a Discord-ready PNG and multipart attachment", async () => {
-  const image = await buildLeaderboardImage(
+test("renders Discord-ready PNGs and multipart attachments", async () => {
+  const [teamImage, playerImage] = await buildLeaderboardImages(
     teams,
     players,
     rosters,
     async () => new Map()
   );
-  const metadata = await sharp(image).metadata();
-  assert.equal(metadata.format, "png");
-  assert.equal(metadata.width, 2400);
-  assert.equal(metadata.height, 1632);
-  assert.equal(metadata.hasAlpha, true);
+  const teamMetadata = await sharp(teamImage).metadata();
+  assert.equal(teamMetadata.format, "png");
+  assert.equal(teamMetadata.width, 2400);
+  assert.equal(teamMetadata.height, 992);
+  assert.equal(teamMetadata.hasAlpha, true);
+
+  const playerMetadata = await sharp(playerImage).metadata();
+  assert.equal(playerMetadata.format, "png");
+  assert.equal(playerMetadata.width, 2400);
+  assert.equal(playerMetadata.height, 680);
+  assert.equal(playerMetadata.hasAlpha, true);
 
   const payload = buildMessagePayload(new Date("2026-10-05T00:00:00Z"));
-  payload.attachments = [{ id: 0, filename: "standings.png" }];
+  const files = [
+    { filename: "team-standings.png", data: teamImage },
+    { filename: "player-standings.png", data: playerImage }
+  ];
+  payload.attachments = files.map((file, id) => ({ id, filename: file.filename }));
   assert.equal(payload.flags, 32768);
   assert.equal(payload.components[0].components[0].type, 12);
-  assert.equal(payload.components[0].components[1].components[0].url, "https://nssgolf.com/proleague");
-  assert.equal(payload.components[0].components[2].content, "Updated <t:1791158400:R>");
-  const multipart = buildMultipart(payload, image);
+  assert.equal(payload.components[0].components[1].type, 12);
+  assert.equal(payload.components[0].components[2].components[0].url, "https://nssgolf.com/proleague");
+  assert.equal(payload.components[0].components[3].content, "Updated <t:1791158400:R>");
+  const multipart = buildMultipart(payload, files);
   assert.match(multipart.contentType, /^multipart\/form-data; boundary=/);
-  assert.ok(multipart.body.includes(Buffer.from("attachment://standings.png")));
-  assert.ok(multipart.body.includes(image));
+  assert.ok(multipart.body.includes(Buffer.from("attachment://team-standings.png")));
+  assert.ok(multipart.body.includes(Buffer.from("attachment://player-standings.png")));
+  assert.ok(multipart.body.includes(teamImage));
+  assert.ok(multipart.body.includes(playerImage));
 });

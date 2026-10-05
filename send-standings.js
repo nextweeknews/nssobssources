@@ -146,7 +146,7 @@ function renderRows(rows, { x, y, width, playerTeamMap, logos }) {
   }).join("");
 }
 
-async function buildLeaderboardImage(teamRows, playerRows, rosterRows, logoLoader = loadTeamLogos) {
+async function buildLeaderboardImages(teamRows, playerRows, rosterRows, logoLoader = loadTeamLogos) {
   const teams = normalizeRows(teamRows);
   const players = normalizeTopTenRows(playerRows);
   const playerTeamMap = buildPlayerTeamMap(rosterRows);
@@ -161,17 +161,18 @@ async function buildLeaderboardImage(teamRows, playerRows, rosterRows, logoLoade
   const teamHeaderY = 210;
   const teamRowsY = 272;
   const rowsHeight = rows => rows.length * ROW_HEIGHT + Math.max(0, rows.length - 1) * ROW_GAP;
-  const playersTitleY = teamRowsY + rowsHeight(teams) + 62;
-  const playersHeaderY = playersTitleY + 22;
+  const playersTitleY = 42;
+  const playersHeaderY = 54;
   const playerRowsY = playersHeaderY + 62;
-  const height = playerRowsY + rowsHeight(players) + 50;
+  const teamHeight = teamRowsY + rowsHeight(teams) + 50;
+  const playerHeight = playerRowsY + rowsHeight(players) + 50;
   const tableHeader = (y, label) => `
     <rect x="${tableX}" y="${y}" width="${tableWidth}" height="52" rx="${ROW_RADIUS}" fill="#252e41"/>
     <text x="${tableX + RANK_WIDTH / 2}" y="${y + 26}" text-anchor="middle" class="column-label">RANK</text>
     <text x="${tableX + RANK_WIDTH + LOGO_SIZE + NAME_GAP}" y="${y + 26}" class="column-label">${label}</text>
     <text x="${tableX + tableWidth - SCORE_WIDTH / 2}" y="${y + 26}" text-anchor="middle" class="column-label">SCORE</text>`;
 
-  const svg = `
+  const renderImage = (height, content) => sharp(Buffer.from(`
     <svg width="${width * OUTPUT_SCALE}" height="${height * OUTPUT_SCALE}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <style>
@@ -186,18 +187,22 @@ async function buildLeaderboardImage(teamRows, playerRows, rosterRows, logoLoade
           .score { font-size: 40px; font-weight: 900; fill: #000000; }
         </style>
       </defs>
+      ${content}
+    </svg>`)).png().toBuffer();
+
+  return Promise.all([
+    renderImage(teamHeight, `
       <text x="48" y="64" class="eyebrow">SHOTGUN PRO LEAGUE</text>
       <text x="48" y="126" class="title">SEASON 8 · STAGE 2</text>
       <line x1="48" y1="158" x2="1152" y2="158" stroke="#4f86d9" stroke-width="4"/>
       <text x="${tableX}" y="198" class="section-title">TEAM STANDINGS</text>
       ${tableHeader(teamHeaderY, "TEAM")}
-      ${renderRows(teams, { x: tableX, y: teamRowsY, width: tableWidth, logos })}
+      ${renderRows(teams, { x: tableX, y: teamRowsY, width: tableWidth, logos })}`),
+    renderImage(playerHeight, `
       <text x="${tableX}" y="${playersTitleY}" class="section-title">TOP 10 PLAYERS</text>
       ${tableHeader(playersHeaderY, "PLAYER")}
-      ${renderRows(players, { x: tableX, y: playerRowsY, width: tableWidth, playerTeamMap, logos })}
-    </svg>`;
-
-  return sharp(Buffer.from(svg)).png().toBuffer();
+      ${renderRows(players, { x: tableX, y: playerRowsY, width: tableWidth, playerTeamMap, logos })}`)
+  ]);
 }
 
 function buildMessagePayload(now = new Date()) {
@@ -211,8 +216,15 @@ function buildMessagePayload(now = new Date()) {
         {
           type: 12,
           items: [{
-            media: { url: "attachment://standings.png" },
-            description: TITLE
+            media: { url: "attachment://team-standings.png" },
+            description: `${TITLE} team standings`
+          }]
+        },
+        {
+          type: 12,
+          items: [{
+            media: { url: "attachment://player-standings.png" },
+            description: `${TITLE} individual player standings`
           }]
         },
         {
@@ -230,13 +242,16 @@ function buildMessagePayload(now = new Date()) {
   };
 }
 
-function buildMultipart(payload, image) {
+function buildMultipart(payload, files) {
   const boundary = `----nss-standings-${Date.now()}`;
   const body = Buffer.concat([
     Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="payload_json"\r\nContent-Type: application/json\r\n\r\n${JSON.stringify(payload)}\r\n`),
-    Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="files[0]"; filename="standings.png"\r\nContent-Type: image/png\r\n\r\n`),
-    image,
-    Buffer.from(`\r\n--${boundary}--\r\n`)
+    ...files.flatMap(({ filename, data }, index) => [
+      Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="files[${index}]"; filename="${filename}"\r\nContent-Type: image/png\r\n\r\n`),
+      data,
+      Buffer.from("\r\n")
+    ]),
+    Buffer.from(`--${boundary}--\r\n`)
   ]);
   return { body, contentType: `multipart/form-data; boundary=${boundary}` };
 }
@@ -252,16 +267,20 @@ async function main() {
     getData(RANGES.players),
     getData(RANGES.rosters)
   ]);
-  const image = await buildLeaderboardImage(teams, players, rosters);
+  const [teamImage, playerImage] = await buildLeaderboardImages(teams, players, rosters);
+  const files = [
+    { filename: "team-standings.png", data: teamImage },
+    { filename: "player-standings.png", data: playerImage }
+  ];
   const payload = {
     ...buildMessagePayload(),
-    attachments: [{ id: 0, filename: "standings.png" }]
+    attachments: files.map((file, id) => ({ id, filename: file.filename }))
   };
   if (MESSAGE_ID) {
     payload.content = null;
     payload.embeds = [];
   }
-  const multipart = buildMultipart(payload, image);
+  const multipart = buildMultipart(payload, files);
   const url = MESSAGE_ID
     ? `${WEBHOOK_URL}/messages/${MESSAGE_ID}?with_components=true`
     : `${WEBHOOK_URL}?wait=true&with_components=true`;
@@ -287,7 +306,7 @@ async function main() {
 }
 
 module.exports = {
-  buildLeaderboardImage,
+  buildLeaderboardImages,
   buildMessagePayload,
   buildMultipart,
   buildPlayerTeamMap,
