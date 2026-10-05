@@ -15,12 +15,14 @@ const RANGES = {
   players: "Season 8, Stage 2!AE4:AH",
   rosters: "Season 8, Stage 2!A3:S63"
 };
-const ROW_HEIGHT = 50;
-const ROW_GAP = 6;
-const RANK_WIDTH = 70;
-const SCORE_WIDTH = 90;
-const LOGO_SIZE = 50;
-const NAME_GAP = 12;
+const OUTPUT_SCALE = 2;
+const ROW_HEIGHT = 72;
+const ROW_GAP = 9;
+const ROW_RADIUS = 14;
+const RANK_WIDTH = 96;
+const SCORE_WIDTH = 122;
+const LOGO_SIZE = 72;
+const NAME_GAP = 16;
 
 const TEAM_STYLES = {
   ANIMALS: { bg: "#2b2020", fg: "#ffffff" },
@@ -133,10 +135,10 @@ function renderRows(rows, { x, y, width, playerTeamMap, logos }) {
       : "";
 
     return `
-      <rect x="${x}" y="${rowY}" width="${width}" height="${ROW_HEIGHT}" rx="10" fill="#202a40"/>
-      <path d="M${x + 10} ${rowY}H${x + RANK_WIDTH}V${rowY + ROW_HEIGHT}H${x + 10}Q${x} ${rowY + ROW_HEIGHT} ${x} ${rowY + ROW_HEIGHT - 10}V${rowY + 10}Q${x} ${rowY} ${x + 10} ${rowY}Z" fill="#202a40"/>
+      <rect x="${x}" y="${rowY}" width="${width}" height="${ROW_HEIGHT}" rx="${ROW_RADIUS}" fill="#202a40"/>
+      <path d="M${x + ROW_RADIUS} ${rowY}H${x + RANK_WIDTH}V${rowY + ROW_HEIGHT}H${x + ROW_RADIUS}Q${x} ${rowY + ROW_HEIGHT} ${x} ${rowY + ROW_HEIGHT - ROW_RADIUS}V${rowY + ROW_RADIUS}Q${x} ${rowY} ${x + ROW_RADIUS} ${rowY}Z" fill="#202a40"/>
       <rect x="${x + RANK_WIDTH}" y="${rowY}" width="${width - RANK_WIDTH - SCORE_WIDTH}" height="${ROW_HEIGHT}" fill="${style.bg}"/>
-      <path d="M${x + width - SCORE_WIDTH} ${rowY}H${x + width - 10}Q${x + width} ${rowY} ${x + width} ${rowY + 10}V${rowY + ROW_HEIGHT - 10}Q${x + width} ${rowY + ROW_HEIGHT} ${x + width - 10} ${rowY + ROW_HEIGHT}H${x + width - SCORE_WIDTH}Z" fill="#d9d9d9"/>
+      <path d="M${x + width - SCORE_WIDTH} ${rowY}H${x + width - ROW_RADIUS}Q${x + width} ${rowY} ${x + width} ${rowY + ROW_RADIUS}V${rowY + ROW_HEIGHT - ROW_RADIUS}Q${x + width} ${rowY + ROW_HEIGHT} ${x + width - ROW_RADIUS} ${rowY + ROW_HEIGHT}H${x + width - SCORE_WIDTH}Z" fill="#d9d9d9"/>
       ${logoMarkup}
       <text x="${x + RANK_WIDTH / 2}" y="${rowY + ROW_HEIGHT / 2}" text-anchor="middle" class="rank" fill="${rankColor(row.rank)}">${escapeXml(row.rank)}</text>
       <text x="${x + RANK_WIDTH + LOGO_SIZE + NAME_GAP}" y="${rowY + ROW_HEIGHT / 2}" class="name" fill="${style.fg}">${escapeXml(row.name.toUpperCase())}</text>
@@ -154,40 +156,40 @@ async function buildLeaderboardImage(teamRows, playerRows, rosterRows, logoLoade
   ]);
 
   const width = 1200;
-  const tableWidth = 1124;
-  const tableX = 38;
-  const teamHeaderY = 170;
-  const teamRowsY = 218;
+  const tableWidth = 1104;
+  const tableX = 48;
+  const teamHeaderY = 210;
+  const teamRowsY = 272;
   const rowsHeight = rows => rows.length * ROW_HEIGHT + Math.max(0, rows.length - 1) * ROW_GAP;
-  const playersTitleY = teamRowsY + rowsHeight(teams) + 48;
-  const playersHeaderY = playersTitleY + 16;
-  const playerRowsY = playersHeaderY + 48;
-  const height = playerRowsY + rowsHeight(players) + 38;
+  const playersTitleY = teamRowsY + rowsHeight(teams) + 62;
+  const playersHeaderY = playersTitleY + 22;
+  const playerRowsY = playersHeaderY + 62;
+  const height = playerRowsY + rowsHeight(players) + 50;
   const tableHeader = (y, label) => `
-    <rect x="${tableX}" y="${y}" width="${tableWidth}" height="40" rx="10" fill="#252e41"/>
-    <text x="${tableX + RANK_WIDTH / 2}" y="${y + 20}" text-anchor="middle" class="column-label">RANK</text>
-    <text x="${tableX + RANK_WIDTH + LOGO_SIZE + NAME_GAP}" y="${y + 20}" class="column-label">${label}</text>
-    <text x="${tableX + tableWidth - SCORE_WIDTH / 2}" y="${y + 20}" text-anchor="middle" class="column-label">SCORE</text>`;
+    <rect x="${tableX}" y="${y}" width="${tableWidth}" height="52" rx="${ROW_RADIUS}" fill="#252e41"/>
+    <text x="${tableX + RANK_WIDTH / 2}" y="${y + 26}" text-anchor="middle" class="column-label">RANK</text>
+    <text x="${tableX + RANK_WIDTH + LOGO_SIZE + NAME_GAP}" y="${y + 26}" class="column-label">${label}</text>
+    <text x="${tableX + tableWidth - SCORE_WIDTH / 2}" y="${y + 26}" text-anchor="middle" class="column-label">SCORE</text>`;
 
   const svg = `
-    <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
+    <svg width="${width * OUTPUT_SCALE}" height="${height * OUTPUT_SCALE}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <style>
           text { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-          .eyebrow { font-size: 20px; font-weight: 800; letter-spacing: 6px; fill: #4f86d9; }
-          .title { font-size: 48px; font-weight: 900; letter-spacing: 1px; fill: #4f86d9; }
-          .section-title { font-size: 22px; font-weight: 900; letter-spacing: 0.8px; fill: #4f86d9; }
-          .column-label { font-size: 14px; font-weight: 800; letter-spacing: 2px; fill: #9ca3c7; dominant-baseline: middle; }
+          .eyebrow { font-size: 26px; font-weight: 800; letter-spacing: 8px; fill: #4f86d9; }
+          .title { font-size: 64px; font-weight: 900; letter-spacing: 1px; fill: #4f86d9; }
+          .section-title { font-size: 30px; font-weight: 900; letter-spacing: 0.8px; fill: #4f86d9; }
+          .column-label { font-size: 18px; font-weight: 800; letter-spacing: 3px; fill: #9ca3c7; dominant-baseline: middle; }
           .rank, .name, .score { dominant-baseline: middle; }
-          .rank { font-size: 26px; font-weight: 900; }
-          .name { font-size: 24px; font-weight: 900; letter-spacing: 0.4px; }
-          .score { font-size: 26px; font-weight: 900; fill: #000000; }
+          .rank { font-size: 36px; font-weight: 900; }
+          .name { font-size: 34px; font-weight: 900; letter-spacing: 0.4px; }
+          .score { font-size: 36px; font-weight: 900; fill: #000000; }
         </style>
       </defs>
-      <text x="38" y="50" class="eyebrow">SHOTGUN PRO LEAGUE</text>
-      <text x="38" y="98" class="title">SEASON 8 · STAGE 2</text>
-      <line x1="38" y1="124" x2="1162" y2="124" stroke="#4f86d9" stroke-width="3"/>
-      <text x="${tableX}" y="158" class="section-title">TEAM STANDINGS</text>
+      <text x="48" y="64" class="eyebrow">SHOTGUN PRO LEAGUE</text>
+      <text x="48" y="126" class="title">SEASON 8 · STAGE 2</text>
+      <line x1="48" y1="158" x2="1152" y2="158" stroke="#4f86d9" stroke-width="4"/>
+      <text x="${tableX}" y="198" class="section-title">TEAM STANDINGS</text>
       ${tableHeader(teamHeaderY, "TEAM")}
       ${renderRows(teams, { x: tableX, y: teamRowsY, width: tableWidth, logos })}
       <text x="${tableX}" y="${playersTitleY}" class="section-title">TOP 10 PLAYERS</text>
