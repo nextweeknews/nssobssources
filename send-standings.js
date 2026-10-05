@@ -4,7 +4,7 @@ process.env.FONTCONFIG_FILE ||= path.join(__dirname, "fontconfig.xml");
 const sharp = require("sharp");
 require("dotenv").config();
 
-const INTER_FONT = require.resolve("@fontsource-variable/inter/files/inter-latin-wght-normal.woff2");
+const INTER_FONT = path.join(__dirname, "fonts", "InterVariable.ttf");
 
 const WEBHOOK_URL = process.env.WEBHOOK_URL;
 const MESSAGE_ID = process.env.MESSAGE_ID;
@@ -161,8 +161,8 @@ async function renderTextLayer({ text, x, y, size, weight, color, anchor, letter
     : "";
   const { data, info } = await sharp({
     text: {
-      text: `<span foreground="${color}" font_weight="${weight}"${spacing}>${escapeXml(text)}</span>`,
-      font: `Inter Variable ${size}`,
+      text: `<span foreground="${color}" font_size="${size * 1024}" font_weight="${weight}"${spacing}>${escapeXml(text)}</span>`,
+      font: "Inter Variable",
       fontfile: INTER_FONT,
       rgba: true,
       dpi: 72 * OUTPUT_SCALE
@@ -339,7 +339,8 @@ module.exports = {
   buildMultipart,
   buildPlayerTeamMap,
   normalizeRows,
-  normalizeTopTenRows
+  normalizeTopTenRows,
+  renderTextLayer
 };
 
 if (require.main === module) main().catch(error => {

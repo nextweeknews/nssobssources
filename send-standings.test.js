@@ -8,7 +8,8 @@ const {
   buildMultipart,
   buildPlayerTeamMap,
   normalizeRows,
-  normalizeTopTenRows
+  normalizeTopTenRows,
+  renderTextLayer
 } = require("./send-standings");
 
 const teams = [
@@ -55,6 +56,25 @@ test("includes every player tied within the top 10", () => {
     ["10", "", "Jacob", "-63"],
     ["14", "", "Tim/TJS", "-62"]
   ]).map(row => row.name), ["Ciberian", "Ap13", "Anderson", "Seventy", "Jacob"]);
+});
+
+test("renders bundled Inter glyphs at leaderboard scale", async () => {
+  const layer = text => renderTextLayer({
+    text,
+    x: 0,
+    y: 0,
+    size: 38,
+    weight: 900,
+    color: "#ffffff",
+    anchor: "left",
+    letterSpacing: 0
+  });
+  const [narrow, wide] = await Promise.all([layer("IIII"), layer("WWWW")]);
+  const narrowMetadata = await sharp(narrow.input).metadata();
+  const wideMetadata = await sharp(wide.input).metadata();
+
+  assert.ok(narrowMetadata.height >= 50);
+  assert.ok(wideMetadata.width > narrowMetadata.width * 2);
 });
 
 test("renders Discord-ready PNGs and multipart attachments", async () => {
