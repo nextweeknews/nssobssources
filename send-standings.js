@@ -144,7 +144,7 @@ function renderRows(rows, { x, y, width, playerTeamMap, logos, textLayers }) {
 
     addText(textLayers, row.rank, x + RANK_WIDTH / 2, rowY + ROW_HEIGHT / 2, 40, 900, rankColor(row.rank), "center");
     addText(textLayers, row.name.toUpperCase(), x + RANK_WIDTH + LOGO_SIZE + NAME_GAP, rowY + ROW_HEIGHT / 2, 38, 900, style.fg, "left", 0.4);
-    addText(textLayers, row.score, x + width - SCORE_WIDTH / 2, rowY + ROW_HEIGHT / 2, 40, 900, "#000000", "center");
+    addText(textLayers, row.score, x + width - SCORE_WIDTH / 2, rowY + ROW_HEIGHT / 2, 40, 900, "#000000", "center", 0.5);
 
     return `
       <rect x="${x}" y="${rowY}" width="${width}" height="${ROW_HEIGHT}" rx="${ROW_RADIUS}" fill="#202a40"/>
