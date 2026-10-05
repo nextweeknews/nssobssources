@@ -166,6 +166,7 @@ async function buildLeaderboardImages(teamRows, playerRows, rosterRows, logoLoad
   const playerRowsY = playersHeaderY + 62;
   const teamHeight = teamRowsY + rowsHeight(teams) + 50;
   const playerHeight = playerRowsY + rowsHeight(players) + 50;
+  const imageHeight = Math.max(teamHeight, playerHeight);
   const tableHeader = (y, label) => `
     <rect x="${tableX}" y="${y}" width="${tableWidth}" height="52" rx="${ROW_RADIUS}" fill="#252e41"/>
     <text x="${tableX + RANK_WIDTH / 2}" y="${y + 26}" text-anchor="middle" class="column-label">RANK</text>
@@ -191,14 +192,14 @@ async function buildLeaderboardImages(teamRows, playerRows, rosterRows, logoLoad
     </svg>`)).png().toBuffer();
 
   return Promise.all([
-    renderImage(teamHeight, `
+    renderImage(imageHeight, `
       <text x="48" y="64" class="eyebrow">SHOTGUN PRO LEAGUE</text>
       <text x="48" y="126" class="title">SEASON 8 · STAGE 2</text>
       <line x1="48" y1="158" x2="1152" y2="158" stroke="#4f86d9" stroke-width="4"/>
       <text x="${tableX}" y="198" class="section-title">TEAM STANDINGS</text>
       ${tableHeader(teamHeaderY, "TEAM")}
       ${renderRows(teams, { x: tableX, y: teamRowsY, width: tableWidth, logos })}`),
-    renderImage(playerHeight, `
+    renderImage(imageHeight, `
       <text x="${tableX}" y="${playersTitleY}" class="section-title">TOP 10 PLAYERS</text>
       ${tableHeader(playersHeaderY, "PLAYER")}
       ${renderRows(players, { x: tableX, y: playerRowsY, width: tableWidth, playerTeamMap, logos })}`)

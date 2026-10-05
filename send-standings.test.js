@@ -73,8 +73,9 @@ test("renders Discord-ready PNGs and multipart attachments", async () => {
   const playerMetadata = await sharp(playerImage).metadata();
   assert.equal(playerMetadata.format, "png");
   assert.equal(playerMetadata.width, 2400);
-  assert.equal(playerMetadata.height, 680);
+  assert.equal(playerMetadata.height, 992);
   assert.equal(playerMetadata.hasAlpha, true);
+  assert.equal(playerMetadata.height, teamMetadata.height);
 
   const payload = buildMessagePayload(new Date("2026-10-05T00:00:00Z"));
   const files = [
