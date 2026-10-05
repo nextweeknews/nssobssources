@@ -67,7 +67,7 @@ test("renders a Discord-ready PNG and multipart attachment", async () => {
   const metadata = await sharp(image).metadata();
   assert.equal(metadata.format, "png");
   assert.equal(metadata.width, 2400);
-  assert.equal(metadata.height, 1548);
+  assert.equal(metadata.height, 1632);
   assert.equal(metadata.hasAlpha, true);
 
   const payload = buildMessagePayload(new Date("2026-10-05T00:00:00Z"));

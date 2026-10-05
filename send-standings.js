@@ -16,13 +16,13 @@ const RANGES = {
   rosters: "Season 8, Stage 2!A3:S63"
 };
 const OUTPUT_SCALE = 2;
-const ROW_HEIGHT = 72;
-const ROW_GAP = 9;
-const ROW_RADIUS = 14;
-const RANK_WIDTH = 96;
-const SCORE_WIDTH = 122;
-const LOGO_SIZE = 72;
-const NAME_GAP = 16;
+const ROW_HEIGHT = 82;
+const ROW_GAP = 10;
+const ROW_RADIUS = 16;
+const RANK_WIDTH = 110;
+const SCORE_WIDTH = 130;
+const LOGO_SIZE = 64;
+const NAME_GAP = 18;
 
 const TEAM_STYLES = {
   ANIMALS: { bg: "#2b2020", fg: "#ffffff" },
@@ -131,7 +131,7 @@ function renderRows(rows, { x, y, width, playerTeamMap, logos }) {
     const style = TEAM_STYLES[normalizeKey(teamName)] || { bg: "#283247", fg: "#ffffff" };
     const logo = logos.get(normalizeKey(teamName));
     const logoMarkup = logo
-      ? `<image href="${logo}" x="${x + RANK_WIDTH}" y="${rowY}" width="${LOGO_SIZE}" height="${LOGO_SIZE}" preserveAspectRatio="xMidYMid meet"/>`
+      ? `<image href="${logo}" x="${x + RANK_WIDTH}" y="${rowY + (ROW_HEIGHT - LOGO_SIZE) / 2}" width="${LOGO_SIZE}" height="${LOGO_SIZE}" preserveAspectRatio="xMidYMid meet"/>`
       : "";
 
     return `
@@ -181,9 +181,9 @@ async function buildLeaderboardImage(teamRows, playerRows, rosterRows, logoLoade
           .section-title { font-size: 30px; font-weight: 900; letter-spacing: 0.8px; fill: #4f86d9; }
           .column-label { font-size: 18px; font-weight: 800; letter-spacing: 3px; fill: #9ca3c7; dominant-baseline: middle; }
           .rank, .name, .score { dominant-baseline: middle; }
-          .rank { font-size: 36px; font-weight: 900; }
-          .name { font-size: 34px; font-weight: 900; letter-spacing: 0.4px; }
-          .score { font-size: 36px; font-weight: 900; fill: #000000; }
+          .rank { font-size: 40px; font-weight: 900; }
+          .name { font-size: 38px; font-weight: 900; letter-spacing: 0.4px; }
+          .score { font-size: 40px; font-weight: 900; fill: #000000; }
         </style>
       </defs>
       <text x="48" y="64" class="eyebrow">SHOTGUN PRO LEAGUE</text>
