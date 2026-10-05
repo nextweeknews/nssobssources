@@ -17,10 +17,10 @@ const RANGES = {
 };
 const ROW_HEIGHT = 50;
 const ROW_GAP = 6;
-const RANK_WIDTH = 60;
-const SCORE_WIDTH = 70;
+const RANK_WIDTH = 70;
+const SCORE_WIDTH = 90;
 const LOGO_SIZE = 50;
-const NAME_GAP = 8;
+const NAME_GAP = 12;
 
 const TEAM_STYLES = {
   ANIMALS: { bg: "#2b2020", fg: "#ffffff" },
@@ -153,41 +153,41 @@ async function buildLeaderboardImage(teamRows, playerRows, rosterRows, logoLoade
     ...players.map(player => playerTeamMap.get(normalizeKey(player.name)))
   ]);
 
-  const width = 800;
-  const tableWidth = 724;
+  const width = 1200;
+  const tableWidth = 1124;
   const tableX = 38;
-  const teamHeaderY = 150;
-  const teamRowsY = 194;
+  const teamHeaderY = 170;
+  const teamRowsY = 218;
   const rowsHeight = rows => rows.length * ROW_HEIGHT + Math.max(0, rows.length - 1) * ROW_GAP;
-  const playersTitleY = teamRowsY + rowsHeight(teams) + 44;
-  const playersHeaderY = playersTitleY + 14;
-  const playerRowsY = playersHeaderY + 44;
+  const playersTitleY = teamRowsY + rowsHeight(teams) + 48;
+  const playersHeaderY = playersTitleY + 16;
+  const playerRowsY = playersHeaderY + 48;
   const height = playerRowsY + rowsHeight(players) + 38;
   const tableHeader = (y, label) => `
-    <rect x="${tableX}" y="${y}" width="${tableWidth}" height="36" rx="10" fill="#252e41"/>
-    <text x="${tableX + 30}" y="${y + 18}" text-anchor="middle" class="column-label">RANK</text>
-    <text x="${tableX + RANK_WIDTH + LOGO_SIZE + NAME_GAP}" y="${y + 18}" class="column-label">${label}</text>
-    <text x="${tableX + tableWidth - 35}" y="${y + 18}" text-anchor="middle" class="column-label">SCORE</text>`;
+    <rect x="${tableX}" y="${y}" width="${tableWidth}" height="40" rx="10" fill="#252e41"/>
+    <text x="${tableX + RANK_WIDTH / 2}" y="${y + 20}" text-anchor="middle" class="column-label">RANK</text>
+    <text x="${tableX + RANK_WIDTH + LOGO_SIZE + NAME_GAP}" y="${y + 20}" class="column-label">${label}</text>
+    <text x="${tableX + tableWidth - SCORE_WIDTH / 2}" y="${y + 20}" text-anchor="middle" class="column-label">SCORE</text>`;
 
   const svg = `
     <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <style>
           text { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-          .eyebrow { font-size: 17px; font-weight: 800; letter-spacing: 5px; fill: #4f86d9; }
-          .title { font-size: 38px; font-weight: 900; letter-spacing: 1px; fill: #4f86d9; }
-          .section-title { font-size: 18px; font-weight: 900; letter-spacing: 0.8px; fill: #4f86d9; }
-          .column-label { font-size: 12px; font-weight: 800; letter-spacing: 2px; fill: #9ca3c7; dominant-baseline: middle; }
+          .eyebrow { font-size: 20px; font-weight: 800; letter-spacing: 6px; fill: #4f86d9; }
+          .title { font-size: 48px; font-weight: 900; letter-spacing: 1px; fill: #4f86d9; }
+          .section-title { font-size: 22px; font-weight: 900; letter-spacing: 0.8px; fill: #4f86d9; }
+          .column-label { font-size: 14px; font-weight: 800; letter-spacing: 2px; fill: #9ca3c7; dominant-baseline: middle; }
           .rank, .name, .score { dominant-baseline: middle; }
-          .rank { font-size: 22px; font-weight: 900; }
-          .name { font-size: 20px; font-weight: 900; letter-spacing: 0.4px; }
-          .score { font-size: 22px; font-weight: 900; fill: #000000; }
+          .rank { font-size: 26px; font-weight: 900; }
+          .name { font-size: 24px; font-weight: 900; letter-spacing: 0.4px; }
+          .score { font-size: 26px; font-weight: 900; fill: #000000; }
         </style>
       </defs>
       <text x="38" y="50" class="eyebrow">SHOTGUN PRO LEAGUE</text>
-      <text x="38" y="89" class="title">SEASON 8 · STAGE 2</text>
-      <line x1="38" y1="108" x2="762" y2="108" stroke="#4f86d9" stroke-width="2"/>
-      <text x="${tableX}" y="136" class="section-title">TEAM STANDINGS</text>
+      <text x="38" y="98" class="title">SEASON 8 · STAGE 2</text>
+      <line x1="38" y1="124" x2="1162" y2="124" stroke="#4f86d9" stroke-width="3"/>
+      <text x="${tableX}" y="158" class="section-title">TEAM STANDINGS</text>
       ${tableHeader(teamHeaderY, "TEAM")}
       ${renderRows(teams, { x: tableX, y: teamRowsY, width: tableWidth, logos })}
       <text x="${tableX}" y="${playersTitleY}" class="section-title">TOP 10 PLAYERS</text>
