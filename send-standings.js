@@ -1,6 +1,10 @@
 const fetch = require("node-fetch");
+const path = require("node:path");
+process.env.FONTCONFIG_FILE ||= path.join(__dirname, "fontconfig.xml");
 const sharp = require("sharp");
 require("dotenv").config();
+
+const INTER_FONT = require.resolve("@fontsource-variable/inter/files/inter-latin-wght-normal.woff2");
 
 const WEBHOOK_URL = process.env.WEBHOOK_URL;
 const MESSAGE_ID = process.env.MESSAGE_ID;
@@ -124,26 +128,52 @@ async function loadTeamLogos(teamNames) {
   return new Map(entries);
 }
 
-function renderRows(rows, { x, y, width, playerTeamMap, logos }) {
+function addText(textLayers, text, x, y, size, weight, color, anchor = "left", letterSpacing = 0) {
+  textLayers.push({ text, x, y, size, weight, color, anchor, letterSpacing });
+}
+
+function renderRows(rows, { x, y, width, playerTeamMap, logos, textLayers }) {
   return rows.map((row, index) => {
     const rowY = y + index * (ROW_HEIGHT + ROW_GAP);
     const teamName = playerTeamMap ? playerTeamMap.get(normalizeKey(row.name)) : row.name;
     const style = TEAM_STYLES[normalizeKey(teamName)] || { bg: "#283247", fg: "#ffffff" };
     const logo = logos.get(normalizeKey(teamName));
     const logoMarkup = logo
-      ? `<image href="${logo}" x="${x + RANK_WIDTH}" y="${rowY + (ROW_HEIGHT - LOGO_SIZE) / 2}" width="${LOGO_SIZE}" height="${LOGO_SIZE}" preserveAspectRatio="xMidYMid meet"/>`
+      ? `<image href="${logo}" x="${x + RANK_WIDTH + NAME_GAP / 2}" y="${rowY + (ROW_HEIGHT - LOGO_SIZE) / 2}" width="${LOGO_SIZE}" height="${LOGO_SIZE}" preserveAspectRatio="xMidYMid meet"/>`
       : "";
+
+    addText(textLayers, row.rank, x + RANK_WIDTH / 2, rowY + ROW_HEIGHT / 2, 40, 900, rankColor(row.rank), "center");
+    addText(textLayers, row.name.toUpperCase(), x + RANK_WIDTH + LOGO_SIZE + NAME_GAP, rowY + ROW_HEIGHT / 2, 38, 900, style.fg, "left", 0.4);
+    addText(textLayers, row.score, x + width - SCORE_WIDTH / 2, rowY + ROW_HEIGHT / 2, 40, 900, "#000000", "center");
 
     return `
       <rect x="${x}" y="${rowY}" width="${width}" height="${ROW_HEIGHT}" rx="${ROW_RADIUS}" fill="#202a40"/>
       <path d="M${x + ROW_RADIUS} ${rowY}H${x + RANK_WIDTH}V${rowY + ROW_HEIGHT}H${x + ROW_RADIUS}Q${x} ${rowY + ROW_HEIGHT} ${x} ${rowY + ROW_HEIGHT - ROW_RADIUS}V${rowY + ROW_RADIUS}Q${x} ${rowY} ${x + ROW_RADIUS} ${rowY}Z" fill="#202a40"/>
       <rect x="${x + RANK_WIDTH}" y="${rowY}" width="${width - RANK_WIDTH - SCORE_WIDTH}" height="${ROW_HEIGHT}" fill="${style.bg}"/>
       <path d="M${x + width - SCORE_WIDTH} ${rowY}H${x + width - ROW_RADIUS}Q${x + width} ${rowY} ${x + width} ${rowY + ROW_RADIUS}V${rowY + ROW_HEIGHT - ROW_RADIUS}Q${x + width} ${rowY + ROW_HEIGHT} ${x + width - ROW_RADIUS} ${rowY + ROW_HEIGHT}H${x + width - SCORE_WIDTH}Z" fill="#d9d9d9"/>
-      ${logoMarkup}
-      <text x="${x + RANK_WIDTH / 2}" y="${rowY + ROW_HEIGHT / 2}" text-anchor="middle" class="rank" fill="${rankColor(row.rank)}">${escapeXml(row.rank)}</text>
-      <text x="${x + RANK_WIDTH + LOGO_SIZE + NAME_GAP}" y="${rowY + ROW_HEIGHT / 2}" class="name" fill="${style.fg}">${escapeXml(row.name.toUpperCase())}</text>
-      <text x="${x + width - SCORE_WIDTH / 2}" y="${rowY + ROW_HEIGHT / 2}" text-anchor="middle" class="score">${escapeXml(row.score)}</text>`;
+      ${logoMarkup}`;
   }).join("");
+}
+
+async function renderTextLayer({ text, x, y, size, weight, color, anchor, letterSpacing }) {
+  const spacing = letterSpacing
+    ? ` letter_spacing="${Math.round(letterSpacing * 1024)}"`
+    : "";
+  const { data, info } = await sharp({
+    text: {
+      text: `<span foreground="${color}" font_weight="${weight}"${spacing}>${escapeXml(text)}</span>`,
+      font: `Inter Variable ${size}`,
+      fontfile: INTER_FONT,
+      rgba: true,
+      dpi: 72 * OUTPUT_SCALE
+    }
+  }).png().toBuffer({ resolveWithObject: true });
+
+  return {
+    input: data,
+    left: Math.round(x * OUTPUT_SCALE - (anchor === "center" ? info.width / 2 : 0)),
+    top: Math.round(y * OUTPUT_SCALE - info.height / 2)
+  };
 }
 
 async function buildLeaderboardImages(teamRows, playerRows, rosterRows, logoLoader = loadTeamLogos) {
@@ -161,48 +191,45 @@ async function buildLeaderboardImages(teamRows, playerRows, rosterRows, logoLoad
   const teamHeaderY = 210;
   const teamRowsY = 272;
   const rowsHeight = rows => rows.length * ROW_HEIGHT + Math.max(0, rows.length - 1) * ROW_GAP;
-  const playersTitleY = 42;
   const playersHeaderY = 54;
   const playerRowsY = playersHeaderY + 62;
   const teamHeight = teamRowsY + rowsHeight(teams) + 50;
   const playerHeight = playerRowsY + rowsHeight(players) + 50;
   const imageHeight = Math.max(teamHeight, playerHeight);
-  const tableHeader = (y, label) => `
-    <rect x="${tableX}" y="${y}" width="${tableWidth}" height="52" rx="${ROW_RADIUS}" fill="#252e41"/>
-    <text x="${tableX + RANK_WIDTH / 2}" y="${y + 26}" text-anchor="middle" class="column-label">RANK</text>
-    <text x="${tableX + RANK_WIDTH + LOGO_SIZE + NAME_GAP}" y="${y + 26}" class="column-label">${label}</text>
-    <text x="${tableX + tableWidth - SCORE_WIDTH / 2}" y="${y + 26}" text-anchor="middle" class="column-label">SCORE</text>`;
+  const tableHeader = (y, label, textLayers) => {
+    addText(textLayers, "RANK", tableX + RANK_WIDTH / 2, y + 26, 18, 800, "#9ca3c7", "center", 3);
+    addText(textLayers, label, tableX + RANK_WIDTH + LOGO_SIZE + NAME_GAP, y + 26, 18, 800, "#9ca3c7", "left", 3);
+    addText(textLayers, "SCORE", tableX + tableWidth - SCORE_WIDTH / 2, y + 26, 18, 800, "#9ca3c7", "center", 3);
+    return `<rect x="${tableX}" y="${y}" width="${tableWidth}" height="52" rx="${ROW_RADIUS}" fill="#252e41"/>`;
+  };
 
-  const renderImage = (height, content) => sharp(Buffer.from(`
+  const renderImage = async (height, content, textLayers) => {
+    const background = await sharp(Buffer.from(`
     <svg width="${width * OUTPUT_SCALE}" height="${height * OUTPUT_SCALE}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <style>
-          text { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-          .eyebrow { font-size: 26px; font-weight: 800; letter-spacing: 8px; fill: #4f86d9; }
-          .title { font-size: 64px; font-weight: 900; letter-spacing: 1px; fill: #4f86d9; }
-          .section-title { font-size: 30px; font-weight: 900; letter-spacing: 0.8px; fill: #4f86d9; }
-          .column-label { font-size: 18px; font-weight: 800; letter-spacing: 3px; fill: #9ca3c7; dominant-baseline: middle; }
-          .rank, .name, .score { dominant-baseline: middle; }
-          .rank { font-size: 40px; font-weight: 900; }
-          .name { font-size: 38px; font-weight: 900; letter-spacing: 0.4px; }
-          .score { font-size: 40px; font-weight: 900; fill: #000000; }
-        </style>
-      </defs>
       ${content}
     </svg>`)).png().toBuffer();
+    return sharp(background)
+      .composite(await Promise.all(textLayers.map(renderTextLayer)))
+      .png()
+      .toBuffer();
+  };
+
+  const teamText = [];
+  addText(teamText, "SHOTGUN PRO LEAGUE", 48, 54, 26, 800, "#4f86d9", "left", 8);
+  addText(teamText, "SEASON 8 · STAGE 2", 48, 102, 64, 900, "#4f86d9", "left", 1);
+  addText(teamText, "TEAM STANDINGS", tableX, 187, 30, 900, "#4f86d9", "left", 0.8);
+
+  const playerText = [];
+  addText(playerText, "TOP 10 PLAYERS", tableX, 31, 30, 900, "#4f86d9", "left", 0.8);
 
   return Promise.all([
     renderImage(imageHeight, `
-      <text x="48" y="64" class="eyebrow">SHOTGUN PRO LEAGUE</text>
-      <text x="48" y="126" class="title">SEASON 8 · STAGE 2</text>
       <line x1="48" y1="158" x2="1152" y2="158" stroke="#4f86d9" stroke-width="4"/>
-      <text x="${tableX}" y="198" class="section-title">TEAM STANDINGS</text>
-      ${tableHeader(teamHeaderY, "TEAM")}
-      ${renderRows(teams, { x: tableX, y: teamRowsY, width: tableWidth, logos })}`),
+      ${tableHeader(teamHeaderY, "TEAM", teamText)}
+      ${renderRows(teams, { x: tableX, y: teamRowsY, width: tableWidth, logos, textLayers: teamText })}`, teamText),
     renderImage(imageHeight, `
-      <text x="${tableX}" y="${playersTitleY}" class="section-title">TOP 10 PLAYERS</text>
-      ${tableHeader(playersHeaderY, "PLAYER")}
-      ${renderRows(players, { x: tableX, y: playerRowsY, width: tableWidth, playerTeamMap, logos })}`)
+      ${tableHeader(playersHeaderY, "PLAYER", playerText)}
+      ${renderRows(players, { x: tableX, y: playerRowsY, width: tableWidth, playerTeamMap, logos, textLayers: playerText })}`, playerText)
   ]);
 }
 
