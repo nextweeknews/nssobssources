@@ -1,6 +1,6 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { normalizeLeaderboard, leaderboardRows, historyPoints, needsHistory, ordinalRank } = require("./player-data");
+const { normalizeLeaderboard, leaderboardRows, historyPoints, lastThreeMatches, needsHistory, ordinalRank } = require("./player-data");
 
 test("rank suffixes handle last digits and the teen exceptions", () => {
   for (const [rank, expected] of [[1,"1st"],[2,"2nd"],[3,"3rd"],[4,"4th"],[11,"11th"],[12,"12th"],[13,"13th"],[21,"21st"],[22,"22nd"],[33,"33rd"],[100,"100th"],[101,"101st"],[111,"111th"],[112,"112th"],[113,"113th"],[123,"123rd"]]) {
@@ -79,4 +79,29 @@ test("milestone intervals widen with rank while preserving the top ten and neigh
     assert.ok(rows.some(row => row.player.rank === rank));
     assert.equal(new Set(rows.map(row => row.player.rank)).size, rows.length);
   }
+});
+
+test("last three matches preserve finishes and Elo changes with the newest match last", () => {
+  const game = (timestamp, finish, old_elo, new_elo, delta) => ({timestamp,results:[
+    {place:1,players:[{player_id:"other",new_elo:2000}]},
+    {place:finish,players:[{player_id:"1",old_elo,new_elo,delta,matches:timestamp/100}]}
+  ]});
+  const matches = [game(400,2,1300,1300,0),game(100,8,1250,1200,-50),game(300,1,1220,1300,80),game(200,3,1200,1220)];
+  const points = historyPoints(matches,"1");
+  assert.deepEqual(lastThreeMatches(points).map(({timestamp,finish,delta})=>({timestamp,finish,delta})),[
+    {timestamp:200,finish:3,delta:20},{timestamp:300,finish:1,delta:80},{timestamp:400,finish:2,delta:0}
+  ]);
+  assert.deepEqual(lastThreeMatches(historyPoints([matches[1]],"1")).map(point=>point.delta),[-50]);
+  assert.deepEqual(lastThreeMatches([]),[]);
+});
+
+test("tied placements work with full history and the Worker tie flag", () => {
+  const player = {player_id:"1",new_elo:1500,old_elo:1490,matches:1};
+  const history = [
+    {timestamp:100,results:[{place:2,players:[player,{player_id:"other"}]}]},
+    {timestamp:200,results:[{place:2,players:[player]},{place:2,players:[{player_id:"other"}]}]},
+    {timestamp:300,results:[{place:2,tied:true,players:[player]}]},
+    {timestamp:400,results:[{place:2,tied:false,players:[player]}]}
+  ];
+  assert.deepEqual(historyPoints(history,"1").slice(1).map(point=>point.tied),[true,true,true,false]);
 });
