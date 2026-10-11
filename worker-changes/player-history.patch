@@ -1,0 +1,116 @@
+--- a/teamup-leaderboard-worker/index.js
++++ b/teamup-leaderboard-worker/index.js
+@@ -181,6 +181,99 @@
+       "This route is deprecated. Use /get_leaderboard_snapshot instead.",
+       410
+     );
++  }
++
++  // ---------- Player history: cached until this player's match count changes ----------
++  if (path === "/get_player_history" && request.method === "POST") {
++    let body;
++    try {
++      body = await request.json();
++    } catch {
++      return errorResponse("Invalid JSON body", 400);
++    }
++    if (!body || typeof body.player_id !== "string" || !/^\d{1,20}$/.test(body.player_id)) {
++      return errorResponse("A Discord player_id is required", 400);
++    }
++    if ((body.leaderboard && body.leaderboard !== DEFAULT_LEADERBOARD) ||
++        (body.format && body.format !== "global")) {
++      return errorResponse("Only the current season's global history is available", 400);
++    }
++
++    try {
++      const rawSnapshot = await TEAMUP_CACHE.get(KV_KEY_LEADERBOARD);
++      if (!rawSnapshot) return errorResponse("Leaderboard snapshot unavailable", 503);
++      const snapshot = JSON.parse(rawSnapshot);
++      if (snapshot.requested_leaderboard !== DEFAULT_LEADERBOARD) {
++        return errorResponse("Waiting for current season snapshot", 503);
++      }
++      const entries = Array.isArray(snapshot.data?.leaderboard)
++        ? snapshot.data.leaderboard : snapshot.data?.entries;
++      const entry = entries?.find(item => String(item.team?.[0] ?? item.player_id) === body.player_id);
++      if (!entry) return errorResponse("Player not in the current leaderboard", 404);
++      const matchesCount = entry.matches;
++      if (!Number.isInteger(matchesCount) || matchesCount < 0) {
++        return errorResponse("Player match count unavailable", 503);
++      }
++
++      const key = `player_history:${DEFAULT_LEADERBOARD}:${body.player_id}`;
++      const rawCached = await TEAMUP_CACHE.get(key);
++      const cached = rawCached ? JSON.parse(rawCached) : null;
++      if (cached?.matches_count === matchesCount && Array.isArray(cached.matches)) {
++        return playerHistoryResponse(cached);
++      }
++
++      // On an undo, rebuild from upstream so the removed game disappears.
++      const previous = cached?.matches_count < matchesCount && Array.isArray(cached.matches)
++        ? cached.matches : [];
++      const boundary = previous.length ? previous[0].timestamp : null;
++      const newMatches = [];
++      const cursors = new Set();
++      let cursor = "";
++      let complete = matchesCount === 0;
++      // ponytail: bounded pagination; fail visibly beyond 10,000 games instead of truncating.
++      for (let page = 0; !complete && page < 100; page++) {
++        const query = buildQuery({ player: body.player_id, limit: 100, cursor });
++        const data = await teamUpFetch(
++          `${getClientBasePath()}/matches/${encodeURIComponent(DEFAULT_LEADERBOARD)}${query}`
++        );
++        if (!Array.isArray(data?.matches)) throw new Error("Invalid TeamUp match history");
++        let reachedBoundary = false;
++        for (const match of data.matches) {
++          if (!Number.isFinite(match.timestamp)) throw new Error("Invalid match timestamp");
++          if (boundary !== null && match.timestamp <= boundary) {
++            reachedBoundary = true;
++            break;
++          }
++          const result = (match.results || []).find(result =>
++            (result.players || []).some(player => String(player.player_id) === body.player_id));
++          const player = result?.players?.find(player => String(player.player_id) === body.player_id);
++          if (!player || !Number.isFinite(player.new_elo)) {
++            throw new Error("TeamUp did not return player-specific rating history");
++          }
++          newMatches.push({ timestamp: match.timestamp, results: [{ place: result.place, players: [player] }] });
++        }
++        complete = reachedBoundary || !data.cursor;
++        if (!complete) {
++          if (typeof data.cursor !== "string" || cursors.has(data.cursor)) {
++            throw new Error("Invalid TeamUp history cursor");
++          }
++          cursors.add(data.cursor);
++          cursor = data.cursor;
++        }
++      }
++      if (!complete) throw new Error("Season history exceeds the pagination limit");
++      const matches = [...new Map([...newMatches, ...previous].map(match => [match.timestamp, match])).values()]
++        .sort((a, b) => b.timestamp - a.timestamp);
++      // Upstream and the webhook snapshot can arrive in either order. Do not cache a partial version.
++      if (matchesCount > 0 && matches[0]?.results?.[0]?.players?.[0]?.matches !== matchesCount) {
++        return errorResponse("Waiting for history and leaderboard to agree", 409);
++      }
++      const data = { player_id: body.player_id, leaderboard: DEFAULT_LEADERBOARD, matches_count: matchesCount, matches };
++      await TEAMUP_CACHE.put(key, JSON.stringify(data));
++      return playerHistoryResponse(data);
++    } catch (err) {
++      return errorResponse(err?.message || "Player history unavailable", 502);
++    }
+   }
+ 
+   // ---------- Live proxy off switch ----------
+@@ -263,6 +356,13 @@
+   }
+ 
+   return errorResponse(`Unknown endpoint: ${path}`, 404);
++}
++
++function playerHistoryResponse(data) {
++  return new Response(JSON.stringify(data), {
++    status: 200,
++    headers: { "Content-Type": "application/json", "Cache-Control": "no-store", ...corsHeaders() }
++  });
+ }
+ 
+ function corsHeaders() {
