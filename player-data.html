@@ -6,10 +6,10 @@
   <title>Ranked Player Data</title>
   <style>
     html, body { margin: 0; width: 100%; height: 100%; background: transparent; font-family: Inter, system-ui, sans-serif; display: flex; justify-content: center; align-items: center; overflow: hidden; }
-    .card { flex-shrink: 0; width: 1100px; height: 880px; box-sizing: border-box; padding: 32px 40px; background: #0f172a; border-radius: 20px; color: #e9eef8; box-shadow: 0 32px 32px rgba(0,0,0,.65); display: flex; flex-direction: column; }
+    .card { position: relative; flex-shrink: 0; width: 1100px; height: 880px; box-sizing: border-box; padding: 32px; background: #0f172a; border-radius: 20px; color: #e9eef8; box-shadow: 0 32px 32px rgba(0,0,0,.65); display: flex; flex-direction: column; }
     .columns { display: grid; grid-template-columns: minmax(0, 11fr) minmax(0, 9fr); gap: 24px; flex: 1; min-height: 0; }
     .main { display: flex; flex-direction: column; gap: 26px; min-width: 0; }
-    .profile { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: center; row-gap: 14px; background: rgba(255,255,255,.06); padding: 18px 24px; border-radius: 10px; box-sizing: border-box; }
+    .profile { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: center; row-gap: 14px; background: rgba(255,255,255,.025); padding: 18px 24px; border-radius: 10px; box-sizing: border-box; }
     .identity { display: flex; align-items: center; gap: 10px; min-width: 0; overflow: hidden; }
     .avatar { width: 54px; height: 54px; flex-shrink: 0; border-radius: 50%; background: #26344e; object-fit: cover; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; color: #c7d7ff; }
     .name { font-size: 21px; font-weight: 750; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
@@ -20,13 +20,23 @@
     .stat:nth-child(2) { border-left: none; }
     .label { font-size: 14px; font-weight: 700; text-transform: uppercase; color: #9ca3c7; white-space: nowrap; }
     .value { display: block; font-size: 36px; font-weight: 800; margin-top: 8px; }
+    .recent-card { flex-shrink: 0; padding: 16px 20px; border-radius: 10px; background: rgba(255,255,255,.025); }
+    .recent-title { margin: 0 0 10px; text-align: center; font-size: 18px; font-weight: 750; color: #c7d7ff; }
+    .recent-results { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .match-result { min-width: 0; display: flex; align-items: baseline; justify-content: center; gap: 12px; border-left: 1px solid rgba(255,255,255,.12); }
+    .match-result:first-child { border-left: none; }
+    .match-finish { display: block; font-size: 26px; font-weight: 800; }
+    .match-change { display: block; font-size: 20px; font-weight: 700; color: #9ca3c7; white-space: nowrap; }
+    .delta-arrow { margin-right: 4px; font-size: .6em; vertical-align: middle; position: relative; top: -.2em; }
+    .match-change.gain { color: #4ade80; } .match-change.loss { color: #f87171; }
+    .recent-loading { grid-column: 1 / -1; text-align: center; color: #9ca3c7; }
     .chart-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
     .chart-wrap { flex: 1; min-height: 0; position: relative; border-radius: 10px; background: rgba(255,255,255,.025); }
     #chart { width: 100%; height: 100%; display: block; }
     .match-count { position: absolute; top: 16px; right: 24px; padding: 8px 12px; border-radius: 8px; background: #1e293b; color: #c7d7ff; font-size: 16px; font-weight: 750; }
     .chart-message { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 30px; color: #9ca3c7; font-size: 20px; }
     .chart-message[hidden] { display: none; }
-    .leaderboard { min-height: 0; display: flex; flex-direction: column; border-left: 1px solid rgba(255,255,255,.12); padding-left: 22px; }
+    .leaderboard { min-height: 0; display: flex; flex-direction: column; }
     .header-row, .entry { display: grid; grid-template-columns: 50px minmax(0, 1fr) 55px 58px; align-items: center; }
     .header-row { margin: 0 0 8px; height: 34px; flex-shrink: 0; border-radius: 8px; background: rgba(148,163,184,.12); color: #9ca3c7; text-transform: uppercase; font-size: 12px; font-weight: 700; }
     .header-row > span, .entry > span { text-align: center; }
@@ -46,7 +56,7 @@
     .selected { background: rgba(52,211,153,.2); box-shadow: inset 0 0 0 1px rgba(52,211,153,.55); }
     .selected.rank-1 { background: rgba(255,215,0,.18); } .selected.rank-2 { background: rgba(226,232,240,.24); } .selected.rank-3 { background: rgba(205,127,50,.22); }
     .rank-gap { height: 1px; flex-shrink: 0; margin: var(--separator-space) 0; background: rgba(255,255,255,.22); }
-    .status { height: 20px; margin-top: 14px; font-size: 13px; color: #facc15; text-align: center; }
+    .status { position: absolute; bottom: 8px; left: 32px; right: 32px; height: 20px; font-size: 13px; color: #facc15; text-align: center; }
   </style>
 </head>
 <body>
@@ -54,6 +64,10 @@
     <div class="columns">
       <section class="main" aria-label="Player statistics and rating history">
         <div id="profile" class="profile">Loading player…</div>
+        <section class="recent-card" aria-labelledby="recentTitle">
+          <h2 id="recentTitle" class="recent-title">Last 3 Matches</h2>
+          <div id="recentMatches" class="recent-results"><span class="recent-loading">Loading matches…</span></div>
+        </section>
         <div class="chart-panel">
           <div class="chart-wrap"><svg id="chart" role="img" aria-label="Elo rating by match"></svg><span id="matchCount" class="match-count" hidden></span><div id="chartMessage" class="chart-message">Loading history…</div></div>
         </div>

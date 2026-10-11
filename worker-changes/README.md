@@ -10,8 +10,13 @@ player-data.html?player_id=702730732220579950
 ```
 
 The left side shows a large server-specific Discord avatar and TeamUp name above a row of four
-prominent stats: Elo, rank, win percentage, and top-three percentage. An SVG
-Elo chart sits beneath them. The right side shows the top
+prominent stats: Elo, rank, win percentage, and top-three percentage. A separate
+Last 3 Matches card shows the latest finishes and signed Elo changes in one
+horizontal row with placement and movement side by side, newest on the right.
+Tied finishes use `T-2nd`, etc.; rating movement uses the match-results graphic's
+up/down triangle and its absolute value (zero appears without an icon). The card updates
+using the same cached history as the SVG Elo chart
+below it. The right side shows the top
 10, bordered milestone rows before the selected player's neighborhood, and
 up to two neighbors on each side. Milestones start at increments of five and
 widen to 10, 25, 50, 100, etc. as the rank increases, keeping at most five
@@ -41,6 +46,17 @@ The deployable source is maintained in `nextweeknews/nssgolf` at
 change requested during implementation. Follow that repository's review and
 release rules and deploy the Worker route before publishing this graphic.
 The unfinished matchmaking checkout remains untouched.
+
+`player-history-ties.patch` is the follow-up patch against the deployed Worker
+source. It preserves whether a finish is tied before filtering out opponents,
+so the recent-matches card can display `T-2nd`, etc. Its history cache version
+requires one initial reload of legacy cached records to recover that metadata;
+unchanged subsequent requests reuse the cache normally.
+
+All three left-side cards share the graph's subtle background highlight. The
+graphic keeps its 1100 × 880 size with equal 32px outer padding and a 24px gap
+between columns. The chart uses a tighter Elo range with five-point rounding
+and a minimum five-point margin, including flat histories.
 
 Server avatars come from the existing public NSS Golf
 `discord_guild_members` member profiles. The graphic prefers `server_avatar_url`

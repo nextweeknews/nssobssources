@@ -44,16 +44,27 @@
   function historyPoints(matches, playerId) {
     const byTimestamp = new Map();
     for (const match of matches) {
-      const player = (match.results || []).flatMap(result => result.players || [])
-        .find(entry => String(entry.player_id) === playerId);
+      const result = (match.results || []).find(result =>
+        (result.players || []).some(entry => String(entry.player_id) === playerId));
+      const player = result?.players?.find(entry => String(entry.player_id) === playerId);
       if (!player || !Number.isFinite(player.new_elo) || !Number.isFinite(match.timestamp)) continue;
-      byTimestamp.set(match.timestamp, { timestamp: match.timestamp, elo: player.new_elo, before: player.old_elo, game: player.matches });
+      byTimestamp.set(match.timestamp, {
+        timestamp: match.timestamp, elo: player.new_elo, before: player.old_elo, game: player.matches,
+        finish: Number.isInteger(result.place) && result.place > 0 ? result.place : null,
+        tied: result.tied ?? (match.results || []).filter(team => team.place === result.place)
+          .reduce((count, team) => count + (team.players || []).length, 0) > 1,
+        delta: Number.isFinite(player.delta) ? player.delta : Number.isFinite(player.old_elo) ? player.new_elo - player.old_elo : null
+      });
     }
     const points = [...byTimestamp.values()].sort((a, b) => a.timestamp - b.timestamp);
     if (points.length && Number.isFinite(points[0].before)) {
       points.unshift({ elo: points[0].before, game: Number.isFinite(points[0].game) ? points[0].game - 1 : 0 });
     }
     return points;
+  }
+
+  function lastThreeMatches(points) {
+    return points.filter(point => point.timestamp != null).slice(-3);
   }
 
   function rateColor(rate, low, mid, high) {
@@ -76,7 +87,7 @@
   }
 
   if (typeof module !== "undefined" && module.exports) {
-    module.exports = { normalizeLeaderboard, leaderboardRows, historyPoints, needsHistory, ordinalRank };
+    module.exports = { normalizeLeaderboard, leaderboardRows, historyPoints, lastThreeMatches, needsHistory, ordinalRank };
     return;
   }
 
@@ -87,6 +98,7 @@
   const statusEl = document.getElementById("status");
   const messageEl = document.getElementById("chartMessage");
   const chartEl = document.getElementById("chart");
+  const recentEl = document.getElementById("recentMatches");
   let loadedMatches = null;
   let busy = false;
   let displayedState = "";
@@ -175,7 +187,27 @@
     return element;
   }
 
+  function renderRecentMatches(points) {
+    const matches = lastThreeMatches(points);
+    recentEl.replaceChildren(...Array.from({ length: 3 }, (_, index) => {
+      const match = matches[index - (3 - matches.length)];
+      const finish = match?.finish;
+      const change = Number.isFinite(match?.delta) ? Math.round(match.delta) : null;
+      const entry = document.createElement("div");
+      entry.className = "match-result";
+      entry.title = match ? `Match ${match.game ?? ""} · ${new Date(match.timestamp).toLocaleDateString()}` : "No earlier match";
+      const medal = ["", "gold", "silver", "bronze"][finish] || "";
+      const movement = span(`match-change${change > 0 ? " gain" : change < 0 ? " loss" : ""}`,
+        change != null ? Math.abs(change) : "—");
+      if (change != null && change !== 0) movement.prepend(span("delta-arrow", change > 0 ? "▲" : "▼"));
+      movement.setAttribute("aria-label", change != null ? `${change > 0 ? "Gained" : change < 0 ? "Lost" : "Unchanged:"} ${Math.abs(change)} Elo` : "Elo movement unavailable");
+      entry.append(span(`match-finish ${medal}`, finish != null ? `${match.tied ? "T-" : ""}${ordinalRank(finish)}` : "—"), movement);
+      return entry;
+    }));
+  }
+
   function renderChart(points) {
+    renderRecentMatches(points);
     chartEl.replaceChildren();
     if (!points.length) {
       messageEl.hidden = false;
@@ -188,9 +220,9 @@
     const left = 58, right = width - 24, top = 32, bottom = height - 24;
     const min = Math.min(...points.map(point => point.elo));
     const max = Math.max(...points.map(point => point.elo));
-    const pad = Math.max(30, (max - min) * .12);
-    const low = Math.floor((min - pad) / 50) * 50;
-    const high = Math.ceil((max + pad) / 50) * 50;
+    const pad = Math.max(5, (max - min) * .08);
+    const low = Math.floor((min - pad) / 5) * 5;
+    const high = Math.ceil((max + pad) / 5) * 5;
     const x = index => left + index / Math.max(1, points.length - 1) * (right - left);
     const y = elo => bottom - (elo - low) / (high - low) * (bottom - top);
     const textStyle = { fill: "#9ca3c7", "font-size": 13, "font-family": "Inter, system-ui, sans-serif" };
@@ -262,6 +294,7 @@
         } catch (error) {
           statusEl.textContent = `History: ${error.message}. Retrying…`;
           if (!chartPoints.length) {
+            recentEl.replaceChildren(span("recent-loading", "Recent matches temporarily unavailable"));
             messageEl.hidden = false;
             messageEl.textContent = "Rating history temporarily unavailable";
           }
@@ -277,6 +310,7 @@
   if (!playerId || !/^\d{1,20}$/.test(playerId)) {
     profileEl.style.display = "flex";
     profileEl.textContent = "Add ?player_id=DISCORD_USER_ID to the URL";
+    recentEl.replaceChildren(span("recent-loading", "Select a player to show recent matches"));
     messageEl.textContent = "Select a player to show their season history";
     return;
   }
