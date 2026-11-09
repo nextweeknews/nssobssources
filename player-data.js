@@ -23,18 +23,18 @@
     });
   }
 
-  function leaderboardRows(players, playerId) {
+  function leaderboardRows(players, playerId, topCount = 10) {
     const selectedIndex = players.findIndex(player => player.id === playerId);
-    const rows = players.slice(0, 10).map(player => ({ player, milestone: false }));
-    if (selectedIndex < 10) return rows;
-    const start = Math.max(10, selectedIndex - 2);
+    const rows = players.slice(0, topCount).map(player => ({ player, milestone: false }));
+    if (selectedIndex < topCount) return rows;
+    const start = Math.max(topCount, selectedIndex - 2);
     const end = Math.min(players.length, selectedIndex + 3);
     // Use familiar 5/10/25/50/100/... milestones, keeping at most five rows.
     let step = 5;
-    for (let scale = 10; Math.floor(start / step) - Math.floor(10 / step) > 5; scale *= 10) {
-      step = [scale, scale * 2.5, scale * 5].find(value => Math.floor(start / value) - Math.floor(10 / value) <= 5) || scale * 5;
+    for (let scale = 10; Math.floor(start / step) - Math.floor(topCount / step) > 5; scale *= 10) {
+      step = [scale, scale * 2.5, scale * 5].find(value => Math.floor(start / value) - Math.floor(topCount / value) <= 5) || scale * 5;
     }
-    for (let rank = (Math.floor(10 / step) + 1) * step; rank <= start; rank += step) {
+    for (let rank = (Math.floor(topCount / step) + 1) * step; rank <= start; rank += step) {
       rows.push({ player: players[rank - 1], milestone: true });
     }
     for (let index = start; index < end; index++) rows.push({ player: players[index], milestone: false });
@@ -68,11 +68,11 @@
   }
 
   function rateColor(rate, low, mid, high) {
-    if (rate == null) return "#d3d3d3";
-    const colors = [[248,113,113], [250,204,21], [74,222,128]];
+    if (rate == null) return "var(--muted, #d3d3d3)";
+    const colors = ["var(--rate-low, #f87171)", "var(--rate-mid, #facc15)", "var(--rate-high, #4ade80)"];
     const segment = rate < mid ? 0 : 1;
     const t = Math.max(0, Math.min(1, (rate - (segment ? mid : low)) / (segment ? high - mid : mid - low)));
-    return `rgb(${colors[segment].map((value, i) => Math.round(value + t * (colors[segment + 1][i] - value))).join(",")})`;
+    return `color-mix(in srgb, ${colors[segment]} ${(1 - t) * 100}%, ${colors[segment + 1]})`;
   }
 
   // Both browser polling and the runnable checks use this exact match-count gate.
@@ -91,7 +91,7 @@
     return;
   }
 
-  const config = window.TEAMUP_CONFIG;
+  const config = window.NSSR_CONFIG || window.TEAMUP_CONFIG;
   const playerId = new URLSearchParams(location.search).get("player_id");
   const profileEl = document.getElementById("profile");
   const listEl = document.getElementById("resultsList");
@@ -138,7 +138,7 @@
     matchCount.hidden = false;
     profileEl.replaceChildren(identity(player));
     for (const [label, value, color] of [
-      ["Elo", player.elo, "#fff"], ["Rank", ordinalRank(player.rank), "#c7d7ff"],
+      ["Elo", player.elo, "var(--ink, #fff)"], ["Rank", ordinalRank(player.rank), "var(--accent-ink, #c7d7ff)"],
       ["Win %", rate(player.winRate), rateColor(player.winRate, 10, 25, 40)],
       ["Top 3 %", rate(player.top3Rate), rateColor(player.top3Rate, 50, 70, 90)]
     ]) {
@@ -149,7 +149,7 @@
       stat.append(span("label", label), number);
       profileEl.append(stat);
     }
-    const rows = leaderboardRows(players, playerId).map((row, index, list) => ({
+    const rows = leaderboardRows(players, playerId, config.TOP_PLAYERS || 10).map((row, index, list) => ({
       ...row, jump: index > 0 && row.player.rank > list[index - 1].player.rank + 1
     }));
     const style = getComputedStyle(listEl);
@@ -239,6 +239,9 @@
   }
 
   async function post(path, body) {
+    if (window.NSSR_API) {
+      return path === "/get_player_history" ? window.NSSR_API.history(body.player_id) : window.NSSR_API.snapshot();
+    }
     const response = await fetch(`${config.WORKER_BASE_URL}${path}`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ leaderboard: config.CURRENT_LEADERBOARD_KEY, format: config.DEFAULT_FORMAT, ...body }),
@@ -254,9 +257,9 @@
     try {
       const snapshot = await post("/get_leaderboard_snapshot", {});
       const initialPlayers = normalizeLeaderboard(snapshot, memberProfiles);
-      const ids = leaderboardRows(initialPlayers, playerId).map(row => row.player.id);
+      const ids = leaderboardRows(initialPlayers, playerId, config.TOP_PLAYERS || 10).map(row => row.player.id);
       let avatarWarning = "";
-      try {
+      if (config.GUILD_MEMBER_API_URL) try {
         const query = new URLSearchParams({
           select: "discord_user_id,server_avatar_url,avatar_url", discord_user_id: `in.(${ids.join(",")})`
         });
@@ -315,5 +318,5 @@
     return;
   }
   update();
-  setInterval(update, 15000);
+  setInterval(update, config.REFRESH_MS || 15000);
 })();
